@@ -33,3 +33,28 @@ export async function moduleAccessRequired(req, res, next) {
     return res.status(503).json({ error: 'No se pudo contactar a MRTI Core/Infra' });
   }
 }
+
+// Autoservicio (Fase 7): sólo requiere una sesión válida, no acceso al
+// módulo Activos completo — mismo patrón que MRTI-RH/server/src/auth.js.
+export async function fetchCurrentUser(authorization) {
+  try {
+    const response = await fetch(`${AUTH_BASE_URL}/api/auth/me`, {
+      headers: { Authorization: authorization },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) return null;
+    const body = await response.json();
+    return body.profile ? { id: body.profile.id, name: body.profile.full_name, email: body.profile.email } : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function portalSessionRequired(req, res, next) {
+  const authorization = req.headers.authorization;
+  if (!authorization) return res.status(401).json({ error: 'No autenticado' });
+  const user = await fetchCurrentUser(authorization);
+  if (!user) return res.status(401).json({ error: 'Sesión inválida o expirada' });
+  req.portalUser = user;
+  return next();
+}

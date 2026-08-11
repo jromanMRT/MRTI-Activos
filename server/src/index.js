@@ -2,8 +2,9 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import { moduleAccessRequired } from './auth.js';
+import { moduleAccessRequired, portalSessionRequired } from './auth.js';
 import { activosRouter } from './routes/activos.js';
+import { activosSelfRouter } from './routes/activosSelf.js';
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(express.json({ limit: '5mb' }));
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 app.use('/api/activos', moduleAccessRequired, activosRouter);
+app.use('/api/activos-self', portalSessionRequired, activosSelfRouter);
 
 app.use((err, _req, res, _next) => {
   // eslint-disable-next-line no-console
