@@ -21,6 +21,11 @@ texto plano (`win_password`, `ms_password`, `password_mrt`,
 `password_corporativo`); ese sistema externo no fue modificado ni se eliminó
 nada de él.
 
+La preparación para una futura conexión directa a esa base está documentada en
+[`docs/EXTERNAL_SOURCE_RUNBOOK.md`](docs/EXTERNAL_SOURCE_RUNBOOK.md). Incluye
+una cuenta de solo lectura y comandos de diagnóstico/catálogo que no descargan
+filas ni modifican el origen.
+
 ## Puesta en marcha
 
 ### 1. Base de datos

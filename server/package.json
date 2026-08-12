@@ -8,6 +8,8 @@
     "start": "node src/index.js",
     "migrate": "node scripts/migrate.js",
     "reconcile:obs": "node scripts/reconcile-obs.js",
+    "source:check": "node scripts/external-source-audit.js check",
+    "source:catalog": "node scripts/external-source-audit.js catalog",
     "test": "node --test test/"
   },
   "dependencies": {
