@@ -1,17 +1,17 @@
 # MRTI Activos
 
-Inventario de activos de TI (equipos, asignaciones, licencias y accesos), integrado como módulo del portal MRTI.
+Fuente maestra del inventario patrimonial de TI: equipos, asignaciones,
+compras, garantías, mantenimientos y licencias.
 
 ## Arquitectura
 
 - **Frontend**: React + Vite + Tailwind (carpeta `src/`), publicado en `/activos/`.
 - **Backend**: Node.js + Express (carpeta `server/`), publicado en `/activos-api/`.
 - **Base de datos**: MySQL 8 (`mysql/schema.sql`), base `mrti_activos`.
-- **Autenticación**: sin login propio. Reutiliza la sesión emitida por MRTI-Infra —
-  cada petición se valida reenviando el header `Authorization` a
-  `GET /api/auth/module-access/activos` en MRTI-Infra (mismo patrón que usa
-  MRTI Agent Core). El módulo `activos` se administra desde el Centro de
-  control de MRTI-Infra como cualquier otro módulo.
+- **Autenticación**: sin login propio; valida la sesión y el permiso `activos`
+  contra MRTI Core.
+- **Observabilidad**: la ficha del activo consulta en modo de solo lectura a
+  MRTI-Obs mediante `asset_uid`. Los datos técnicos no se duplican aquí.
 
 ## Origen de los datos
 
@@ -34,7 +34,7 @@ mysql -u root -p < mysql/schema.sql
 ```bash
 cd server
 npm install
-cp .env.example .env   # edita MYSQL_PASSWORD y MRTI_INFRA_URL
+cp .env.example .env   # edita MYSQL_PASSWORD y MRTI_CORE_URL
 npm run dev            # API en http://localhost:3003
 ```
 
@@ -51,3 +51,16 @@ npm run dev            # http://localhost:5173 (peticiones /activos-api vía pro
 - Backend: `pm2 start ecosystem.config.cjs` dentro de esta carpeta.
 - Nginx: agrega los bloques `/activos/` y `/activos-api/` (ver
   `deploy/nginx.conf.example` del portal MRTI).
+
+## Conciliación con MRTI-Obs
+
+Después de aplicar las migraciones en ambos módulos:
+
+```bash
+npm --prefix server run reconcile:obs
+npm --prefix server run reconcile:obs -- --apply
+```
+
+La primera orden es un ensayo sin escrituras. La segunda vincula coincidencias
+únicas por serie, service tag o etiqueta patrimonial y migra ubicación y
+asignación. Los casos ambiguos o sin coincidencia quedan para revisión manual.

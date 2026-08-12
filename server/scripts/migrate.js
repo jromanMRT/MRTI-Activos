@@ -1,5 +1,5 @@
 // Aplica las migraciones pendientes de mysql/migrations en orden.
-// Uso: npm run migrate (desde server/) — mismo patrón que MRTI-Infra/MRTI Core.
+// Uso: npm run migrate (desde server/) — mismo patrón que MRTI-Obs/MRTI Core.
 import 'dotenv/config';
 import mysql from 'mysql2/promise';
 import { readdir, readFile } from 'node:fs/promises';

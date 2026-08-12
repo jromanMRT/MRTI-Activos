@@ -41,6 +41,7 @@ export const FIELD_GROUPS = [
       { key: 'orden_compra', label: 'Orden de compra', type: 'text' },
       { key: 'factura', label: 'Factura', type: 'text' },
       { key: 'fecha_compra', label: 'Fecha de compra', type: 'date' },
+      { key: 'garantia_hasta', label: 'Garantía hasta', type: 'date' },
       { key: 'valid_from', label: 'Válido desde', type: 'date' },
       { key: 'valid_to', label: 'Válido hasta', type: 'date' },
     ],
@@ -125,6 +126,6 @@ export const FIELD_GROUPS = [
 export const ALL_FIELDS = FIELD_GROUPS.flatMap((group) => group.fields.map((field) => field.key));
 
 export const LIST_COLUMNS = [
-  'id', 'center_code', 'tipo', 'descripcion', 'marca', 'modelo',
+  'id', 'asset_uid', 'center_code', 'tipo', 'descripcion', 'marca', 'modelo',
   'usuario_asignado', 'unidad', 'empresa', 'estado', 'numero_serie',
 ];

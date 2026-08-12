@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { apiFetch } from '../api.js';
+import { apiFetch, obsFetch, obsLinkDevice, obsUnlinkedDevices } from '../api.js';
 
 export function AssetFormPage({ mode }) {
   const { id } = useParams();
@@ -10,6 +10,8 @@ export function AssetFormPage({ mode }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [observability, setObservability] = useState(null);
+  const [observabilityError, setObservabilityError] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -19,6 +21,11 @@ export function AssetFormPage({ mode }) {
       .then(([meta, asset]) => {
         setGroups(meta.groups);
         setValues(asset.data || {});
+        if (asset.data?.asset_uid) {
+          obsFetch(asset.data.asset_uid)
+            .then(setObservability)
+            .catch((err) => setObservabilityError(err.message));
+        }
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -47,7 +54,7 @@ export function AssetFormPage({ mode }) {
   }
 
   async function handleDelete() {
-    if (!window.confirm('¿Eliminar este activo? Esta acción no se puede deshacer.')) return;
+    if (!window.confirm('¿Retirar este activo? Se conservará su historial y dejará de estar asignado.')) return;
     try {
       await apiFetch(`/activos/${id}`, { method: 'DELETE' });
       navigate('/');
@@ -67,7 +74,7 @@ export function AssetFormPage({ mode }) {
         <div className="flex gap-2">
           {mode === 'edit' && (
             <button type="button" onClick={handleDelete} className="px-4 py-2 rounded-lg border border-red-500/40 text-red-400 hover:bg-red-500/10">
-              Eliminar
+              Retirar
             </button>
           )}
           <button type="submit" disabled={saving} className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-slate-950 font-semibold px-4 py-2 rounded-lg">
@@ -89,9 +96,106 @@ export function AssetFormPage({ mode }) {
             </div>
           </fieldset>
         ))}
+        {mode === 'edit' && (
+          <ObservabilityPanel
+            assetUid={values.asset_uid}
+            data={observability}
+            error={observabilityError}
+            onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))}
+          />
+        )}
       </div>
     </form>
   );
+}
+
+function ObservabilityPanel({ assetUid, data, error, onChange }) {
+  const [available, setAvailable] = useState([]);
+  const [selected, setSelected] = useState('');
+  const [linking, setLinking] = useState(false);
+  const [actionError, setActionError] = useState('');
+
+  useEffect(() => {
+    if (data?.devices?.length === 0) {
+      obsUnlinkedDevices().then(setAvailable).catch(() => setAvailable([]));
+    }
+  }, [data?.devices?.length]);
+
+  async function linkDevice() {
+    if (!selected || !assetUid) return;
+    setLinking(true);
+    setActionError('');
+    try {
+      await obsLinkDevice(selected, assetUid);
+      await onChange();
+    } catch (err) {
+      setActionError(err.message);
+    } finally {
+      setLinking(false);
+    }
+  }
+
+  async function unlinkDevice(deviceId) {
+    setLinking(true);
+    setActionError('');
+    try {
+      await obsLinkDevice(deviceId, null);
+      await onChange();
+    } catch (err) {
+      setActionError(err.message);
+    } finally {
+      setLinking(false);
+    }
+  }
+
+  return (
+    <fieldset className="border border-slate-800 rounded-xl p-4">
+      <legend className="text-sm font-semibold text-slate-300 px-1">MRTI-Obs · Estado operacional</legend>
+      {error ? (
+        <p className="text-sm text-amber-400">No fue posible consultar MRTI-Obs: {error}</p>
+      ) : !data ? (
+        <p className="text-sm text-slate-500">Consultando observabilidad…</p>
+      ) : data.devices.length === 0 ? (
+        <div className="space-y-3">
+          <p className="text-sm text-slate-500">Este activo todavía no tiene un dispositivo monitoreado vinculado.</p>
+          <div className="flex flex-col md:flex-row gap-2">
+            <select className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm" value={selected} onChange={(event) => setSelected(event.target.value)}>
+              <option value="">Selecciona un dispositivo sin vincular…</option>
+              {available.map((device) => (
+                <option key={device.id} value={device.id}>
+                  {device.internal_id} · {device.name}{device.ip_address ? ` · ${device.ip_address}` : ''}
+                </option>
+              ))}
+            </select>
+            <button type="button" disabled={!selected || linking} onClick={linkDevice} className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-slate-950 font-semibold px-4 py-2 rounded-lg">
+              {linking ? 'Vinculando…' : 'Vincular con este activo'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {data.devices.map((device) => (
+            <div key={device.id} className="grid grid-cols-2 md:grid-cols-5 gap-3 rounded-lg bg-slate-900 p-3 text-sm">
+              <OperationalValue label="Dispositivo" value={`${device.name} (${device.internal_id})`} />
+              <OperationalValue label="Estado" value={device.status_name || 'Sin estado'} />
+              <OperationalValue label="IP" value={device.ip_address || '—'} />
+              <OperationalValue label="Último ping" value={device.last_ping_at ? new Date(device.last_ping_at).toLocaleString() : 'Nunca'} />
+              <button type="button" disabled={linking} onClick={() => unlinkDevice(device.id)} className="text-xs text-amber-400 hover:underline disabled:opacity-50">Desvincular monitoreo</button>
+            </div>
+          ))}
+          <p className="text-xs text-slate-500">
+            {data.alerts.length} alerta{data.alerts.length === 1 ? '' : 's'} activa{data.alerts.length === 1 ? '' : 's'}.
+            Los datos técnicos se administran en <a className="text-sky-400 hover:underline" href="/mrti-obs/">MRTI-Obs</a>.
+          </p>
+        </div>
+      )}
+      {actionError && <p className="mt-3 text-sm text-red-400">{actionError}</p>}
+    </fieldset>
+  );
+}
+
+function OperationalValue({ label, value }) {
+  return <div><span className="block text-xs text-slate-500">{label}</span><span className="text-slate-200">{value}</span></div>;
 }
 
 function Field({ field, value, onChange }) {

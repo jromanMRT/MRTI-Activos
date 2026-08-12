@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "migrate": "node scripts/migrate.js"
+    "migrate": "node scripts/migrate.js",
+    "reconcile:obs": "node scripts/reconcile-obs.js",
+    "test": "node --test test/"
   },
   "dependencies": {
     "cors": "^2.8.5",

@@ -3,8 +3,9 @@ import { pool } from '../db.js';
 
 export const activosSelfRouter = Router();
 
-const SELF_COLUMNS = `id, cod_activo_fijo, tipo, descripcion, marca, modelo, service_tag,
-  numero_serie, estado, fecha_compra, bitlocker, notas`;
+const SELF_COLUMNS = `id, asset_uid, center_code, cod_activo_fijo, tipo, descripcion,
+  marca, modelo, service_tag, numero_serie, estado, physical_area_id,
+  fecha_compra, garantia_hasta, bitlocker, notas`;
 
 // Un empleado puede tener varios activos (1:N) — a diferencia de RH, no hay
 // "ficha única"; por eso no vinculado no es un 404, es simplemente una

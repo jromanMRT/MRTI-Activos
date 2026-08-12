@@ -18,6 +18,7 @@ USE mrti_activos;
 
 CREATE TABLE IF NOT EXISTS activos (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  asset_uid CHAR(36) NOT NULL,
   center_code VARCHAR(20) NOT NULL,
   cod_activo_fijo VARCHAR(40) NULL,
   tipo VARCHAR(30) NULL,
@@ -31,6 +32,7 @@ CREATE TABLE IF NOT EXISTS activos (
   usuario_asignado VARCHAR(80) NULL,
   unidad VARCHAR(60) NULL,
   area VARCHAR(80) NULL,
+  physical_area_id CHAR(36) NULL,
   cel_empleado VARCHAR(20) NULL,
   cuenta_contable VARCHAR(30) NULL,
   expediente VARCHAR(60) NULL,
@@ -49,6 +51,7 @@ CREATE TABLE IF NOT EXISTS activos (
   revisada VARCHAR(10) NULL,
   ex_propietario VARCHAR(120) NULL,
   fecha_compra DATETIME NULL,
+  garantia_hasta DATE NULL,
   valid_from DATETIME NULL,
   valid_to DATETIME NULL,
   notas TEXT NULL,
@@ -68,6 +71,7 @@ CREATE TABLE IF NOT EXISTS activos (
   db_licencia VARCHAR(80) NULL,
   correo_mrt VARCHAR(60) NULL,
   correo_corporativo VARCHAR(60) NULL,
+  portal_user_id CHAR(36) NULL,
   correo_nombre VARCHAR(80) NULL,
   correo_depto VARCHAR(80) NULL,
   correo_puesto VARCHAR(60) NULL,
@@ -77,9 +81,41 @@ CREATE TABLE IF NOT EXISTS activos (
   av_caducidad DATETIME NULL,
   av_team VARCHAR(80) NULL,
   av_comentario VARCHAR(80) NULL,
+  UNIQUE KEY uq_activos_asset_uid (asset_uid),
   KEY idx_activos_tipo (tipo),
   KEY idx_activos_estado (estado),
   KEY idx_activos_unidad (unidad),
   KEY idx_activos_empresa (empresa),
-  KEY idx_activos_usuario (usuario_asignado)
+  KEY idx_activos_usuario (usuario_asignado),
+  KEY idx_activos_portal_user (portal_user_id),
+  KEY idx_activos_physical_area (physical_area_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS activo_asignaciones (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  asset_uid CHAR(36) NOT NULL,
+  portal_user_id CHAR(36) NOT NULL,
+  assigned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  unassigned_at DATETIME NULL,
+  notes TEXT NULL,
+  created_by CHAR(36) NULL,
+  KEY idx_asignaciones_asset (asset_uid, unassigned_at),
+  KEY idx_asignaciones_user (portal_user_id, unassigned_at),
+  CONSTRAINT fk_asignaciones_activo FOREIGN KEY (asset_uid) REFERENCES activos(asset_uid) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS activo_mantenimientos (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  asset_uid CHAR(36) NOT NULL,
+  tipo VARCHAR(80) NOT NULL,
+  estado VARCHAR(30) NOT NULL DEFAULT 'Programado',
+  fecha_inicio DATETIME NULL,
+  fecha_fin DATETIME NULL,
+  proveedor VARCHAR(120) NULL,
+  costo DECIMAL(12,2) NULL,
+  notes TEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_mantenimientos_asset (asset_uid, fecha_inicio),
+  CONSTRAINT fk_mantenimientos_activo FOREIGN KEY (asset_uid) REFERENCES activos(asset_uid) ON DELETE RESTRICT
+);
