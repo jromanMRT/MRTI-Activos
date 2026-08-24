@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiFetch, obsFetch, obsLinkDevice, obsUnlinkedDevices } from '../api.js';
 
 export function AssetFormPage({ mode }) {
@@ -77,7 +77,7 @@ export function AssetFormPage({ mode }) {
               Retirar
             </button>
           )}
-          <button type="submit" disabled={saving} className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-slate-950 font-semibold px-4 py-2 rounded-lg">
+          <button type="submit" disabled={saving} className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-[#2a1c05] font-semibold px-4 py-2 rounded-lg">
             {saving ? 'Guardando…' : 'Guardar'}
           </button>
         </div>
@@ -97,6 +97,15 @@ export function AssetFormPage({ mode }) {
           </fieldset>
         ))}
         {mode === 'edit' && (
+          <AssignmentPanel
+            assetId={id}
+            portalUserId={values.portal_user_id}
+            terceroId={values.tercero_id}
+            usuarioAsignado={values.usuario_asignado}
+            onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))}
+          />
+        )}
+        {mode === 'edit' && (
           <ObservabilityPanel
             assetUid={values.asset_uid}
             data={observability}
@@ -106,6 +115,87 @@ export function AssetFormPage({ mode }) {
         )}
       </div>
     </form>
+  );
+}
+
+// Quien tiene el activo hoy puede ser un empleado con cuenta en Core
+// (portal_user_id, administrado desde ahí) o un tercero registrado en
+// /terceros (contratista, proveedor, visita) -- este panel solo maneja la
+// segunda vía; la primera sigue siendo cosa de Core.
+function AssignmentPanel({ assetId, portalUserId, terceroId, usuarioAsignado, onChange }) {
+  const [terceros, setTerceros] = useState([]);
+  const [selected, setSelected] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    apiFetch('/terceros').then((r) => setTerceros(r.data)).catch(() => {});
+  }, []);
+
+  async function assign() {
+    if (!selected) return;
+    setBusy(true);
+    setError('');
+    try {
+      await apiFetch(`/activos/${assetId}/asignaciones`, { method: 'POST', body: JSON.stringify({ tercero_id: selected }) });
+      setSelected('');
+      await onChange();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function unassign() {
+    if (!window.confirm('¿Quitar la asignación de este activo?')) return;
+    setBusy(true);
+    setError('');
+    try {
+      await apiFetch(`/activos/${assetId}/asignacion`, { method: 'DELETE' });
+      await onChange();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <fieldset className="border border-slate-800 rounded-xl p-4">
+      <legend className="text-sm font-semibold text-slate-300 px-1">Asignación</legend>
+      {error && <p className="text-sm text-red-400 mb-2">{error}</p>}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="text-sm">
+          {portalUserId ? (
+            <span><span className="text-slate-500">Empleado (Core):</span> <span className="text-slate-200">{usuarioAsignado || portalUserId}</span></span>
+          ) : terceroId ? (
+            <span><span className="text-slate-500">Tercero externo:</span> <span className="text-slate-200">{usuarioAsignado}</span></span>
+          ) : (
+            <span className="text-slate-500">Sin asignar</span>
+          )}
+        </div>
+        {(portalUserId || terceroId) && (
+          <button type="button" disabled={busy} onClick={unassign} className="text-amber-400 hover:underline text-sm disabled:opacity-50">
+            Quitar asignación
+          </button>
+        )}
+      </div>
+      <div className="flex flex-col md:flex-row gap-2 mt-3">
+        <select className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm" value={selected} onChange={(e) => setSelected(e.target.value)}>
+          <option value="">Asignar a un tercero registrado…</option>
+          {terceros.map((t) => (
+            <option key={t.id} value={t.id}>{t.nombre}{t.organizacion ? ` (${t.organizacion})` : ''}</option>
+          ))}
+        </select>
+        <button type="button" disabled={!selected || busy} onClick={assign} className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-[#2a1c05] font-semibold px-4 py-2 rounded-lg whitespace-nowrap">
+          {busy ? 'Asignando…' : 'Asignar'}
+        </button>
+      </div>
+      <p className="text-xs text-slate-500 mt-2">
+        ¿No está en la lista? <Link to="/terceros" className="text-sky-400 hover:underline">Regístralo primero</Link>.
+      </p>
+    </fieldset>
   );
 }
 
@@ -167,7 +257,7 @@ function ObservabilityPanel({ assetUid, data, error, onChange }) {
                 </option>
               ))}
             </select>
-            <button type="button" disabled={!selected || linking} onClick={linkDevice} className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-slate-950 font-semibold px-4 py-2 rounded-lg">
+            <button type="button" disabled={!selected || linking} onClick={linkDevice} className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-[#2a1c05] font-semibold px-4 py-2 rounded-lg">
               {linking ? 'Vinculando…' : 'Vincular con este activo'}
             </button>
           </div>

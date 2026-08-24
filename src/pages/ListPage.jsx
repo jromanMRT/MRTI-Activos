@@ -38,7 +38,7 @@ export function ListPage() {
           <h1 className="text-2xl font-bold">Inventario de activos</h1>
           <p className="text-slate-400 text-sm mt-1">{items.length} equipo{items.length === 1 ? '' : 's'}</p>
         </div>
-        <Link to="/nuevo" className="bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold px-4 py-2 rounded-lg">
+        <Link to="/nuevo" className="bg-sky-500 hover:bg-sky-400 text-[#2a1c05] font-semibold px-4 py-2 rounded-lg">
           + Nuevo activo
         </Link>
       </div>

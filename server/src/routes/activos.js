@@ -124,7 +124,7 @@ activosRouter.post('/primary-assignment', async (req, res, next) => {
     );
     if (asset) {
       await connection.query(
-        'UPDATE activos SET portal_user_id = ?, usuario_asignado = ? WHERE id = ?',
+        'UPDATE activos SET portal_user_id = ?, tercero_id = NULL, usuario_asignado = ? WHERE id = ?',
         [portalUserId, req.body?.user_name || null, asset.id]
       );
       await connection.query(
@@ -158,7 +158,11 @@ activosRouter.get('/:id/asignaciones', async (req, res, next) => {
     const [[asset]] = await pool.query('SELECT asset_uid FROM activos WHERE id = ?', [req.params.id]);
     if (!asset) return res.status(404).json({ error: 'Activo no encontrado' });
     const [rows] = await pool.query(
-      'SELECT * FROM activo_asignaciones WHERE asset_uid = ? ORDER BY assigned_at DESC',
+      `SELECT a.*, t.nombre AS tercero_nombre, t.organizacion AS tercero_organizacion
+         FROM activo_asignaciones a
+         LEFT JOIN terceros t ON t.id = a.tercero_id
+        WHERE a.asset_uid = ?
+        ORDER BY a.assigned_at DESC`,
       [asset.asset_uid]
     );
     res.json({ data: rows });
@@ -167,13 +171,28 @@ activosRouter.get('/:id/asignaciones', async (req, res, next) => {
   }
 });
 
+// Acepta exactamente uno de portal_user_id (empleado con cuenta en Core) o
+// tercero_id (persona registrada en /terceros, sin cuenta en Core). No hay
+// una via "por defecto": quien llama tiene que decir cual es.
 activosRouter.post('/:id/asignaciones', async (req, res, next) => {
   const connection = await pool.getConnection();
   try {
-    const portalUserId = String(req.body?.portal_user_id || '').trim();
-    if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(portalUserId)) {
+    const portalUserId = req.body?.portal_user_id ? String(req.body.portal_user_id).trim() : null;
+    const terceroId = req.body?.tercero_id ? String(req.body.tercero_id).trim() : null;
+    if (Boolean(portalUserId) === Boolean(terceroId)) {
+      return res.status(400).json({ error: 'Envía exactamente uno: portal_user_id o tercero_id' });
+    }
+    if (portalUserId && !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(portalUserId)) {
       return res.status(400).json({ error: 'portal_user_id debe ser un UUID de MRTI Core' });
     }
+
+    let usuarioAsignado = req.body?.user_name || null;
+    if (terceroId) {
+      const [[tercero]] = await connection.query('SELECT nombre, organizacion FROM terceros WHERE id = ? AND estado <> \'Inactivo\'', [terceroId]);
+      if (!tercero) return res.status(400).json({ error: 'El tercero indicado no existe o está inactivo' });
+      usuarioAsignado = tercero.organizacion ? `${tercero.nombre} (${tercero.organizacion})` : tercero.nombre;
+    }
+
     const [[asset]] = await connection.query('SELECT asset_uid FROM activos WHERE id = ?', [req.params.id]);
     if (!asset) return res.status(404).json({ error: 'Activo no encontrado' });
     await connection.beginTransaction();
@@ -183,13 +202,16 @@ activosRouter.post('/:id/asignaciones', async (req, res, next) => {
     );
     const assignmentId = randomUUID();
     await connection.query(
-      `INSERT INTO activo_asignaciones (id, asset_uid, portal_user_id, notes)
-       VALUES (?, ?, ?, ?)`,
-      [assignmentId, asset.asset_uid, portalUserId, req.body?.notes || null]
+      `INSERT INTO activo_asignaciones (id, asset_uid, portal_user_id, tercero_id, notes)
+       VALUES (?, ?, ?, ?, ?)`,
+      [assignmentId, asset.asset_uid, portalUserId, terceroId, req.body?.notes || null]
     );
-    await connection.query('UPDATE activos SET portal_user_id = ? WHERE id = ?', [portalUserId, req.params.id]);
+    await connection.query(
+      'UPDATE activos SET portal_user_id = ?, tercero_id = ?, usuario_asignado = ? WHERE id = ?',
+      [portalUserId, terceroId, usuarioAsignado, req.params.id]
+    );
     await connection.commit();
-    res.status(201).json({ data: { id: assignmentId, asset_uid: asset.asset_uid, portal_user_id: portalUserId } });
+    res.status(201).json({ data: { id: assignmentId, asset_uid: asset.asset_uid, portal_user_id: portalUserId, tercero_id: terceroId } });
   } catch (error) {
     await connection.rollback().catch(() => {});
     next(error);
@@ -208,7 +230,7 @@ activosRouter.delete('/:id/asignacion', async (req, res, next) => {
       'UPDATE activo_asignaciones SET unassigned_at = CURRENT_TIMESTAMP WHERE asset_uid = ? AND unassigned_at IS NULL',
       [asset.asset_uid]
     );
-    await connection.query('UPDATE activos SET portal_user_id = NULL, usuario_asignado = NULL WHERE id = ?', [req.params.id]);
+    await connection.query('UPDATE activos SET portal_user_id = NULL, tercero_id = NULL, usuario_asignado = NULL WHERE id = ?', [req.params.id]);
     await connection.commit();
     res.status(204).end();
   } catch (error) {

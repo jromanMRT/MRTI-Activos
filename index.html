@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>MRTI Activos</title>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('mrti_theme');
+          if (stored === 'light' || stored === 'dark') document.documentElement.setAttribute('data-theme', stored);
+        } catch (error) { /* localStorage no disponible */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
