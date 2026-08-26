@@ -44,7 +44,7 @@ export async function fetchCurrentUser(authorization) {
     });
     if (!response.ok) return null;
     const body = await response.json();
-    return body.profile ? { id: body.profile.id, name: body.profile.full_name, email: body.profile.email } : null;
+    return body.profile ? { id: body.profile.id, name: body.profile.full_name, email: body.profile.email, role: body.profile.role } : null;
   } catch {
     return null;
   }

@@ -1,0 +1,25 @@
+-- Historial local e inmutable de mutaciones de MRTI Activos.
+CREATE TABLE IF NOT EXISTS audit_events (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  event_uuid CHAR(36) NOT NULL,
+  module_code VARCHAR(40) NOT NULL,
+  actor_user_id CHAR(36) NULL,
+  actor_name VARCHAR(255) NULL,
+  actor_email VARCHAR(255) NULL,
+  action VARCHAR(100) NOT NULL,
+  entity_type VARCHAR(100) NOT NULL,
+  entity_id VARCHAR(100) NULL,
+  request_id CHAR(36) NOT NULL,
+  ip_address VARCHAR(64) NULL,
+  user_agent VARCHAR(512) NULL,
+  before_json LONGTEXT NULL,
+  after_json LONGTEXT NULL,
+  metadata_json LONGTEXT NULL,
+  status_code SMALLINT UNSIGNED NOT NULL,
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  UNIQUE KEY uq_audit_event_uuid (event_uuid),
+  KEY idx_audit_created (created_at),
+  KEY idx_audit_actor_created (actor_user_id, created_at),
+  KEY idx_audit_entity_created (entity_type, entity_id, created_at),
+  KEY idx_audit_action_created (action, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
