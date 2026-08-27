@@ -60,7 +60,7 @@ export function Layout({ children }) {
       </header>
 
       <main className={`min-h-screen transition-all duration-300 ${collapsed ? 'md:pl-16' : 'md:pl-64'}`}>
-        <div className="max-w-6xl mx-auto px-4 py-6">{children}</div>
+        <div className="w-full px-4 py-6 sm:px-6 lg:px-8">{children}</div>
       </main>
     </div>
   );

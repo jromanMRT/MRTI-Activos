@@ -11,7 +11,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-full bg-slate-900 border-r border-slate-800 transition-all duration-300 z-40 flex flex-col ${
+      className={`activos-sidebar fixed left-0 top-0 h-full bg-slate-900 border-r border-slate-800 transition-all duration-300 z-40 flex flex-col ${
         collapsed ? 'w-16' : 'w-64'
       }`}
     >
