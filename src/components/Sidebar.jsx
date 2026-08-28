@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme.js';
 
@@ -8,6 +9,16 @@ const NAV_ITEMS = [
 
 export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
   const [theme, setTheme] = useTheme();
+  const [applications, setApplications] = useState([]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+    fetch('/api/portal/v1/applications', { headers: { Authorization: `Bearer ${token}` } })
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then(({ data }) => setApplications(Array.isArray(data) ? data : []))
+      .catch(() => setApplications([]));
+  }, []);
 
   return (
     <aside
@@ -46,6 +57,13 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
             </li>
           ))}
         </ul>
+        <div className="mt-5 border-t border-slate-800 pt-4">
+          {!collapsed && <p className="mb-2 px-4 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Cambiar módulo</p>}
+          <div className="space-y-1 px-2">
+            <ModuleLink href="/" label="Mi espacio" collapsed={collapsed} onNavigate={onNavigate} icon="⌂" />
+            {applications.filter((application) => application.code !== 'activos').map((application) => <ModuleLink key={application.code} href={application.code === 'agent-core' ? `${application.url}#token=${encodeURIComponent(localStorage.getItem('auth_token') || '')}` : application.url} label={application.name} collapsed={collapsed} onNavigate={onNavigate} icon="◆" />)}
+          </div>
+        </div>
       </nav>
 
       <div className={`border-t border-slate-800 p-4 flex items-center ${collapsed ? 'flex-col gap-2' : 'justify-between'}`}>
@@ -71,6 +89,10 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
       </div>
     </aside>
   );
+}
+
+function ModuleLink({ href, label, collapsed, onNavigate, icon }) {
+  return <a href={href} onClick={onNavigate} title={label} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 ${collapsed ? 'justify-center' : ''}`}><span className="grid h-5 w-5 place-items-center text-xs" aria-hidden="true">{icon}</span>{!collapsed && <span className="truncate text-sm">{label}</span>}</a>;
 }
 
 function ThemeIcon({ theme }) {
