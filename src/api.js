@@ -44,7 +44,7 @@ async function obsRequest(path, options = {}) {
     throw new Error('No autenticado');
   }
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error || `MRTI-Obs respondió ${response.status}`);
+  if (!response.ok) throw new Error(body.error || `MRTI Monitor respondió ${response.status}`);
   return body.data;
 }
 

@@ -240,9 +240,9 @@ function ObservabilityPanel({ assetUid, data, error, onChange }) {
 
   return (
     <fieldset className="border border-slate-800 rounded-xl p-4">
-      <legend className="text-sm font-semibold text-slate-300 px-1">MRTI-Obs · Estado operacional</legend>
+      <legend className="text-sm font-semibold text-slate-300 px-1">MRTI Monitor · Estado operacional</legend>
       {error ? (
-        <p className="text-sm text-amber-400">No fue posible consultar MRTI-Obs: {error}</p>
+        <p className="text-sm text-amber-400">No fue posible consultar MRTI Monitor: {error}</p>
       ) : !data ? (
         <p className="text-sm text-slate-500">Consultando observabilidad…</p>
       ) : data.devices.length === 0 ? (
@@ -275,7 +275,7 @@ function ObservabilityPanel({ assetUid, data, error, onChange }) {
           ))}
           <p className="text-xs text-slate-500">
             {data.alerts.length} alerta{data.alerts.length === 1 ? '' : 's'} activa{data.alerts.length === 1 ? '' : 's'}.
-            Los datos técnicos se administran en <a className="text-sky-400 hover:underline" href="/mrti-obs/">MRTI-Obs</a>.
+            Los datos técnicos se administran en <a className="text-sky-400 hover:underline" href="/mrti-obs/">MRTI Monitor</a>.
           </p>
         </div>
       )}
