@@ -7,9 +7,29 @@ const NAV_ITEMS = [
   { to: '/terceros', label: 'Terceros externos', icon: 'people' },
 ];
 
+// Core deja el perfil en localStorage al iniciar sesión (mismo origen que
+// todos los módulos), así que aquí se lee directo en lugar de pedirlo de
+// nuevo -- ver /var/www/mrt/MRTI/MRTI/src/main.js.
+function readAuthProfile() {
+  try { return JSON.parse(localStorage.getItem('auth_profile') || '{}'); } catch { return {}; }
+}
+
+async function handleLogout() {
+  try {
+    const token = localStorage.getItem('auth_token');
+    await fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: '{}' });
+  } catch { /* cierre local garantizado aunque el aviso a Core falle */ }
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('auth_profile');
+  window.location.replace('/');
+}
+
 export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
   const [theme, setTheme] = useTheme();
   const [applications, setApplications] = useState([]);
+  const [logoUrl, setLogoUrl] = useState('/company-logo.svg');
+  const profile = readAuthProfile();
+  const isAdministrator = profile.role === 'administrator';
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -20,23 +40,34 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
       .catch(() => setApplications([]));
   }, []);
 
+  // El logo lo administra Core (Centro de control → Recursos de marca); se
+  // consulta en vivo para que un cambio ahí se refleje aquí sin tocar código.
+  useEffect(() => {
+    fetch('/api/portal/v1/brand-appearance', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then(({ data }) => { if (data?.portal_logo?.content_url) setLogoUrl(data.portal_logo.content_url); })
+      .catch(() => {});
+  }, []);
+
   return (
     <aside
-      className={`activos-sidebar fixed left-0 top-0 h-full bg-slate-900 border-r border-slate-800 transition-all duration-300 z-40 flex flex-col ${
+      className={`portal-module-sidebar activos-sidebar fixed left-0 top-0 h-full bg-slate-900 border-r border-slate-800 transition-all duration-300 z-40 flex flex-col ${
         collapsed ? 'w-16' : 'w-64'
       }`}
     >
-      <div className={`flex items-center gap-3 p-4 border-b border-slate-800 ${collapsed ? 'justify-center' : ''}`}>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500 font-display text-sm font-extrabold text-[#2a1c05] shadow-sm">A</span>
+      <div className={`portal-module-brand flex items-center gap-3 p-4 border-b border-slate-800 ${collapsed ? 'justify-center' : ''}`}>
+        <a href="/" title="Volver al Core" aria-label="Volver al Core" className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-xl border border-sky-500/30 bg-gradient-to-br from-sky-400/15 to-sky-500/5 shadow-sm">
+          <img src={logoUrl} alt="" className="h-[34px] w-[34px]" />
+        </a>
         {!collapsed && (
           <div>
             <p className="font-bold text-slate-100 leading-tight">MRTI Activos</p>
-            <a href="/" className="text-xs text-slate-500 hover:text-sky-400">Portal corporativo ↗</a>
+            <a href="/" className="text-xs text-slate-500 hover:text-sky-400">← Volver al Core</a>
           </div>
         )}
       </div>
 
-      <nav className="flex-1 py-4 overflow-y-auto">
+      <nav className="portal-module-nav flex-1 py-4 overflow-y-auto">
         <ul className="space-y-1 px-2">
           {NAV_ITEMS.map((item) => (
             <li key={item.to}>
@@ -57,20 +88,30 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
             </li>
           ))}
         </ul>
-        <div className="mt-5 border-t border-slate-800 pt-4">
+        <div className="portal-module-section mt-5 border-t border-slate-800 pt-4">
           {!collapsed && <p className="mb-2 px-4 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Cambiar módulo</p>}
           <div className="space-y-1 px-2">
             <ModuleLink href="/" label="Mi espacio" collapsed={collapsed} onNavigate={onNavigate} icon="⌂" />
             {applications.filter((application) => application.code !== 'activos').map((application) => <ModuleLink key={application.code} href={application.code === 'agent-core' ? `${application.url}#token=${encodeURIComponent(localStorage.getItem('auth_token') || '')}` : application.url} label={application.name} collapsed={collapsed} onNavigate={onNavigate} icon="◆" />)}
           </div>
         </div>
+
+        <div className="portal-module-section mt-5 border-t border-slate-800 pt-4">
+          {!collapsed && <p className="mb-2 px-4 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Mi cuenta</p>}
+          <div className="space-y-1 px-2">
+            <ModuleLink href="/?view=account" label="Perfil" collapsed={collapsed} onNavigate={onNavigate} icon="○" />
+            <ModuleLink href="/?view=notifications" label="Notificaciones" collapsed={collapsed} onNavigate={onNavigate} icon="◔" />
+            {isAdministrator && <ModuleLink href="/?view=brand-assets" label="Recursos de marca" collapsed={collapsed} onNavigate={onNavigate} icon="◆" />}
+            {isAdministrator && <ModuleLink href="/?view=control-center" label="Centro de control" collapsed={collapsed} onNavigate={onNavigate} icon="⚙" />}
+          </div>
+        </div>
       </nav>
 
-      <div className={`border-t border-slate-800 p-4 flex items-center ${collapsed ? 'flex-col gap-2' : 'justify-between'}`}>
+      <div className={`portal-module-footer border-t border-slate-800 p-4 flex items-center ${collapsed ? 'flex-col gap-2' : 'justify-between'}`}>
         <button
           type="button"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="p-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-colors"
+          className="portal-sidebar-collapse-action p-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-colors"
           title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
           aria-label="Cambiar tema"
           aria-pressed={theme === 'dark'}
@@ -85,6 +126,15 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
           aria-label={collapsed ? 'Expandir menú lateral' : 'Colapsar menú lateral'}
         >
           <CollapseIcon collapsed={collapsed} />
+        </button>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="p-2 rounded-lg text-slate-400 hover:bg-red-500/15 hover:text-red-400 transition-colors"
+          title="Cerrar sesión"
+          aria-label="Cerrar sesión"
+        >
+          <LogoutIcon />
         </button>
       </div>
     </aside>
@@ -103,6 +153,10 @@ function ThemeIcon({ theme }) {
 
 function CollapseIcon({ collapsed }) {
   return <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={collapsed ? 'm9 18 6-6-6-6' : 'm15 18-6-6 6-6'} /></svg>;
+}
+
+function LogoutIcon() {
+  return <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></svg>;
 }
 
 function NavIcon({ name }) {

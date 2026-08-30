@@ -24,6 +24,11 @@ export function Layout({ children }) {
   }, [location.pathname]);
 
   useEffect(() => {
+    document.body.style.overflow = mobileMenuOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
     function closeOnEscape(event) {
       if (event.key === 'Escape') setMobileMenuOpen(false);
     }
@@ -56,7 +61,7 @@ export function Layout({ children }) {
           ☰
         </button>
         <span className="font-bold">MRTI Activos</span>
-        <span className="w-8" />
+        <a href="/" className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800" aria-label="Volver al Core" title="Volver al Core">↗</a>
       </header>
 
       <main className={`min-h-screen transition-all duration-300 ${collapsed ? 'md:pl-16' : 'md:pl-64'}`}>
