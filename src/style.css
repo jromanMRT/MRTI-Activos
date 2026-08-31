@@ -30,14 +30,19 @@
   --surface-soft: 241 234 217;
   --ink: 34 27 18;
   --ink-soft: 108 95 71;
-  --ink-faint: 156 143 120;
+  --ink-faint: 112 95 63;
   --line: 225 211 171;
-  --gold: 169 120 31;
+  --gold: 177 127 36;
   --gold-bright: 217 166 60;
   --gold-deep: 110 77 22;
+  --gold-text: 110 77 22;
+  --warning-text: 116 71 5;
+  --danger-solid: 143 47 34;
   --good: 47 125 67;
+  --good-text: 35 94 50;
   --info: 63 106 134;
   --bad: 161 67 47;
+  --bad-text: 143 47 34;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -53,9 +58,14 @@
     --gold: 217 166 60;
     --gold-bright: 243 214 141;
     --gold-deep: 202 160 84;
+    --gold-text: 243 214 141;
+    --warning-text: 243 191 94;
+    --danger-solid: 143 47 34;
     --good: 111 207 140;
+    --good-text: 111 207 140;
     --info: 142 194 224;
     --bad: 224 138 114;
+    --bad-text: 224 138 114;
   }
 }
 
@@ -71,9 +81,14 @@
   --gold: 217 166 60;
   --gold-bright: 243 214 141;
   --gold-deep: 202 160 84;
+  --gold-text: 243 214 141;
+  --warning-text: 243 191 94;
+  --danger-solid: 143 47 34;
   --good: 111 207 140;
+  --good-text: 111 207 140;
   --info: 142 194 224;
   --bad: 224 138 114;
+  --bad-text: 224 138 114;
 }
 
 [data-theme='dark'] { color-scheme: dark; }
