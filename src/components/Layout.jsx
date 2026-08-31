@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getToken, goToPortalLogin } from '../api.js';
 import { Sidebar } from './Sidebar.jsx';
+import { PortalNotifications } from './PortalNotifications.jsx';
 
 export function Layout({ children }) {
   const location = useLocation();
@@ -61,8 +62,9 @@ export function Layout({ children }) {
           ☰
         </button>
         <span className="font-bold">MRTI Activos</span>
-        <a href="/" className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800" aria-label="Volver al Core" title="Volver al Core">↗</a>
+        <span className="h-8 w-8" aria-hidden="true" />
       </header>
+      <PortalNotifications />
 
       <main className={`min-h-screen transition-all duration-300 ${collapsed ? 'md:pl-16' : 'md:pl-64'}`}>
         <div className="w-full px-4 py-6 sm:px-6 lg:px-8">{children}</div>

@@ -100,7 +100,6 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
           {!collapsed && <p className="mb-2 px-4 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Mi cuenta</p>}
           <div className="space-y-1 px-2">
             <ModuleLink href="/?view=account" label="Perfil" collapsed={collapsed} onNavigate={onNavigate} icon="○" />
-            <ModuleLink href="/?view=notifications" label="Notificaciones" collapsed={collapsed} onNavigate={onNavigate} icon="◔" />
             {isAdministrator && <ModuleLink href="/?view=brand-assets" label="Recursos de marca" collapsed={collapsed} onNavigate={onNavigate} icon="◆" />}
             {isAdministrator && <ModuleLink href="/?view=control-center" label="Centro de control" collapsed={collapsed} onNavigate={onNavigate} icon="⚙" />}
           </div>
