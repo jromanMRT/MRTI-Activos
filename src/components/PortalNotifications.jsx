@@ -51,12 +51,12 @@ export function PortalNotifications() {
   }, []);
 
   return (
-    <div ref={containerRef} className="fixed right-4 top-3 z-50 md:right-6 md:top-4">
+    <div ref={containerRef} className="portal-module-notifications">
       <button type="button" onClick={() => { setOpen((value) => !value); if (!open) void load(); }} className="relative grid h-10 w-10 place-items-center rounded-full border border-slate-700 bg-slate-900 text-amber-400 shadow-lg transition hover:border-amber-400 hover:bg-slate-800" aria-label={items.length ? `Ver ${items.length} notificaciones` : 'Ver notificaciones'} aria-expanded={open}>
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
         {items.length > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full border-2 border-slate-950 bg-red-600 px-1 text-[10px] font-bold text-white">{items.length > 9 ? '9+' : items.length}</span>}
       </button>
-      {open && <section className="fixed left-3 right-3 top-16 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 text-slate-100 shadow-2xl sm:left-auto sm:right-4 sm:w-[26rem] md:right-6" aria-label="Notificaciones">
+      {open && <section className="portal-module-notification-panel overflow-hidden rounded-xl border border-slate-700 bg-slate-900 text-slate-100 shadow-2xl" aria-label="Notificaciones">
         <header className="flex items-center justify-between border-b border-slate-800 px-4 py-3"><div><small className="block text-[10px] font-bold uppercase tracking-widest text-amber-400">Novedades</small><strong>Notificaciones</strong></div><button type="button" onClick={() => setOpen(false)} className="grid h-8 w-8 place-items-center rounded-full border border-slate-700 text-slate-400 hover:text-white" aria-label="Cerrar notificaciones">×</button></header>
         <div className="max-h-[min(30rem,70vh)] overflow-y-auto" aria-live="polite">
           {loading ? <p className="px-4 py-10 text-center text-sm text-slate-400">Buscando novedades…</p>

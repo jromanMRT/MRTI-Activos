@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getToken, goToPortalLogin } from '../api.js';
 import { Sidebar } from './Sidebar.jsx';
-import { PortalNotifications } from './PortalNotifications.jsx';
+import { ModuleHeader } from './ModuleHeader.jsx';
+
+function currentRouteLabel(pathname) {
+  if (pathname === '/terceros') return 'Terceros externos';
+  if (pathname === '/nuevo') return 'Nuevo activo';
+  if (pathname !== '/') return 'Detalle del activo';
+  return 'Inventario';
+}
 
 export function Layout({ children }) {
   const location = useLocation();
@@ -52,23 +59,12 @@ export function Layout({ children }) {
         </div>
       )}
 
-      <header className="md:hidden sticky top-0 z-20 flex items-center justify-between border-b border-slate-800 bg-slate-900/80 backdrop-blur px-4 py-3">
-        <button
-          type="button"
-          onClick={() => setMobileMenuOpen(true)}
-          className="p-2 -ml-2 rounded-lg text-slate-300 hover:bg-slate-800"
-          aria-label="Abrir menú"
-        >
-          ☰
-        </button>
-        <span className="font-bold">MRTI Activos</span>
-        <span className="h-8 w-8" aria-hidden="true" />
-      </header>
-      <PortalNotifications />
-
-      <main className={`min-h-screen transition-all duration-300 ${collapsed ? 'md:pl-16' : 'md:pl-64'}`}>
-        <div className="w-full px-4 py-6 sm:px-6 lg:px-8">{children}</div>
-      </main>
+      <div className={`portal-module-workspace transition-all duration-300 ${collapsed ? 'md:pl-16' : 'md:pl-64'}`}>
+        <ModuleHeader title={currentRouteLabel(location.pathname)} subtitle="MRTI Activos" mobileMenuOpen={mobileMenuOpen} onMenuClick={() => setMobileMenuOpen(true)} />
+        <main className="min-h-[calc(100vh-72px)]">
+          <div className="w-full px-4 py-6 sm:px-6 lg:px-8">{children}</div>
+        </main>
+      </div>
     </div>
   );
 }

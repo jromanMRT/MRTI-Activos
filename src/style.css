@@ -107,6 +107,31 @@ body {
   height: 100vh;
   height: 100dvh;
 }
+
+.portal-module-workspace { min-width: 0; }
+.portal-module-topbar {
+  position: sticky; z-index: 20; top: 0; display: flex; min-height: 72px;
+  align-items: center; gap: 16px; padding: 0 24px; border-bottom: 1px solid rgb(var(--line));
+  color: rgb(var(--ink)); background: rgb(var(--bg) / .92); backdrop-filter: blur(12px);
+}
+.portal-module-context { display: grid; min-width: 0; margin-right: auto; gap: 2px; }
+.portal-module-context strong { overflow: hidden; font-size: .86rem; text-overflow: ellipsis; white-space: nowrap; }
+.portal-module-context small { color: rgb(var(--ink-faint)); font-size: .68rem; }
+.portal-module-actions { display: flex; align-items: center; gap: 14px; }
+.portal-module-menu { display: none; width: 38px; height: 38px; place-items: center; border: 1px solid rgb(var(--line)); border-radius: 10px; color: rgb(var(--gold-deep)); background: rgb(var(--surface)); }
+.portal-module-notifications { position: relative; z-index: 50; }
+.portal-module-notification-panel { position: absolute; top: calc(100% + 10px); right: 0; width: 26rem; }
+.portal-module-profile { display: flex; align-items: center; gap: 9px; color: rgb(var(--ink)); }
+.portal-module-profile > span:last-child { display: grid; }
+.portal-module-profile strong { max-width: 190px; overflow: hidden; font-size: .76rem; text-overflow: ellipsis; white-space: nowrap; }
+.portal-module-profile small { color: rgb(var(--ink-faint)); font-size: .65rem; text-transform: capitalize; }
+.portal-module-avatar { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid rgb(var(--line)); border-radius: 50%; color: rgb(var(--gold-deep)); background: rgb(var(--surface)); font-size: .68rem; font-weight: 800; }
+@media (max-width: 767px) {
+  .portal-module-topbar { padding-inline: 18px; gap: 12px; }
+  .portal-module-menu { display: grid; }
+  .portal-module-profile > span:last-child { display: none; }
+  .portal-module-notification-panel { position: fixed; top: 64px; right: 12px; left: 12px; width: auto; }
+}
 +
 /*
  * Contrato visual de navegación compartido con Core. La estructura y las
