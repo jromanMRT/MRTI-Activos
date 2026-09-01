@@ -141,6 +141,7 @@ body {
 .portal-module-sidebar {
   padding: 18px 14px !important;
   overflow: hidden;
+  font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   background:
     linear-gradient(180deg, rgb(var(--gold) / 0.055), transparent 13rem),
     rgb(var(--surface)) !important;
@@ -158,6 +159,38 @@ body {
 .portal-module-sidebar .portal-module-brand h1 { color: rgb(var(--ink)) !important; }
 .portal-module-sidebar .portal-module-brand a { color: rgb(var(--gold-deep)); }
 .portal-module-sidebar .portal-module-brand a:hover { color: rgb(var(--gold-bright)); }
+.portal-module-sidebar .portal-module-brand-row { min-width: 0; }
+.portal-module-sidebar .portal-module-brand-link {
+  border: 1px solid rgb(var(--gold) / .3);
+  color: rgb(var(--gold-deep));
+  background: linear-gradient(145deg, rgb(var(--gold-bright) / .16), rgb(var(--gold) / .06));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .6), 0 10px 30px rgb(110 77 22 / .1);
+}
+.portal-module-sidebar .portal-module-brand-copy { display: grid; min-width: 0; gap: 0; }
+.portal-module-sidebar .portal-module-brand-copy strong {
+  overflow: hidden;
+  color: rgb(var(--ink));
+  font-family: 'Big Shoulders Display', system-ui, sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variation-settings: 'wght' 800;
+  letter-spacing: .1em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.portal-module-sidebar .portal-module-brand-copy small {
+  overflow: hidden;
+  max-width: 150px;
+  color: rgb(var(--ink-faint));
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 .portal-module-sidebar .portal-module-nav {
   padding-block: 14px !important;
   scrollbar-color: rgb(var(--ink-faint) / 0.45) transparent;

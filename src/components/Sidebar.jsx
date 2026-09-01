@@ -55,14 +55,14 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
         collapsed ? 'w-16' : 'w-64'
       }`}
     >
-      <div className={`portal-module-brand flex items-center gap-3 p-4 border-b border-slate-800 ${collapsed ? 'justify-center' : ''}`}>
-        <a href="/" title="Volver al Core" aria-label="Volver al Core" className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-xl border border-sky-500/30 bg-gradient-to-br from-sky-400/15 to-sky-500/5 shadow-sm">
+      <div className={`portal-module-brand portal-module-brand-row flex items-center gap-3 p-4 border-b border-slate-800 ${collapsed ? 'justify-center' : ''}`}>
+        <a href="/" title="Ir a Mi espacio" aria-label="Ir a Mi espacio" className="portal-module-brand-link grid h-[42px] w-[42px] shrink-0 place-items-center rounded-xl">
           <img src={logoUrl} alt="" className="h-[34px] w-[34px]" />
         </a>
         {!collapsed && (
-          <div>
-            <p className="font-bold text-slate-100 leading-tight">MRTI Activos</p>
-            <a href="/" className="text-xs text-slate-500 hover:text-sky-400">← Volver al Core</a>
+          <div className="portal-module-brand-copy">
+            <strong>MRTI Activos</strong>
+            <small>Minera Río Tinto</small>
           </div>
         )}
       </div>
