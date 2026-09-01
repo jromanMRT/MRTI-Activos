@@ -61,7 +61,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
         </a>
         {!collapsed && (
           <div className="portal-module-brand-copy">
-            <strong>MRTI Activos</strong>
+            <strong>MRTI</strong>
             <small>Minera Río Tinto</small>
           </div>
         )}

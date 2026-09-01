@@ -132,7 +132,6 @@ body {
   .portal-module-profile > span:last-child { display: none; }
   .portal-module-notification-panel { position: fixed; top: 64px; right: 12px; left: 12px; width: auto; }
 }
-+
 /*
  * Contrato visual de navegación compartido con Core. La estructura y las
  * rutas siguen siendo propias de este módulo; estas reglas igualan medidas,
