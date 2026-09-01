@@ -11,8 +11,17 @@ function currentRouteLabel(pathname) {
   return 'Inventario';
 }
 
+function reportTitleForPath(pathname) {
+  if (pathname === '/') return 'Inventario de activos';
+  if (pathname === '/terceros') return 'Terceros externos';
+  if (pathname !== '/nuevo' && /^\/[^/]+$/.test(pathname)) return 'Ficha del activo';
+  return '';
+}
+
 export function Layout({ children }) {
   const location = useLocation();
+  const routeTitle = currentRouteLabel(location.pathname);
+  const reportTitle = reportTitleForPath(location.pathname);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('mrti_activos_sidebar_collapsed') === '1');
 
@@ -60,8 +69,9 @@ export function Layout({ children }) {
       )}
 
       <div className={`portal-module-workspace transition-all duration-300 ${collapsed ? 'md:pl-16' : 'md:pl-64'}`}>
-        <ModuleHeader title={currentRouteLabel(location.pathname)} subtitle="MRTI Activos" mobileMenuOpen={mobileMenuOpen} onMenuClick={() => setMobileMenuOpen(true)} />
+        <ModuleHeader title={routeTitle} subtitle="MRTI Activos" mobileMenuOpen={mobileMenuOpen} onMenuClick={() => setMobileMenuOpen(true)} printable={Boolean(reportTitle)} />
         <main className="min-h-[calc(100vh-72px)]">
+          {reportTitle && <div className="portal-print-header" aria-hidden="true"><div><strong>MRTI</strong><span>MRTI Activos · {reportTitle}</span></div><small>Generado {new Date().toLocaleString('es-MX')}</small></div>}
           <div className="w-full px-4 py-6 sm:px-6 lg:px-8">{children}</div>
         </main>
       </div>
