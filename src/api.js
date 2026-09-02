@@ -94,6 +94,26 @@ export async function ticketsFetch(assetUid) {
   return body.data?.items || [];
 }
 
+// Directorio de RH -- lectura en vivo (nunca se copia aquí), mismo origen
+// por Nginx que ticketsFetch/obsFetch. Incluye personal dado de baja a
+// propósito: un activo puede seguir "asignado" a alguien que ya no trabaja
+// aquí y no lo ha devuelto.
+export async function rhDirectoryFetch(query) {
+  const token = getToken();
+  const params = new URLSearchParams();
+  if (query) params.set('q', query);
+  const response = await fetch(`/rh-api/api/rh-self/directory?${params.toString()}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (response.status === 401) {
+    goToPortalLogin();
+    throw new Error('No autenticado');
+  }
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || `MRTI RH respondió ${response.status}`);
+  return body.data || [];
+}
+
 export function obsLinkDevice(deviceId, assetUid) {
   return obsRequest(`/links/${encodeURIComponent(deviceId)}`, {
     method: 'PATCH',

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { apiDownload, apiFetch, obsFetch, obsLinkDevice, obsUnlinkedDevices, ticketsFetch } from '../api.js';
+import { apiDownload, apiFetch, obsFetch, obsLinkDevice, obsUnlinkedDevices, rhDirectoryFetch, ticketsFetch } from '../api.js';
 
 export function AssetFormPage({ mode }) {
   const { id } = useParams();
@@ -215,15 +215,32 @@ function DocumentIcon() {
 // (portal_user_id, administrado desde ahí) o un tercero registrado en
 // /terceros (contratista, proveedor, visita) -- este panel solo maneja la
 // segunda vía; la primera sigue siendo cosa de Core.
+function employeeLabel(employee) {
+  const name = `${employee.first_name} ${employee.last_name_p}${employee.last_name_m ? ` ${employee.last_name_m}` : ''}`;
+  const detail = [employee.job_title, employee.department_name].filter(Boolean).join(' · ');
+  return `${name}${detail ? ` — ${detail}` : ''}${employee.employment_status !== 'active' ? ' (baja)' : ''}`;
+}
+
 function AssignmentPanel({ assetId, portalUserId, terceroId, usuarioAsignado, onChange }) {
   const [terceros, setTerceros] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [employeeSearch, setEmployeeSearch] = useState('');
   const [selected, setSelected] = useState('');
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     apiFetch('/terceros').then((r) => setTerceros(r.data)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    rhDirectoryFetch(employeeSearch).then(setEmployees).catch((err) => setError(err.message));
+  }, [employeeSearch]);
+
+  const activeEmployees = employees.filter((employee) => employee.employment_status === 'active');
+  const inactiveEmployees = employees.filter((employee) => employee.employment_status !== 'active');
+  const selectedEmployee = employees.find((employee) => String(employee.id) === String(selectedEmployeeId));
 
   async function assign() {
     if (!selected) return;
@@ -232,6 +249,25 @@ function AssignmentPanel({ assetId, portalUserId, terceroId, usuarioAsignado, on
     try {
       await apiFetch(`/activos/${assetId}/asignaciones`, { method: 'POST', body: JSON.stringify({ tercero_id: selected }) });
       setSelected('');
+      await onChange();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function assignEmployee() {
+    if (!selectedEmployee?.portal_user_id) return;
+    setBusy(true);
+    setError('');
+    try {
+      const employeeName = `${selectedEmployee.first_name} ${selectedEmployee.last_name_p}`;
+      await apiFetch(`/activos/${assetId}/asignaciones`, {
+        method: 'POST',
+        body: JSON.stringify({ portal_user_id: selectedEmployee.portal_user_id, user_name: employeeName }),
+      });
+      setSelectedEmployeeId('');
       await onChange();
     } catch (err) {
       setError(err.message);
@@ -274,7 +310,40 @@ function AssignmentPanel({ assetId, portalUserId, terceroId, usuarioAsignado, on
           </button>
         )}
       </div>
-      <div className="flex flex-col md:flex-row gap-2 mt-3">
+      <div className="mt-4">
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2">Empleado registrado en RH</p>
+        <div className="flex flex-col md:flex-row gap-2">
+          <input
+            type="text"
+            placeholder="Buscar por nombre o número de empleado…"
+            className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm"
+            value={employeeSearch}
+            onChange={(e) => setEmployeeSearch(e.target.value)}
+          />
+          <select className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm" value={selectedEmployeeId} onChange={(e) => setSelectedEmployeeId(e.target.value)}>
+            <option value="">Selecciona un empleado…</option>
+            {activeEmployees.length > 0 && (
+              <optgroup label="Personal activo">
+                {activeEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employeeLabel(employee)}</option>)}
+              </optgroup>
+            )}
+            {inactiveEmployees.length > 0 && (
+              <optgroup label="Dados de baja">
+                {inactiveEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employeeLabel(employee)}</option>)}
+              </optgroup>
+            )}
+          </select>
+          <button type="button" disabled={!selectedEmployee?.portal_user_id || busy} onClick={assignEmployee} className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-[#2a1c05] font-semibold px-4 py-2 rounded-lg whitespace-nowrap">
+            {busy ? 'Asignando…' : 'Asignar'}
+          </button>
+        </div>
+        {selectedEmployee && !selectedEmployee.portal_user_id && (
+          <p className="text-xs text-amber-400 mt-2">Este empleado no tiene una cuenta de Core vinculada todavía — pide a RH registrar su correo corporativo antes de poder asignarle un equipo aquí.</p>
+        )}
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-2 mt-4">
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2 basis-full">Tercero externo (sin ficha en RH)</p>
         <select className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm" value={selected} onChange={(e) => setSelected(e.target.value)}>
           <option value="">Asignar a un tercero registrado…</option>
           {terceros.map((t) => (
