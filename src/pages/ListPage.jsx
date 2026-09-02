@@ -109,7 +109,7 @@ function AssetRow({ item }) {
       <td className="px-3 py-3.5"><span className="rounded bg-slate-800 px-2 py-1 text-[10px] font-medium text-slate-300">{item.tipo || '—'}</span></td>
       <td className="px-3 py-3.5"><strong className="block text-slate-100">{item.marca || '—'}</strong><span className="mt-0.5 block max-w-40 truncate text-slate-500" title={item.modelo || item.descripcion}>{item.modelo || item.descripcion || '—'}</span></td>
       <td className="px-3 py-3.5 font-mono"><span className="block text-slate-200">{item.service_tag || '—'}</span><span className="mt-0.5 block text-[10px] text-slate-500">{item.numero_serie || '—'}</span></td>
-      <td className="px-3 py-3.5"><span className="block max-w-48 text-slate-100">{item.usuario_asignado || 'Sin asignar'}</span><span className="mt-0.5 block text-[10px] text-slate-500">ID: {item.id_empleado || '—'}</span></td>
+      <td className="px-3 py-3.5"><AssignmentBadge assigned={Boolean(item.usuario_asignado)} /><span className="mt-1 block max-w-48 text-slate-100">{item.usuario_asignado || '—'}</span><span className="mt-0.5 block text-[10px] text-slate-500">ID: {item.id_empleado || '—'}</span></td>
       <td className="px-3 py-3.5"><span className="block text-slate-200">{item.unidad || '—'}</span><span className="mt-0.5 block max-w-36 truncate text-[10px] text-slate-500" title={item.area}>{item.area || '—'}</span></td>
       <td className="px-3 py-3.5"><span className="block max-w-48 text-slate-200">{item.empresa || '—'}</span></td>
       <td className="px-3 py-3.5"><EstadoBadge estado={item.estado} /></td>
@@ -151,5 +151,10 @@ function Select({ label, value, onChange, options }) {
 
 const ESTADO_STYLE = { Activo: 'bg-emerald-500/15 text-emerald-400', Inactivo: 'bg-slate-500/15 text-slate-400', 'En mantenimiento': 'bg-amber-500/15 text-amber-400', Baja: 'bg-red-500/15 text-red-400' };
 function EstadoBadge({ estado }) { return estado ? <span className={`whitespace-nowrap rounded-md px-2 py-1 text-[10px] font-semibold ${ESTADO_STYLE[estado] || 'bg-slate-500/15 text-slate-400'}`}>{estado}</span> : '—'; }
+function AssignmentBadge({ assigned }) {
+  return assigned
+    ? <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />Asignado</span>
+    : <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-400"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" />Sin asignar</span>;
+}
 function DocumentIcon() { return <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 2h8l4 4v16H6z" /><path d="M14 2v5h5" /></svg>; }
 function PencilIcon() { return <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z" /><path d="m13.5 8 3 3" /></svg>; }
