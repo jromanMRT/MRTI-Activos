@@ -85,12 +85,12 @@ export function ListPage() {
             <table className="min-w-[1180px] w-full text-xs">
               <thead className="bg-slate-800/70 text-left uppercase tracking-wide text-slate-500">
                 <tr>
-                  <Th sortKey="center_code" sort={sort} order={order} onSort={changeSort}>Código TI</Th><Th sortKey="tipo" sort={sort} order={order} onSort={changeSort}>Tipo</Th><Th sortKey="brand" sort={sort} order={order} onSort={changeSort}>Marca / modelo</Th><Th sortKey="service" sort={sort} order={order} onSort={changeSort}>Service tag / serie</Th><Th sortKey="user" sort={sort} order={order} onSort={changeSort}>Usuario asignado</Th><Th sortKey="location" sort={sort} order={order} onSort={changeSort}>Unidad / área</Th><Th sortKey="company" sort={sort} order={order} onSort={changeSort}>Empresa</Th><Th sortKey="status" sort={sort} order={order} onSort={changeSort}>Estado</Th><Th sortKey="age" sort={sort} order={order} onSort={changeSort}>Antigüedad</Th><Th sortKey="documents" sort={sort} order={order} onSort={changeSort}>Docs</Th><Th><span className="sr-only">Acciones</span></Th>
+                  <Th sortKey="center_code" sort={sort} order={order} onSort={changeSort}>Código TI</Th><Th sortKey="tipo" sort={sort} order={order} onSort={changeSort}>Tipo</Th><Th sortKey="brand" sort={sort} order={order} onSort={changeSort}>Marca / modelo</Th><Th sortKey="service" sort={sort} order={order} onSort={changeSort}>Service tag / serie</Th><Th sortKey="user" sort={sort} order={order} onSort={changeSort}>Usuario asignado</Th><Th sortKey="location" sort={sort} order={order} onSort={changeSort}>Unidad / área</Th><Th sortKey="company" sort={sort} order={order} onSort={changeSort}>Empresa</Th><Th sortKey="status" sort={sort} order={order} onSort={changeSort}>Estado</Th><Th sortKey="age" sort={sort} order={order} onSort={changeSort}>Antigüedad</Th><Th sortKey="documents" sort={sort} order={order} onSort={changeSort}>Docs</Th>
                 </tr>
               </thead>
               <tbody>
-                {loading ? <tr><td colSpan={11} className="px-4 py-12 text-center text-slate-500">Cargando inventario…</td></tr>
-                  : items.length === 0 ? <tr><td colSpan={11} className="px-4 py-12 text-center text-slate-500">No hay equipos que coincidan con los filtros.</td></tr>
+                {loading ? <tr><td colSpan={10} className="px-4 py-12 text-center text-slate-500">Cargando inventario…</td></tr>
+                  : items.length === 0 ? <tr><td colSpan={10} className="px-4 py-12 text-center text-slate-500">No hay equipos que coincidan con los filtros.</td></tr>
                     : items.map((item) => <AssetRow key={item.id} item={item} />)}
               </tbody>
             </table>
@@ -110,7 +110,7 @@ function AssetRow({ item }) {
       className="cursor-pointer border-t border-slate-800 align-top transition hover:bg-slate-900/75"
       onClick={() => navigate(`/${item.id}`)}
     >
-      <td className="px-3 py-3.5"><Link to={`/${item.id}`} onClick={(event) => event.stopPropagation()} className="font-bold text-sky-400 hover:underline">{item.center_code}</Link></td>
+      <td className="px-3 py-3.5"><span className="font-bold text-sky-400">{item.center_code}</span></td>
       <td className="px-3 py-3.5"><span className="rounded bg-slate-800 px-2 py-1 text-[10px] font-medium text-slate-300">{item.tipo || '—'}</span></td>
       <td className="px-3 py-3.5"><strong className="block text-slate-100">{item.marca || '—'}</strong><span className="mt-0.5 block max-w-40 truncate text-slate-500" title={item.modelo || item.descripcion}>{item.modelo || item.descripcion || '—'}</span></td>
       <td className="px-3 py-3.5 font-mono"><span className="block text-slate-200">{item.service_tag || '—'}</span><span className="mt-0.5 block text-[10px] text-slate-500">{item.numero_serie || '—'}</span></td>
@@ -120,7 +120,6 @@ function AssetRow({ item }) {
       <td className="px-3 py-3.5"><EstadoBadge estado={item.estado} /></td>
       <td className="px-3 py-3.5"><strong className="block text-emerald-400">{age.label}</strong><span className="mt-0.5 block text-[10px] text-slate-500">{age.date}</span></td>
       <td className="px-3 py-3.5"><DocumentBadge item={item} /></td>
-      <td className="px-3 py-3.5"><Link to={`/${item.id}`} onClick={(event) => event.stopPropagation()} className="grid h-8 w-8 place-items-center rounded-lg border border-slate-700 text-slate-400 hover:border-sky-500/50 hover:text-sky-400" aria-label={`Editar ${item.center_code}`} title="Editar activo"><PencilIcon /></Link></td>
     </tr>
   );
 }
@@ -162,4 +161,3 @@ function AssignmentBadge({ assigned }) {
     : <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-400"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" />Sin asignar</span>;
 }
 function DocumentIcon() { return <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 2h8l4 4v16H6z" /><path d="M14 2v5h5" /></svg>; }
-function PencilIcon() { return <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z" /><path d="m13.5 8 3 3" /></svg>; }
