@@ -29,7 +29,7 @@ export function AssetSuiteOverviewPage() {
   const [summary, setSummary] = useState(null); const [error, setError] = useState(''); const [syncing, setSyncing] = useState(false);
   const isAdmin = profile().role === 'administrator';
   const load = () => apiFetch('/activos-suite/summary').then((body) => setSummary(body.data)).catch((err) => setError(err.message));
-  useEffect(load, []);
+  useEffect(() => { void load(); }, []);
   async function sync() { setSyncing(true); setError(''); try { await apiFetch('/activos-suite/sync', { method: 'POST', body: '{}' }); await load(); } catch (err) { setError(err.message); } finally { setSyncing(false); } }
   return <div>
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-bold">Operación de activos</h1><p className="mt-1 text-sm text-slate-400">Información migrada de la aplicación anterior, ahora dentro de MRTI-Activos.</p></div>{isAdmin && <button onClick={sync} disabled={syncing} className="rounded-lg bg-sky-500 px-4 py-2 font-semibold text-[#2a1c05] disabled:opacity-50">{syncing ? 'Sincronizando…' : 'Actualizar desde origen'}</button>}</div>
@@ -43,7 +43,7 @@ export function AssetCatalogPage() {
   const [rows, setRows] = useState([]); const [q, setQ] = useState(''); const [includeArchived, setIncludeArchived] = useState(false); const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [revealed, setRevealed] = useState({});
   const query = useMemo(() => { const p = new URLSearchParams(); if (q) p.set('q', q); if (includeArchived) p.set('includeArchived', '1'); return p.toString(); }, [q, includeArchived]);
   function load() { if (!config) return; setLoading(true); setError(''); apiFetch(`/activos-suite/resources/${resource}?${query}`).then((body) => setRows(body.data)).catch((err) => setError(err.message)).finally(() => setLoading(false)); }
-  useEffect(load, [resource, query]);
+  useEffect(() => { void load(); }, [resource, query]);
   if (!config) return <Message error="Catálogo no reconocido" />;
   async function toggleArchive(row) { try { await apiFetch(`/activos-suite/resources/${resource}/${row.id}/${row.archived_at ? 'restore' : 'archive'}`, { method: 'PATCH', body: '{}' }); load(); } catch (err) { setError(err.message); } }
   async function reveal(row) { try { const body = await apiFetch(`/activos-suite/resources/${resource}/${row.id}/secret`); setRevealed((current) => ({ ...current, [row.id]: body.data })); } catch (err) { setError(err.message); } }
