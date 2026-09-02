@@ -22,6 +22,10 @@ Windows, Microsoft, Dropbox, Correo y Antivirus; las fichas existentes agregan
 Documentos y Monitor. En móvil el diálogo ocupa el viewport y mantiene las
 pestañas desplazables, sin convertir el formulario en una página vertical.
 
+El inventario muestra conteos por estado, filtros compactos y una fila resumida
+por equipo. La columna **Docs** calcula los adjuntos activos por `center_code`;
+su insignia abre directamente la pestaña Documentos del diálogo correspondiente.
+
 Si la vista de origen devuelve más de una fila para el mismo `center_code`,
 las variantes completas se conservan en `sap_asset_duplicates` y aparecen en
 **Alertas → Códigos duplicados en el origen**. No se decide silenciosamente

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiDownload, apiFetch, obsFetch, obsLinkDevice, obsUnlinkedDevices } from '../api.js';
 
 export function AssetFormPage({ mode }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [groups, setGroups] = useState([]);
   const [values, setValues] = useState({});
   const [loading, setLoading] = useState(true);
@@ -14,7 +15,11 @@ export function AssetFormPage({ mode }) {
   const [observabilityError, setObservabilityError] = useState('');
   const [documents, setDocuments] = useState([]);
   const [documentsError, setDocumentsError] = useState('');
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState(() => new URLSearchParams(location.search).get('tab') || 'general');
+
+  useEffect(() => {
+    setActiveTab(new URLSearchParams(location.search).get('tab') || 'general');
+  }, [location.search, id]);
 
   useEffect(() => {
     function closeOnEscape(event) {

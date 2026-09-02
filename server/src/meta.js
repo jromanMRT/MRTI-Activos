@@ -127,5 +127,6 @@ export const ALL_FIELDS = FIELD_GROUPS.flatMap((group) => group.fields.map((fiel
 
 export const LIST_COLUMNS = [
   'id', 'asset_uid', 'center_code', 'tipo', 'descripcion', 'marca', 'modelo',
-  'usuario_asignado', 'unidad', 'empresa', 'estado', 'numero_serie',
+  'usuario_asignado', 'id_empleado', 'unidad', 'area', 'empresa', 'estado',
+  'service_tag', 'numero_serie', 'fecha_compra', 'creado_en',
 ];

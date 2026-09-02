@@ -37,28 +37,52 @@ activosRouter.get('/meta', (_req, res) => {
 
 activosRouter.get('/', async (req, res, next) => {
   try {
-    const { q, tipo, estado, unidad, empresa, limit } = req.query;
+    const { q, tipo, estado, unidad, empresa, area, limit } = req.query;
     const where = [];
     const params = [];
 
     if (q) {
-      where.push('(descripcion LIKE ? OR usuario_asignado LIKE ? OR numero_serie LIKE ? OR service_tag LIKE ? OR modelo LIKE ? OR center_code LIKE ?)');
+      where.push('(descripcion LIKE ? OR usuario_asignado LIKE ? OR numero_serie LIKE ? OR service_tag LIKE ? OR modelo LIKE ? OR marca LIKE ? OR center_code LIKE ?)');
       const term = `%${q}%`;
-      params.push(term, term, term, term, term, term);
+      params.push(term, term, term, term, term, term, term);
     }
     if (tipo) { where.push('tipo = ?'); params.push(tipo); }
     if (estado) { where.push('estado = ?'); params.push(estado); }
     if (unidad) { where.push('unidad = ?'); params.push(unidad); }
     if (empresa) { where.push('empresa = ?'); params.push(empresa); }
+    if (area) {
+      where.push('(area LIKE ? OR unidad LIKE ?)');
+      const areaTerm = `%${area}%`;
+      params.push(areaTerm, areaTerm);
+    }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const cap = Math.min(Math.max(Number(limit) || 500, 1), 1000);
 
     const [rows] = await pool.query(
-      `SELECT ${LIST_COLUMNS.join(',')} FROM activos ${whereSql} ORDER BY actualizado_en DESC LIMIT ${cap}`,
+      `SELECT ${LIST_COLUMNS.join(',')},
+              (SELECT COUNT(*) FROM sap_documentos d
+                WHERE d.center_code = activos.center_code AND d.archived_at IS NULL) AS documents_count
+         FROM activos ${whereSql}
+        ORDER BY actualizado_en DESC LIMIT ${cap}`,
       params
     );
     res.json({ data: rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+activosRouter.get('/stats', async (_req, res, next) => {
+  try {
+    const [[row]] = await pool.query(`SELECT
+      COUNT(*) AS total,
+      SUM(estado = 'Activo') AS activos,
+      SUM(estado = 'En mantenimiento') AS mantenimiento,
+      SUM(estado = 'Inactivo') AS inactivos,
+      SUM(estado = 'Baja') AS baja
+      FROM activos`);
+    res.json({ data: Object.fromEntries(Object.entries(row).map(([key, value]) => [key, Number(value || 0)])) });
   } catch (error) {
     next(error);
   }
