@@ -119,7 +119,7 @@ export function AssetFormPage({ mode }) {
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/65 p-0 backdrop-blur-sm sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) closeModal(); }}>
-      <form onSubmit={handleSubmit} role="dialog" aria-modal="true" aria-labelledby="asset-dialog-title" className="flex h-full w-full flex-col overflow-hidden bg-slate-950 shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:max-w-6xl sm:rounded-2xl sm:border sm:border-slate-800">
+      <form onSubmit={handleSubmit} role="dialog" aria-modal="true" aria-labelledby="asset-dialog-title" className="flex h-full w-full flex-col overflow-hidden bg-slate-950 shadow-2xl sm:h-[85dvh] sm:max-h-[880px] sm:max-w-6xl sm:rounded-2xl sm:border sm:border-slate-800">
         <header className="flex items-start justify-between gap-4 border-b border-slate-800 px-5 py-4 sm:px-7">
           <div>
             <h1 id="asset-dialog-title" className="text-xl font-bold sm:text-2xl">{mode === 'create' ? 'Nuevo activo' : 'Editar activo'}</h1>
