@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import { pool } from '../db.js';
-import { ALL_FIELDS, FIELD_GROUPS, LIST_COLUMNS } from '../meta.js';
+import { ALL_FIELDS, DATE_FIELDS, FIELD_GROUPS, LIST_COLUMNS, normalizeAssetDates } from '../meta.js';
 import { pushAssetToSap } from '../integrations/sapClient.js';
 
 // Empuja el renglón recién creado/editado hacia SAP (ver plan de la
@@ -42,11 +42,24 @@ export function resolveAssetSort(sort, order) {
   return `${primary}${stableNewest}`;
 }
 
+// Un GET anterior ya pudo haber devuelto una fecha como marca de tiempo ISO
+// completa (mysql2 entrega DATETIME como objeto Date; JSON.stringify lo
+// serializa como '2026-06-15T00:00:00.000Z') -- si ese valor no se toca en
+// el formulario y se reenvía tal cual, MySQL lo rechaza porque no acepta
+// 'T'/'Z'/milisegundos en un literal DATETIME. Aquí se toma solo la parte
+// de fecha, sin importar el formato de entrada.
+function normalizeDateValue(value) {
+  if (!value) return null;
+  const match = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : null;
+}
+
 function pickAllowedFields(body) {
   const fields = {};
   for (const key of ALL_FIELDS) {
     if (Object.prototype.hasOwnProperty.call(body, key)) {
-      fields[key] = body[key] === '' ? null : body[key];
+      const raw = body[key] === '' ? null : body[key];
+      fields[key] = DATE_FIELDS.has(key) ? normalizeDateValue(raw) : raw;
     }
   }
   return fields;
@@ -209,7 +222,7 @@ activosRouter.get('/uid/:assetUid', async (req, res, next) => {
   try {
     const [[row]] = await pool.query('SELECT * FROM activos WHERE asset_uid = ?', [req.params.assetUid]);
     if (!row) return res.status(404).json({ error: 'Activo no encontrado' });
-    res.json({ data: row });
+    res.json({ data: normalizeAssetDates(row) });
   } catch (error) {
     next(error);
   }
@@ -364,7 +377,7 @@ activosRouter.get('/:id', async (req, res, next) => {
   try {
     const [[row]] = await pool.query('SELECT * FROM activos WHERE id = ?', [req.params.id]);
     if (!row) return res.status(404).json({ error: 'Activo no encontrado' });
-    res.json({ data: row });
+    res.json({ data: normalizeAssetDates(row) });
   } catch (error) {
     next(error);
   }
@@ -383,7 +396,7 @@ activosRouter.post('/', async (req, res, next) => {
     );
     const [[row]] = await pool.query('SELECT * FROM activos WHERE id = ?', [result.insertId]);
     syncToSapBestEffort(row.id);
-    res.status(201).json({ data: row });
+    res.status(201).json({ data: normalizeAssetDates(row) });
   } catch (error) {
     next(error);
   }
@@ -401,7 +414,7 @@ activosRouter.patch('/:id', async (req, res, next) => {
     if (!result.affectedRows) return res.status(404).json({ error: 'Activo no encontrado' });
     const [[row]] = await pool.query('SELECT * FROM activos WHERE id = ?', [req.params.id]);
     syncToSapBestEffort(row.id);
-    res.json({ data: row });
+    res.json({ data: normalizeAssetDates(row) });
   } catch (error) {
     next(error);
   }

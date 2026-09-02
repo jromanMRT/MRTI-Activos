@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
 import { portalSessionRequired, portalSessionOrServiceKey } from '../auth.js';
+import { normalizeAssetDates } from '../meta.js';
 
 export const activosSelfRouter = Router();
 
@@ -53,7 +54,7 @@ async function resolveAssignments(user) {
 activosSelfRouter.get('/me', portalSessionRequired, async (req, res, next) => {
   try {
     const data = await resolveAssignments(req.portalUser);
-    res.json({ data });
+    res.json({ data: data.map(normalizeAssetDates) });
   } catch (error) {
     next(error);
   }

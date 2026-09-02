@@ -125,6 +125,30 @@ export const FIELD_GROUPS = [
 
 export const ALL_FIELDS = FIELD_GROUPS.flatMap((group) => group.fields.map((field) => field.key));
 
+// Campos `type: 'date'` -- derivado de FIELD_GROUPS, no hardcodeado, para que
+// un campo de fecha nuevo quede cubierto automáticamente.
+export const DATE_FIELDS = new Set(
+  FIELD_GROUPS.flatMap((group) => group.fields.filter((field) => field.type === 'date').map((field) => field.key))
+);
+
+// mysql2 entrega DATETIME/DATE como objeto Date de JS; JSON.stringify lo
+// serializa en UTC ('2026-06-15T00:00:00.000Z') aunque la fila guarde una
+// fecha simple sin hora -- con el servidor en zona horaria distinta a UTC
+// eso corre el día mostrado. Estos campos son fechas de calendario, no
+// momentos en el tiempo: se devuelven como 'AAAA-MM-DD' puro, sin objeto
+// Date ni conversión de huso horario de por medio.
+export function normalizeAssetDates(row) {
+  if (!row) return row;
+  const normalized = { ...row };
+  for (const key of DATE_FIELDS) {
+    if (normalized[key] instanceof Date) {
+      const date = normalized[key];
+      normalized[key] = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+  }
+  return normalized;
+}
+
 export const LIST_COLUMNS = [
   'id', 'asset_uid', 'center_code', 'tipo', 'descripcion', 'marca', 'modelo',
   'usuario_asignado', 'id_empleado', 'unidad', 'area', 'empresa', 'estado',
