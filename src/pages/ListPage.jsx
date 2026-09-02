@@ -14,6 +14,8 @@ export function ListPage() {
   const [estado, setEstado] = useState('');
   const [unidad, setUnidad] = useState('');
   const [empresa, setEmpresa] = useState('');
+  const [sort, setSort] = useState('center_code');
+  const [order, setOrder] = useState('desc');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -32,13 +34,24 @@ export function ListPage() {
     if (estado) params.set('estado', estado);
     if (unidad) params.set('unidad', unidad);
     if (empresa) params.set('empresa', empresa);
+    params.set('sort', sort);
+    params.set('order', order);
     setLoading(true);
     setError('');
     void apiFetch(`/activos?${params.toString()}`)
       .then((result) => setItems(result.data))
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
-  }, [q, area, tipo, estado, unidad, empresa]);
+  }, [q, area, tipo, estado, unidad, empresa, sort, order]);
+
+  function changeSort(nextSort) {
+    if (sort === nextSort) {
+      setOrder((current) => current === 'asc' ? 'desc' : 'asc');
+      return;
+    }
+    setSort(nextSort);
+    setOrder(['center_code', 'age', 'documents'].includes(nextSort) ? 'desc' : 'asc');
+  }
 
   return (
     <div className="space-y-6">
@@ -72,7 +85,7 @@ export function ListPage() {
             <table className="min-w-[1180px] w-full text-xs">
               <thead className="bg-slate-800/70 text-left uppercase tracking-wide text-slate-500">
                 <tr>
-                  <Th>Código TI</Th><Th>Tipo</Th><Th>Marca / modelo</Th><Th>Service tag / serie</Th><Th>Usuario asignado</Th><Th>Unidad / área</Th><Th>Empresa</Th><Th>Estado</Th><Th>Antigüedad</Th><Th>Docs</Th><Th><span className="sr-only">Acciones</span></Th>
+                  <Th sortKey="center_code" sort={sort} order={order} onSort={changeSort}>Código TI</Th><Th sortKey="tipo" sort={sort} order={order} onSort={changeSort}>Tipo</Th><Th sortKey="brand" sort={sort} order={order} onSort={changeSort}>Marca / modelo</Th><Th sortKey="service" sort={sort} order={order} onSort={changeSort}>Service tag / serie</Th><Th sortKey="user" sort={sort} order={order} onSort={changeSort}>Usuario asignado</Th><Th sortKey="location" sort={sort} order={order} onSort={changeSort}>Unidad / área</Th><Th sortKey="company" sort={sort} order={order} onSort={changeSort}>Empresa</Th><Th sortKey="status" sort={sort} order={order} onSort={changeSort}>Estado</Th><Th sortKey="age" sort={sort} order={order} onSort={changeSort}>Antigüedad</Th><Th sortKey="documents" sort={sort} order={order} onSort={changeSort}>Docs</Th><Th><span className="sr-only">Acciones</span></Th>
                 </tr>
               </thead>
               <tbody>
@@ -127,7 +140,10 @@ function assetAge(value) {
   return { label, date: date.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) };
 }
 
-function Th({ children }) { return <th className="whitespace-nowrap px-3 py-2.5 font-semibold">{children}</th>; }
+function Th({ children, sortKey, sort, order, onSort }) {
+  const active = sortKey && sort === sortKey;
+  return <th className="whitespace-nowrap px-3 py-2.5 font-semibold" aria-sort={active ? (order === 'asc' ? 'ascending' : 'descending') : undefined}>{sortKey ? <button type="button" onClick={() => onSort(sortKey)} className={`inline-flex items-center gap-1 hover:text-slate-200 ${active ? 'text-sky-400' : ''}`}>{children}<span aria-hidden="true" className="text-[9px]">{active ? (order === 'asc' ? '▲' : '▼') : '⇅'}</span></button> : children}</th>;
+}
 
 function Select({ label, value, onChange, options }) {
   return <select className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200" value={value} onChange={(event) => onChange(event.target.value)}><option value="">{label}</option>{options.map((option) => <option key={option} value={option}>{option}</option>)}</select>;

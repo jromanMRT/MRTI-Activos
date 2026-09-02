@@ -25,6 +25,9 @@ pestañas desplazables, sin convertir el formulario en una página vertical.
 El inventario muestra conteos por estado, filtros compactos y una fila resumida
 por equipo. La columna **Docs** calcula los adjuntos activos por `center_code`;
 su insignia abre directamente la pestaña Documentos del diálogo correspondiente.
+El orden inicial usa el número de Código TI descendente (más nuevo primero) y
+cada encabezado visible permite alternar orden ascendente/descendente; los datos
+vacíos se mantienen al final.
 
 Si la vista de origen devuelve más de una fila para el mismo `center_code`,
 las variantes completas se conservan en `sap_asset_duplicates` y aparecen en

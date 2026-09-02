@@ -21,6 +21,27 @@ async function syncToSapBestEffort(id) {
 
 export const activosRouter = Router();
 
+const ASSET_SORTS = Object.freeze({
+  center_code: ["CAST(SUBSTRING_INDEX(center_code, '-', -1) AS UNSIGNED)", 'center_code'],
+  tipo: ["NULLIF(tipo, '')"],
+  brand: ["NULLIF(marca, '')", "NULLIF(modelo, '')", "NULLIF(descripcion, '')"],
+  service: ["NULLIF(service_tag, '')", "NULLIF(numero_serie, '')"],
+  user: ["NULLIF(usuario_asignado, '')"],
+  location: ["NULLIF(unidad, '')", "NULLIF(area, '')"],
+  company: ["NULLIF(empresa, '')"],
+  status: ["NULLIF(estado, '')"],
+  age: ['fecha_compra'],
+  documents: ['documents_count'],
+});
+
+export function resolveAssetSort(sort, order) {
+  const key = Object.prototype.hasOwnProperty.call(ASSET_SORTS, sort) ? sort : 'center_code';
+  const direction = String(order).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const primary = ASSET_SORTS[key].map((expression) => `(${expression}) IS NULL ASC, ${expression} ${direction}`).join(', ');
+  const stableNewest = key === 'center_code' ? '' : ", CAST(SUBSTRING_INDEX(center_code, '-', -1) AS UNSIGNED) DESC";
+  return `${primary}${stableNewest}`;
+}
+
 function pickAllowedFields(body) {
   const fields = {};
   for (const key of ALL_FIELDS) {
@@ -37,7 +58,7 @@ activosRouter.get('/meta', (_req, res) => {
 
 activosRouter.get('/', async (req, res, next) => {
   try {
-    const { q, tipo, estado, unidad, empresa, area, limit } = req.query;
+    const { q, tipo, estado, unidad, empresa, area, limit, sort, order } = req.query;
     const where = [];
     const params = [];
 
@@ -58,13 +79,14 @@ activosRouter.get('/', async (req, res, next) => {
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const cap = Math.min(Math.max(Number(limit) || 500, 1), 1000);
+    const orderSql = resolveAssetSort(sort, order);
 
     const [rows] = await pool.query(
       `SELECT ${LIST_COLUMNS.join(',')},
               (SELECT COUNT(*) FROM sap_documentos d
                 WHERE d.center_code = activos.center_code AND d.archived_at IS NULL) AS documents_count
          FROM activos ${whereSql}
-        ORDER BY actualizado_en DESC LIMIT ${cap}`,
+        ORDER BY ${orderSql} LIMIT ${cap}`,
       params
     );
     res.json({ data: rows });
