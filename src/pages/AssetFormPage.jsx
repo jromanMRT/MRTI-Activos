@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { apiFetch, obsFetch, obsLinkDevice, obsUnlinkedDevices } from '../api.js';
+import { apiDownload, apiFetch, obsFetch, obsLinkDevice, obsUnlinkedDevices } from '../api.js';
 
 export function AssetFormPage({ mode }) {
   const { id } = useParams();
@@ -12,15 +12,24 @@ export function AssetFormPage({ mode }) {
   const [error, setError] = useState('');
   const [observability, setObservability] = useState(null);
   const [observabilityError, setObservabilityError] = useState('');
+  const [documents, setDocuments] = useState([]);
+  const [documentsError, setDocumentsError] = useState('');
 
   useEffect(() => {
     Promise.all([
       apiFetch('/activos/meta'),
       mode === 'edit' ? apiFetch(`/activos/${id}`) : Promise.resolve({ data: {} }),
+      mode === 'edit'
+        ? apiFetch(`/activos/${id}/documentos`).catch((documentsRequestError) => {
+            setDocumentsError(documentsRequestError.message);
+            return { data: [] };
+          })
+        : Promise.resolve({ data: [] }),
     ])
-      .then(([meta, asset]) => {
+      .then(([meta, asset, assetDocuments]) => {
         setGroups(meta.groups);
         setValues(asset.data || {});
+        setDocuments(assetDocuments.data || []);
         if (asset.data?.asset_uid) {
           obsFetch(asset.data.asset_uid)
             .then(setObservability)
@@ -97,6 +106,9 @@ export function AssetFormPage({ mode }) {
           </fieldset>
         ))}
         {mode === 'edit' && (
+          <DocumentsPanel documents={documents} error={documentsError} onError={setDocumentsError} />
+        )}
+        {mode === 'edit' && (
           <AssignmentPanel
             assetId={id}
             portalUserId={values.portal_user_id}
@@ -116,6 +128,58 @@ export function AssetFormPage({ mode }) {
       </div>
     </form>
   );
+}
+
+function DocumentsPanel({ documents, error, onError }) {
+  const [downloadingId, setDownloadingId] = useState(null);
+
+  async function download(document) {
+    setDownloadingId(document.id);
+    onError('');
+    try {
+      await apiDownload(`/activos-suite/documents/${document.id}/download`, document.archivo || 'documento.pdf');
+    } catch (downloadError) {
+      onError(downloadError.message);
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
+  return (
+    <fieldset className="border border-slate-800 rounded-xl p-4">
+      <legend className="text-sm font-semibold text-slate-300 px-1">Facturas, remisiones y documentos</legend>
+      {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
+      {documents.length === 0 ? (
+        <p className="text-sm text-slate-500">Este activo no tiene documentos registrados en la plataforma anterior.</p>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {documents.map((document) => (
+            <article key={document.id} className="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="inline-flex rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-300">{document.tipo || 'Documento'}</span>
+                  <h3 className="mt-2 truncate font-medium text-slate-100" title={document.nombre || document.archivo}>{document.nombre || document.archivo}</h3>
+                </div>
+                <DocumentIcon />
+              </div>
+              <div className="mt-3 space-y-1 text-xs text-slate-500">
+                <p className="truncate" title={document.archivo}>{document.archivo}</p>
+                {document.sap_creado_en && <p>{new Date(document.sap_creado_en).toLocaleString('es-MX')}</p>}
+                {document.subido_por && <p>Subido por {document.subido_por}</p>}
+              </div>
+              <button type="button" onClick={() => download(document)} disabled={!document.archivo_disponible || downloadingId === document.id} className="mt-4 w-full rounded-lg border border-sky-500/40 px-3 py-2 text-sm font-medium text-sky-400 hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-50">
+                {!document.archivo_disponible ? 'Archivo no disponible' : downloadingId === document.id ? 'Descargando…' : 'Descargar PDF'}
+              </button>
+            </article>
+          ))}
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
+function DocumentIcon() {
+  return <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0 text-sky-400" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 2h8l4 4v16H6z" /><path d="M14 2v5h5M9 13h6M9 17h6" /></svg>;
 }
 
 // Quien tiene el activo hoy puede ser un empleado con cuenta en Core

@@ -293,6 +293,27 @@ activosRouter.post('/:id/mantenimientos', async (req, res, next) => {
   }
 });
 
+// Facturas, remisiones y demás PDF migrados desde ti-assets. La relación
+// original era Documento.activo_id -> Activo.id en SQL Server; el espejo la
+// conserva mediante center_code, la llave natural compartida con este módulo.
+activosRouter.get('/:id/documentos', async (req, res, next) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT d.id, d.sap_id, d.center_code, d.nombre, d.tipo, d.archivo,
+              d.tamano, d.subido_por, d.sap_creado_en,
+              CASE WHEN d.local_storage_path IS NULL THEN 0 ELSE 1 END AS archivo_disponible
+         FROM activos a
+         JOIN sap_documentos d ON d.center_code = a.center_code
+        WHERE a.id = ? AND d.archived_at IS NULL
+        ORDER BY d.sap_creado_en DESC, d.id DESC`,
+      [req.params.id]
+    );
+    res.json({ data: rows.map((row) => ({ ...row, archivo_disponible: Boolean(row.archivo_disponible) })) });
+  } catch (error) {
+    next(error);
+  }
+});
+
 activosRouter.get('/:id', async (req, res, next) => {
   try {
     const [[row]] = await pool.query('SELECT * FROM activos WHERE id = ?', [req.params.id]);

@@ -12,6 +12,10 @@ impresoras, NVR/CCTV, contraseñas de red, Starlink, FortiGate, dominios,
 mantenimientos, unidades, documentos y configuración de alertas. Inventario y
 terceros siguen en sus rutas oficiales existentes.
 
+La ficha de cada activo consulta los documentos por `center_code` y muestra
+facturas, remisiones y otros PDF en una sección propia. La descarga conserva la
+protección del módulo y nunca publica el directorio físico como contenido web.
+
 Si la vista de origen devuelve más de una fila para el mismo `center_code`,
 las variantes completas se conservan en `sap_asset_duplicates` y aparecen en
 **Alertas → Códigos duplicados en el origen**. No se decide silenciosamente
