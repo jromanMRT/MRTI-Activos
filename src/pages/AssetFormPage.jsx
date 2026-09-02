@@ -14,6 +14,20 @@ export function AssetFormPage({ mode }) {
   const [observabilityError, setObservabilityError] = useState('');
   const [documents, setDocuments] = useState([]);
   const [documentsError, setDocumentsError] = useState('');
+  const [activeTab, setActiveTab] = useState('general');
+
+  useEffect(() => {
+    function closeOnEscape(event) {
+      if (event.key === 'Escape' && !saving) navigate('/');
+    }
+    document.addEventListener('keydown', closeOnEscape);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [navigate, saving]);
 
   useEffect(() => {
     Promise.all([
@@ -54,6 +68,7 @@ export function AssetFormPage({ mode }) {
         navigate(`/${result.data.id}`);
       } else {
         await apiFetch(`/activos/${id}`, { method: 'PATCH', body: JSON.stringify(values) });
+        navigate('/');
       }
     } catch (err) {
       setError(err.message);
@@ -72,61 +87,61 @@ export function AssetFormPage({ mode }) {
     }
   }
 
-  if (loading) return <p className="text-slate-500">Cargando…</p>;
+  const groupsByKey = Object.fromEntries(groups.map((group) => [group.key, group]));
+  const tabs = [
+    { key: 'general', label: 'General', groups: ['identificacion', 'software'] },
+    { key: 'asignacion', label: 'Asignación', groups: ['asignacion'] },
+    { key: 'administracion', label: 'Administración', groups: ['compra', 'baja'] },
+    { key: 'windows', label: 'Windows', groups: ['windows'] },
+    { key: 'microsoft365', label: 'Microsoft', groups: ['microsoft365'] },
+    { key: 'dropbox', label: 'Dropbox', groups: ['dropbox'] },
+    { key: 'correo', label: 'Correo', groups: ['correo'] },
+    { key: 'antivirus', label: 'Antivirus', groups: ['antivirus'] },
+    ...(mode === 'edit' ? [
+      { key: 'documentos', label: 'Documentos', count: documents.length },
+      { key: 'monitor', label: 'Monitor' },
+    ] : []),
+  ];
+
+  function closeModal() {
+    if (!saving) navigate('/');
+  }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">
-          {mode === 'create' ? 'Nuevo activo' : `Activo ${values.center_code || ''}`}
-        </h1>
-        <div className="flex gap-2">
-          {mode === 'edit' && (
-            <button type="button" onClick={handleDelete} className="px-4 py-2 rounded-lg border border-red-500/40 text-red-400 hover:bg-red-500/10">
-              Retirar
-            </button>
-          )}
-          <button type="submit" disabled={saving} className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-[#2a1c05] font-semibold px-4 py-2 rounded-lg">
-            {saving ? 'Guardando…' : 'Guardar'}
-          </button>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/65 p-0 backdrop-blur-sm sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) closeModal(); }}>
+      <form onSubmit={handleSubmit} role="dialog" aria-modal="true" aria-labelledby="asset-dialog-title" className="flex h-full w-full flex-col overflow-hidden bg-slate-950 shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:max-w-6xl sm:rounded-2xl sm:border sm:border-slate-800">
+        <header className="flex items-start justify-between gap-4 border-b border-slate-800 px-5 py-4 sm:px-7">
+          <div>
+            <h1 id="asset-dialog-title" className="text-xl font-bold sm:text-2xl">{mode === 'create' ? 'Nuevo activo' : 'Editar activo'}</h1>
+            {mode === 'edit' && <p className="mt-1 text-sm text-slate-500">{values.center_code || 'Cargando información…'}{values.descripcion ? ` · ${values.descripcion}` : ''}</p>}
+          </div>
+          <button type="button" onClick={closeModal} disabled={saving} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-800 text-slate-400 hover:bg-slate-900 hover:text-slate-100 disabled:opacity-50" aria-label="Cerrar">×</button>
+        </header>
+
+        <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-slate-800 px-4 pt-2 sm:px-7" aria-label="Secciones del activo">
+          {tabs.map((tab) => <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)} className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm transition ${activeTab === tab.key ? 'border-sky-400 text-sky-400' : 'border-transparent text-slate-500 hover:text-slate-200'}`}>{tab.label}{Number.isInteger(tab.count) && <span className="ml-1.5 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px]">{tab.count}</span>}</button>)}
+        </nav>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
+          {error && <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300">{error}</div>}
+          {loading ? <p className="py-12 text-center text-slate-500">Cargando activo…</p> : <>
+            {tabs.find((tab) => tab.key === activeTab)?.groups?.map((groupKey) => {
+              const group = groupsByKey[groupKey];
+              if (!group) return null;
+              return <section key={group.key} className="mb-7 last:mb-0"><h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">{group.label}</h2><div className="grid grid-cols-1 gap-4 md:grid-cols-2">{group.fields.map((field) => <Field key={field.key} field={field} value={values[field.key]} onChange={setField} />)}</div></section>;
+            })}
+            {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} portalUserId={values.portal_user_id} terceroId={values.tercero_id} usuarioAsignado={values.usuario_asignado} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
+            {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel documents={documents} error={documentsError} onError={setDocumentsError} />}
+            {activeTab === 'monitor' && mode === 'edit' && <ObservabilityPanel assetUid={values.asset_uid} data={observability} error={observabilityError} onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))} />}
+          </>}
         </div>
-      </div>
 
-      {error && <div className="bg-red-500/10 border border-red-500/30 text-red-300 rounded-lg px-4 py-3 mb-4">{error}</div>}
-
-      <div className="space-y-6">
-        {groups.map((group) => (
-          <fieldset key={group.key} className="border border-slate-800 rounded-xl p-4">
-            <legend className="text-sm font-semibold text-slate-300 px-1">{group.label}</legend>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-              {group.fields.map((field) => (
-                <Field key={field.key} field={field} value={values[field.key]} onChange={setField} />
-              ))}
-            </div>
-          </fieldset>
-        ))}
-        {mode === 'edit' && (
-          <DocumentsPanel documents={documents} error={documentsError} onError={setDocumentsError} />
-        )}
-        {mode === 'edit' && (
-          <AssignmentPanel
-            assetId={id}
-            portalUserId={values.portal_user_id}
-            terceroId={values.tercero_id}
-            usuarioAsignado={values.usuario_asignado}
-            onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))}
-          />
-        )}
-        {mode === 'edit' && (
-          <ObservabilityPanel
-            assetUid={values.asset_uid}
-            data={observability}
-            error={observabilityError}
-            onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))}
-          />
-        )}
-      </div>
-    </form>
+        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-800 bg-slate-900/50 px-5 py-4 sm:px-7">
+          <div>{mode === 'edit' && <button type="button" onClick={handleDelete} disabled={saving || loading} className="rounded-lg border border-red-500/40 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 disabled:opacity-50">Retirar activo</button>}</div>
+          <div className="flex gap-2"><button type="button" onClick={closeModal} disabled={saving} className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50">Cancelar</button><button type="submit" disabled={saving || loading} className="rounded-lg bg-sky-500 px-5 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">{saving ? 'Guardando…' : 'Guardar'}</button></div>
+        </footer>
+      </form>
+    </div>
   );
 }
 
@@ -354,9 +369,10 @@ function OperationalValue({ label, value }) {
 
 function Field({ field, value, onChange }) {
   const commonClass = 'w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100';
+  const isWide = ['descripcion', 'software_incluido', 'version', 'esp_tec', 'notas'].includes(field.key);
 
   return (
-    <label className="block">
+    <label className={`block ${isWide ? 'md:col-span-2' : ''}`}>
       <span className="block text-xs text-slate-400 mb-1">
         {field.label}{field.required ? ' *' : ''}
       </span>

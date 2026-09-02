@@ -16,6 +16,12 @@ La ficha de cada activo consulta los documentos por `center_code` y muestra
 facturas, remisiones y otros PDF en una sección propia. La descarga conserva la
 protección del módulo y nunca publica el directorio físico como contenido web.
 
+La creación y edición se presenta como un diálogo sobre el inventario. Los
+campos se organizan en pestañas de General, Asignación, Administración,
+Windows, Microsoft, Dropbox, Correo y Antivirus; las fichas existentes agregan
+Documentos y Monitor. En móvil el diálogo ocupa el viewport y mantiene las
+pestañas desplazables, sin convertir el formulario en una página vertical.
+
 Si la vista de origen devuelve más de una fila para el mismo `center_code`,
 las variantes completas se conservan en `sap_asset_duplicates` y aparecen en
 **Alertas → Códigos duplicados en el origen**. No se decide silenciosamente

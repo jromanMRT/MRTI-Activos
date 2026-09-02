@@ -14,8 +14,8 @@ export default function App() {
         <Route path="/operacion" element={<AssetSuiteOverviewPage />} />
         <Route path="/catalogos/:resource" element={<AssetCatalogPage />} />
         <Route path="/alertas" element={<AssetAlertsPage />} />
-        <Route path="/nuevo" element={<AssetFormPage mode="create" />} />
-        <Route path="/:id" element={<AssetFormPage mode="edit" />} />
+        <Route path="/nuevo" element={<><ListPage /><AssetFormPage mode="create" /></>} />
+        <Route path="/:id" element={<><ListPage /><AssetFormPage mode="edit" /></>} />
       </Routes>
     </Layout>
   );

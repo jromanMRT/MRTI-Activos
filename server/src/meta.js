@@ -79,12 +79,12 @@ export const FIELD_GROUPS = [
     ],
   },
   {
-    key: 'basedatos',
-    label: 'Base de datos',
+    key: 'dropbox',
+    label: 'Dropbox',
     fields: [
-      { key: 'db_cuenta', label: 'Cuenta de BD', type: 'text' },
-      { key: 'db_usuario', label: 'Usuario de BD', type: 'text' },
-      { key: 'db_licencia', label: 'Licencia de BD', type: 'text' },
+      { key: 'db_cuenta', label: 'Cuenta Dropbox', type: 'text' },
+      { key: 'db_usuario', label: 'Usuario Dropbox', type: 'text' },
+      { key: 'db_licencia', label: 'Licencia Dropbox', type: 'text' },
     ],
   },
   {
