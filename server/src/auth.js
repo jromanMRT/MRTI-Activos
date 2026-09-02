@@ -59,6 +59,26 @@ export async function portalSessionRequired(req, res, next) {
   return next();
 }
 
+// Para llamadas entre módulos sin usuario navegando (ej. Tickets validando
+// un asset_uid al crear un ticket automático desde un evento de Agent
+// Core) — no hay sesión de Core que reenviar. Acepta la sesión normal de un
+// usuario real O una llave de servicio compartida, nunca ambas condiciones
+// a la vez relajadas: si viene Authorization se valida igual que siempre
+// (portalSessionRequired), la llave de servicio es solo el camino
+// alternativo cuando no hay usuario.
+export async function portalSessionOrServiceKey(req, res, next) {
+  const serviceKey = req.headers['x-service-key'];
+  if (serviceKey) {
+    if (!process.env.INTERNAL_SERVICE_KEY || serviceKey !== process.env.INTERNAL_SERVICE_KEY) {
+      return res.status(401).json({ error: 'Llave de servicio inválida' });
+    }
+    req.portalUser = null;
+    req.isServiceCall = true;
+    return next();
+  }
+  return portalSessionRequired(req, res, next);
+}
+
 export async function administratorOnly(req, res, next) {
   const actor = req.portalUser || await fetchCurrentUser(req.headers.authorization);
   if (!actor) return res.status(401).json({ error: 'No autenticado' });

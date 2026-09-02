@@ -76,6 +76,24 @@ export function obsUnlinkedDevices() {
   return obsRequest('/unlinked/devices');
 }
 
+// Tickets relacionados con un activo -- lectura en vivo de MRTI-Tickets
+// (nunca se copian aquí), mismo origen por Nginx que obsFetch. Si el
+// usuario no tiene acceso al módulo Tickets, el backend responde 403 y el
+// panel lo muestra como "sin acceso" en vez de romper el resto del popup.
+export async function ticketsFetch(assetUid) {
+  const token = getToken();
+  const response = await fetch(`/tickets-api/api/tickets?asset_uid=${encodeURIComponent(assetUid)}&limit=50&sort=newest`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (response.status === 401) {
+    goToPortalLogin();
+    throw new Error('No autenticado');
+  }
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error?.message || `MRTI Tickets respondió ${response.status}`);
+  return body.data?.items || [];
+}
+
 export function obsLinkDevice(deviceId, assetUid) {
   return obsRequest(`/links/${encodeURIComponent(deviceId)}`, {
     method: 'PATCH',

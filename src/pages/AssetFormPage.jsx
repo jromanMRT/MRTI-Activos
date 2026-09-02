@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { apiDownload, apiFetch, obsFetch, obsLinkDevice, obsUnlinkedDevices } from '../api.js';
+import { apiDownload, apiFetch, obsFetch, obsLinkDevice, obsUnlinkedDevices, ticketsFetch } from '../api.js';
 
 export function AssetFormPage({ mode }) {
   const { id } = useParams();
@@ -105,8 +105,13 @@ export function AssetFormPage({ mode }) {
     ...(mode === 'edit' ? [
       { key: 'documentos', label: 'Documentos', count: documents.length },
       { key: 'monitor', label: 'Monitor' },
+      { key: 'tickets', label: 'Tickets' },
     ] : []),
   ];
+
+  const createTicketUrl = values.asset_uid
+    ? `/?openTicket=1&asset_uid=${encodeURIComponent(values.asset_uid)}&asset_label=${encodeURIComponent(values.center_code || values.descripcion || '')}`
+    : null;
 
   function closeModal() {
     if (!saving) navigate('/');
@@ -120,7 +125,10 @@ export function AssetFormPage({ mode }) {
             <h1 id="asset-dialog-title" className="text-xl font-bold sm:text-2xl">{mode === 'create' ? 'Nuevo activo' : 'Editar activo'}</h1>
             {mode === 'edit' && <p className="mt-1 text-sm text-slate-500">{values.center_code || 'Cargando información…'}{values.descripcion ? ` · ${values.descripcion}` : ''}</p>}
           </div>
-          <button type="button" onClick={closeModal} disabled={saving} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-800 text-slate-400 hover:bg-slate-900 hover:text-slate-100 disabled:opacity-50" aria-label="Cerrar">×</button>
+          <div className="flex shrink-0 items-center gap-2">
+            {createTicketUrl && <a href={createTicketUrl} className="rounded-lg border border-sky-500/40 px-3 py-2 text-sm font-medium text-sky-400 hover:bg-sky-500/10">Crear ticket</a>}
+            <button type="button" onClick={closeModal} disabled={saving} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-800 text-slate-400 hover:bg-slate-900 hover:text-slate-100 disabled:opacity-50" aria-label="Cerrar">×</button>
+          </div>
         </header>
 
         <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-slate-800 px-4 pt-2 sm:px-7" aria-label="Secciones del activo">
@@ -138,6 +146,7 @@ export function AssetFormPage({ mode }) {
             {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} portalUserId={values.portal_user_id} terceroId={values.tercero_id} usuarioAsignado={values.usuario_asignado} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
             {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel documents={documents} error={documentsError} onError={setDocumentsError} />}
             {activeTab === 'monitor' && mode === 'edit' && <ObservabilityPanel assetUid={values.asset_uid} data={observability} error={observabilityError} onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))} />}
+            {activeTab === 'tickets' && mode === 'edit' && <TicketsPanel assetUid={values.asset_uid} createTicketUrl={createTicketUrl} />}
           </>}
         </div>
 
@@ -365,6 +374,62 @@ function ObservabilityPanel({ assetUid, data, error, onChange }) {
       )}
       {actionError && <p className="mt-3 text-sm text-red-400">{actionError}</p>}
     </fieldset>
+  );
+}
+
+const TICKET_OPEN_STATUSES = new Set(['NEW', 'OPEN', 'ASSIGNED', 'IN_DIAGNOSIS', 'IN_PROGRESS', 'ON_HOLD_USER', 'ON_HOLD_VENDOR', 'REOPENED']);
+
+function TicketsPanel({ assetUid, createTicketUrl }) {
+  const [tickets, setTickets] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!assetUid) return;
+    setError('');
+    ticketsFetch(assetUid).then(setTickets).catch((err) => setError(err.message));
+  }, [assetUid]);
+
+  if (!assetUid) return <p className="text-sm text-slate-500">Guarda el activo primero para poder relacionar tickets.</p>;
+  if (error) return <p className="text-sm text-amber-400">No fue posible consultar MRTI Tickets: {error}</p>;
+  if (!tickets) return <p className="text-sm text-slate-500">Consultando tickets…</p>;
+
+  const open = tickets.filter((ticket) => TICKET_OPEN_STATUSES.includes(ticket.status_code));
+  const closed = tickets.filter((ticket) => !TICKET_OPEN_STATUSES.includes(ticket.status_code));
+
+  return (
+    <fieldset className="border border-slate-800 rounded-xl p-4">
+      <legend className="text-sm font-semibold text-slate-300 px-1">Tickets relacionados</legend>
+      {createTicketUrl && <a href={createTicketUrl} className="mb-4 inline-block text-sm text-sky-400 hover:underline">+ Crear ticket para este activo</a>}
+      <TicketGroup title="Abiertos" tickets={open} empty="Sin tickets abiertos." />
+      <TicketGroup title="Cerrados" tickets={closed} empty="Sin tickets cerrados." className="mt-5" />
+    </fieldset>
+  );
+}
+
+function TicketGroup({ title, tickets, empty, className = '' }) {
+  return (
+    <div className={className}>
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">{title} ({tickets.length})</h3>
+      {tickets.length === 0 ? (
+        <p className="text-sm text-slate-500">{empty}</p>
+      ) : (
+        <div className="space-y-2">
+          {tickets.map((ticket) => (
+            <a key={ticket.id} href={`/tickets/${ticket.id}`} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-3 rounded-lg bg-slate-900 p-3 text-sm hover:bg-slate-800">
+              <div className="min-w-0">
+                <span className="font-medium text-slate-100">{ticket.folio}</span>
+                <span className="ml-2 text-slate-400">{ticket.title}</span>
+              </div>
+              <div className="flex shrink-0 items-center gap-2 text-xs text-slate-500">
+                <span className={`priority priority-${(ticket.priority_code || '').toLowerCase()}`}>{ticket.priority_code}</span>
+                <span>{ticket.status_name}</span>
+                <span>{new Date(ticket.created_at).toLocaleDateString('es-MX')}</span>
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

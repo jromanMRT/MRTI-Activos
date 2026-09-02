@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cron from 'node-cron';
-import { moduleAccessRequired, portalSessionRequired } from './auth.js';
+import { moduleAccessRequired } from './auth.js';
 import { activosRouter } from './routes/activos.js';
 import { activosSelfRouter } from './routes/activosSelf.js';
 import { tercerosRouter } from './routes/terceros.js';
@@ -23,7 +23,9 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 app.use('/api/activos', moduleAccessRequired, auditRouter, activosRouter);
 app.use('/api/activos-suite', moduleAccessRequired, assetSuiteRouter);
-app.use('/api/activos-self', portalSessionRequired, activosSelfRouter);
+// Cada ruta de activosSelfRouter define su propio middleware de sesión --
+// /uid/:assetUid acepta también llave de servicio (ver activosSelf.js).
+app.use('/api/activos-self', activosSelfRouter);
 app.use('/api', moduleAccessRequired, tercerosRouter);
 
 app.use((err, _req, res, _next) => {
