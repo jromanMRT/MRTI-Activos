@@ -143,7 +143,7 @@ export function AssetFormPage({ mode }) {
               if (!group) return null;
               return <section key={group.key} className="mb-7 last:mb-0"><h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">{group.label}</h2><div className="grid grid-cols-1 gap-4 md:grid-cols-2">{group.fields.map((field) => <Field key={field.key} field={field} value={values[field.key]} onChange={setField} />)}</div></section>;
             })}
-            {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} portalUserId={values.portal_user_id} terceroId={values.tercero_id} usuarioAsignado={values.usuario_asignado} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
+            {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
             {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel documents={documents} error={documentsError} onError={setDocumentsError} />}
             {activeTab === 'monitor' && mode === 'edit' && <ObservabilityPanel assetUid={values.asset_uid} data={observability} error={observabilityError} onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))} />}
             {activeTab === 'tickets' && mode === 'edit' && <TicketsPanel assetUid={values.asset_uid} createTicketUrl={createTicketUrl} />}
@@ -221,7 +221,7 @@ function employeeLabel(employee) {
   return `${name}${detail ? ` — ${detail}` : ''}${employee.employment_status !== 'active' ? ' (baja)' : ''}`;
 }
 
-function AssignmentPanel({ assetId, portalUserId, terceroId, usuarioAsignado, onChange }) {
+function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId, usuarioAsignado, onChange }) {
   const [terceros, setTerceros] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [employeeSearch, setEmployeeSearch] = useState('');
@@ -258,14 +258,17 @@ function AssignmentPanel({ assetId, portalUserId, terceroId, usuarioAsignado, on
   }
 
   async function assignEmployee() {
-    if (!selectedEmployee?.portal_user_id) return;
+    if (!selectedEmployee) return;
     setBusy(true);
     setError('');
     try {
-      const employeeName = `${selectedEmployee.first_name} ${selectedEmployee.last_name_p}`;
+      const employeeName = `${selectedEmployee.first_name} ${selectedEmployee.last_name_p}${selectedEmployee.last_name_m ? ` ${selectedEmployee.last_name_m}` : ''}`;
+      const holder = selectedEmployee.portal_user_id
+        ? { portal_user_id: selectedEmployee.portal_user_id }
+        : { rh_employee_id: selectedEmployee.id };
       await apiFetch(`/activos/${assetId}/asignaciones`, {
         method: 'POST',
-        body: JSON.stringify({ portal_user_id: selectedEmployee.portal_user_id, user_name: employeeName }),
+        body: JSON.stringify({ ...holder, user_name: employeeName }),
       });
       setSelectedEmployeeId('');
       await onChange();
@@ -300,11 +303,13 @@ function AssignmentPanel({ assetId, portalUserId, terceroId, usuarioAsignado, on
             <span><span className="text-slate-500">Empleado (Core):</span> <span className="text-slate-200">{usuarioAsignado || portalUserId}</span></span>
           ) : terceroId ? (
             <span><span className="text-slate-500">Tercero externo:</span> <span className="text-slate-200">{usuarioAsignado}</span></span>
+          ) : rhEmployeeId ? (
+            <span><span className="text-slate-500">Empleado (RH, sin cuenta de Core aún):</span> <span className="text-slate-200">{usuarioAsignado}</span></span>
           ) : (
             <span className="text-slate-500">Sin asignar</span>
           )}
         </div>
-        {(portalUserId || terceroId) && (
+        {(portalUserId || terceroId || rhEmployeeId) && (
           <button type="button" disabled={busy} onClick={unassign} className="text-amber-400 hover:underline text-sm disabled:opacity-50">
             Quitar asignación
           </button>
@@ -333,12 +338,12 @@ function AssignmentPanel({ assetId, portalUserId, terceroId, usuarioAsignado, on
               </optgroup>
             )}
           </select>
-          <button type="button" disabled={!selectedEmployee?.portal_user_id || busy} onClick={assignEmployee} className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-[#2a1c05] font-semibold px-4 py-2 rounded-lg whitespace-nowrap">
+          <button type="button" disabled={!selectedEmployee || busy} onClick={assignEmployee} className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-[#2a1c05] font-semibold px-4 py-2 rounded-lg whitespace-nowrap">
             {busy ? 'Asignando…' : 'Asignar'}
           </button>
         </div>
         {selectedEmployee && !selectedEmployee.portal_user_id && (
-          <p className="text-xs text-amber-400 mt-2">Este empleado no tiene una cuenta de Core vinculada todavía — pide a RH registrar su correo corporativo antes de poder asignarle un equipo aquí.</p>
+          <p className="text-xs text-slate-500 mt-2">Este empleado todavía no tiene una cuenta de Core vinculada — el equipo quedará asignado a su ficha de RH y se enlazará a Core automáticamente cuando la tenga.</p>
         )}
       </div>
 

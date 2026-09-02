@@ -104,7 +104,7 @@ export function ListPage() {
 function AssetRow({ item }) {
   const age = assetAge(item.fecha_compra);
   const navigate = useNavigate();
-  const linkedToRh = Boolean(item.portal_user_id || item.tercero_id);
+  const linkedToRh = Boolean(item.portal_user_id || item.tercero_id || item.rh_employee_id);
   return (
     <tr
       className="cursor-pointer border-t border-slate-800 align-top transition hover:bg-slate-900/75"

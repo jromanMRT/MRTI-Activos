@@ -9,6 +9,7 @@
     "migrate": "node scripts/migrate.js",
     "import:incoming-documents": "node scripts/import-incoming-documents.js",
     "reconcile:obs": "node scripts/reconcile-obs.js",
+    "reconcile:rh": "node scripts/reconcile-rh-employees.js",
     "source:check": "node scripts/external-source-audit.js check",
     "source:catalog": "node scripts/external-source-audit.js catalog",
     "test": "node --test test/"
