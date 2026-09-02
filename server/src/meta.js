@@ -15,7 +15,7 @@ export const FIELD_GROUPS = [
       { key: 'modelo', label: 'Modelo', type: 'text' },
       { key: 'service_tag', label: 'Service tag', type: 'text' },
       { key: 'numero_serie', label: 'Número de serie', type: 'text' },
-      { key: 'estado', label: 'Estado', type: 'select', options: ['Activo', 'Inactivo', 'En mantenimiento'], required: true },
+      { key: 'estado', label: 'Estado', type: 'select', options: ['Activo', 'Inactivo', 'En mantenimiento', 'Baja'], required: true },
       { key: 'active', label: 'Activo (bandera)', type: 'text' },
     ],
   },

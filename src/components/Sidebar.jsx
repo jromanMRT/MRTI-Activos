@@ -5,6 +5,20 @@ import { useTheme } from '../hooks/useTheme.js';
 const NAV_ITEMS = [
   { to: '/', label: 'Inventario', icon: 'inventory' },
   { to: '/terceros', label: 'Terceros externos', icon: 'people' },
+  { to: '/operacion', label: 'Resumen operativo', icon: 'dashboard' },
+  { to: '/alertas', label: 'Alertas', icon: 'alert' },
+  { to: '/catalogos/credenciales', label: 'Credenciales', icon: 'catalog' },
+  { to: '/catalogos/componentes', label: 'Componentes', icon: 'catalog' },
+  { to: '/catalogos/impresoras', label: 'Impresoras', icon: 'catalog' },
+  { to: '/catalogos/nvr', label: 'NVR / CCTV', icon: 'catalog' },
+  { to: '/catalogos/passwords', label: 'Contraseñas de red', icon: 'catalog' },
+  { to: '/catalogos/starlink', label: 'Starlink', icon: 'catalog' },
+  { to: '/catalogos/fortigate', label: 'FortiGate', icon: 'catalog' },
+  { to: '/catalogos/dominios', label: 'Dominios', icon: 'catalog' },
+  { to: '/catalogos/mantenimientos', label: 'Mantenimientos', icon: 'catalog' },
+  { to: '/catalogos/documentos', label: 'Documentos', icon: 'catalog' },
+  { to: '/catalogos/unidades', label: 'Unidades', icon: 'catalog' },
+  { to: '/catalogos/config-alertas', label: 'Configurar alertas', icon: 'catalog' },
 ];
 
 // Core deja el perfil en localStorage al iniciar sesión (mismo origen que
@@ -73,7 +87,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
             <li key={item.to}>
               <NavLink
                 to={item.to}
-                end
+                end={item.to === '/'}
                 onClick={onNavigate}
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
@@ -162,6 +176,9 @@ function NavIcon({ name }) {
   const paths = {
     inventory: <><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></>,
     people: <><circle cx="9" cy="8" r="3.5" /><path d="M3 20a6 6 0 0 1 12 0M16 5.5a3 3 0 0 1 0 5.8M17 15a5 5 0 0 1 4 5" /></>,
+    dashboard: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
+    alert: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></>,
+    catalog: <><path d="M4 5h16M4 12h16M4 19h16" /><circle cx="7" cy="5" r="1" /><circle cx="7" cy="12" r="1" /><circle cx="7" cy="19" r="1" /></>,
   };
-  return <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
+  return <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name] || paths.catalog}</svg>;
 }

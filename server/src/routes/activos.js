@@ -2,6 +2,22 @@ import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import { pool } from '../db.js';
 import { ALL_FIELDS, FIELD_GROUPS, LIST_COLUMNS } from '../meta.js';
+import { pushAssetToSap } from '../integrations/sapClient.js';
+
+// Empuja el renglón recién creado/editado hacia SAP (ver plan de la
+// integración SAP: copia local + escritura en ambos lados). Si SAP no está
+// configurado o no responde, la petición ya respondió con éxito -- solo se
+// deja constancia en sap_sync_error para que el job periódico reintente
+// (ver server/src/integrations/sapSync.js). Nunca bloquea al usuario.
+async function syncToSapBestEffort(id) {
+  try {
+    const [[row]] = await pool.query('SELECT * FROM activos WHERE id = ?', [id]);
+    await pushAssetToSap(row);
+    await pool.query('UPDATE activos SET sap_synced_at = NOW(), sap_sync_error = NULL WHERE id = ?', [id]);
+  } catch (error) {
+    await pool.query('UPDATE activos SET sap_sync_error = ? WHERE id = ?', [String(error.message).slice(0, 255), id]);
+  }
+}
 
 export const activosRouter = Router();
 
@@ -299,6 +315,7 @@ activosRouter.post('/', async (req, res, next) => {
       [randomUUID(), ...columns.map((c) => fields[c])]
     );
     const [[row]] = await pool.query('SELECT * FROM activos WHERE id = ?', [result.insertId]);
+    syncToSapBestEffort(row.id);
     res.status(201).json({ data: row });
   } catch (error) {
     next(error);
@@ -316,6 +333,7 @@ activosRouter.patch('/:id', async (req, res, next) => {
     );
     if (!result.affectedRows) return res.status(404).json({ error: 'Activo no encontrado' });
     const [[row]] = await pool.query('SELECT * FROM activos WHERE id = ?', [req.params.id]);
+    syncToSapBestEffort(row.id);
     res.json({ data: row });
   } catch (error) {
     next(error);

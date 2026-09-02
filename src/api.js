@@ -29,6 +29,26 @@ export async function apiFetch(path, options = {}) {
   return body;
 }
 
+export async function apiDownload(path, fallbackName = 'documento.pdf') {
+  const token = getToken();
+  const response = await fetch(`/activos-api/api${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (response.status === 401) { goToPortalLogin(); throw new Error('No autenticado'); }
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `Error ${response.status}`);
+  }
+  const disposition = response.headers.get('content-disposition') || '';
+  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  const simple = disposition.match(/filename="?([^";]+)"?/i)?.[1];
+  const filename = encoded ? decodeURIComponent(encoded) : (simple || fallbackName);
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement('a');
+  anchor.href = url; anchor.download = filename; anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 async function obsRequest(path, options = {}) {
   const token = getToken();
   const response = await fetch(`/api/obs/assets${path}`, {

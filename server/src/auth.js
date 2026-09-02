@@ -58,3 +58,13 @@ export async function portalSessionRequired(req, res, next) {
   req.portalUser = user;
   return next();
 }
+
+export async function administratorOnly(req, res, next) {
+  const actor = req.portalUser || await fetchCurrentUser(req.headers.authorization);
+  if (!actor) return res.status(401).json({ error: 'No autenticado' });
+  if (String(actor.role || '').toLowerCase() !== 'administrator') {
+    return res.status(403).json({ error: 'Esta acción está reservada para administradores' });
+  }
+  req.portalUser = actor;
+  return next();
+}
