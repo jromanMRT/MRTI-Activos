@@ -102,7 +102,7 @@ activosRouter.get('/', async (req, res, next) => {
         ORDER BY ${orderSql} LIMIT ${cap}`,
       params
     );
-    res.json({ data: rows });
+    res.json({ data: rows.map(normalizeAssetDates) });
   } catch (error) {
     next(error);
   }

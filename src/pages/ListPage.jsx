@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../api.js';
 
 const EMPTY_STATS = { total: 0, activos: 0, mantenimiento: 0, inactivos: 0, baja: 0 };
@@ -103,19 +103,24 @@ export function ListPage() {
 
 function AssetRow({ item }) {
   const age = assetAge(item.fecha_compra);
+  const navigate = useNavigate();
+  const linkedToRh = Boolean(item.portal_user_id || item.tercero_id);
   return (
-    <tr className="border-t border-slate-800 align-top transition hover:bg-slate-900/75">
-      <td className="px-3 py-3.5"><Link to={`/${item.id}`} className="font-bold text-sky-400 hover:underline">{item.center_code}</Link></td>
+    <tr
+      className="cursor-pointer border-t border-slate-800 align-top transition hover:bg-slate-900/75"
+      onClick={() => navigate(`/${item.id}`)}
+    >
+      <td className="px-3 py-3.5"><Link to={`/${item.id}`} onClick={(event) => event.stopPropagation()} className="font-bold text-sky-400 hover:underline">{item.center_code}</Link></td>
       <td className="px-3 py-3.5"><span className="rounded bg-slate-800 px-2 py-1 text-[10px] font-medium text-slate-300">{item.tipo || '—'}</span></td>
       <td className="px-3 py-3.5"><strong className="block text-slate-100">{item.marca || '—'}</strong><span className="mt-0.5 block max-w-40 truncate text-slate-500" title={item.modelo || item.descripcion}>{item.modelo || item.descripcion || '—'}</span></td>
       <td className="px-3 py-3.5 font-mono"><span className="block text-slate-200">{item.service_tag || '—'}</span><span className="mt-0.5 block text-[10px] text-slate-500">{item.numero_serie || '—'}</span></td>
-      <td className="px-3 py-3.5"><AssignmentBadge assigned={Boolean(item.usuario_asignado)} /><span className="mt-1 block max-w-48 text-slate-100">{item.usuario_asignado || '—'}</span><span className="mt-0.5 block text-[10px] text-slate-500">ID: {item.id_empleado || '—'}</span></td>
+      <td className="px-3 py-3.5"><AssignmentBadge assigned={linkedToRh} /><span className="mt-1 block max-w-48 text-slate-100">{item.usuario_asignado || '—'}</span><span className="mt-0.5 block text-[10px] text-slate-500">ID: {item.id_empleado || '—'}</span></td>
       <td className="px-3 py-3.5"><span className="block text-slate-200">{item.unidad || '—'}</span><span className="mt-0.5 block max-w-36 truncate text-[10px] text-slate-500" title={item.area}>{item.area || '—'}</span></td>
       <td className="px-3 py-3.5"><span className="block max-w-48 text-slate-200">{item.empresa || '—'}</span></td>
       <td className="px-3 py-3.5"><EstadoBadge estado={item.estado} /></td>
       <td className="px-3 py-3.5"><strong className="block text-emerald-400">{age.label}</strong><span className="mt-0.5 block text-[10px] text-slate-500">{age.date}</span></td>
       <td className="px-3 py-3.5"><DocumentBadge item={item} /></td>
-      <td className="px-3 py-3.5"><Link to={`/${item.id}`} className="grid h-8 w-8 place-items-center rounded-lg border border-slate-700 text-slate-400 hover:border-sky-500/50 hover:text-sky-400" aria-label={`Editar ${item.center_code}`} title="Editar activo"><PencilIcon /></Link></td>
+      <td className="px-3 py-3.5"><Link to={`/${item.id}`} onClick={(event) => event.stopPropagation()} className="grid h-8 w-8 place-items-center rounded-lg border border-slate-700 text-slate-400 hover:border-sky-500/50 hover:text-sky-400" aria-label={`Editar ${item.center_code}`} title="Editar activo"><PencilIcon /></Link></td>
     </tr>
   );
 }
