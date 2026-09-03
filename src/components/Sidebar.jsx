@@ -39,19 +39,9 @@ async function handleLogout() {
 
 export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
   const [theme, setTheme] = useTheme();
-  const [applications, setApplications] = useState([]);
   const [logoUrl, setLogoUrl] = useState('/company-logo.svg');
   const profile = readAuthProfile();
   const isAdministrator = profile.role === 'administrator';
-
-  useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
-    fetch('/api/portal/v1/applications', { headers: { Authorization: `Bearer ${token}` } })
-      .then((response) => response.ok ? response.json() : Promise.reject())
-      .then(({ data }) => setApplications(Array.isArray(data) ? data : []))
-      .catch(() => setApplications([]));
-  }, []);
 
   // El logo lo administra Core (Centro de control → Recursos de marca); se
   // consulta en vivo para que un cambio ahí se refleje aquí sin tocar código.
@@ -101,14 +91,6 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
             </li>
           ))}
         </ul>
-        <div className="portal-module-section mt-5 border-t border-slate-800 pt-4">
-          {!collapsed && <p className="mb-2 px-4 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Cambiar módulo</p>}
-          <div className="space-y-1 px-2">
-            <ModuleLink href="/" label="Mi espacio" collapsed={collapsed} onNavigate={onNavigate} icon="⌂" />
-            {applications.filter((application) => application.code !== 'activos').map((application) => <ModuleLink key={application.code} href={application.code === 'agent-core' ? `${application.url}#token=${encodeURIComponent(localStorage.getItem('auth_token') || '')}&theme=${encodeURIComponent(localStorage.getItem('mrti_theme') || '')}` : application.url} label={application.name} collapsed={collapsed} onNavigate={onNavigate} icon="◆" />)}
-          </div>
-        </div>
-
         <div className="portal-module-section mt-5 border-t border-slate-800 pt-4">
           {!collapsed && <p className="mb-2 px-4 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Mi cuenta</p>}
           <div className="space-y-1 px-2">
