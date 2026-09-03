@@ -62,10 +62,37 @@ npm run import:incoming-documents
 pm2 restart mrti-activos-api --update-env
 ```
 
+El importador comprueba tamaño y SHA-256 entre origen y destino, registra el
+hash en `sap_documentos` y falla si encuentra un PDF sin metadatos o un registro
+sin archivo. Después de retirar el directorio de entrada puede ejecutarse de
+nuevo: valida el almacén oficial sin depender del respaldo antiguo.
+
+## Cierre del directorio de entrada (2026-09-03)
+
+Se revisó el contenido completo de `_incoming-activos/ti-assets` contra el
+módulo oficial y contra `ActivosTI` en vivo:
+
+- Los 53 PDF tienen un único destino oficial y coincidencia SHA-256 exacta.
+- Los 270 activos y los catálogos no sensibles están representados por la
+  sincronización vigente: 124 componentes, 46 impresoras, 13 Starlink, 7
+  FortiGate, 3 dominios, 1 mantenimiento, 35 unidades, 53 documentos y 3
+  configuraciones de alerta.
+- `Act.xlsx`, `Antivirus.xlsx` y las hojas operativas de
+  `2026_-_Activo_Fijo-CLUDE.xlsx` son instantáneas anteriores a la base viva;
+  no se conservaron como una segunda fuente de verdad.
+- No se trasladaron `.env`, usuarios/autenticación, passwords, hojas de cuentas
+  ni secretos NVR. Tampoco se trasladaron `node_modules`, builds ni copias
+  antiguas de la interfaz.
+- El módulo oficial cubre la edición del inventario, carga documental y
+  mantenimiento, además de consulta, búsqueda, orden y retiro lógico de los
+  catálogos, unidades, alertas, dashboard y sincronización. No se copió el CRUD
+  directo del sistema anterior sobre los catálogos de `ActivosTI`: los espejos
+  permanecen de solo lectura para no crear dos propietarios del mismo dato.
+
 ## Reversión
 
 Reconstruir el frontend desde el commit anterior y reiniciar
 `mrti-activos-api`. Las tablas `sap_*`, las columnas de archivado y los PDF
-pueden permanecer: son aditivos y el código anterior los ignora. No se debe
-borrar `_incoming-activos` hasta que el propietario confirme el periodo de
-retención del respaldo.
+pueden permanecer: son aditivos y el código anterior los ignora. El retiro de
+`_incoming-activos` se conserva temporalmente fuera del workspace para permitir
+una recuperación puntual sin volver a exponerlo en el árbol de trabajo.
