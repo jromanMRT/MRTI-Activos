@@ -34,6 +34,13 @@ function resourceOrThrow(name) {
   return { id: 'id', archivable: true, ...config };
 }
 
+export function resolveResourceSort(config, sort, order) {
+  const idColumn = config.id || 'id';
+  const column = config.columns.includes(sort) ? sort : idColumn;
+  const direction = String(order).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  return `\`${column}\` ${direction}`;
+}
+
 function searchableWhere(config, query) {
   const clauses = [];
   const values = [];
@@ -134,8 +141,9 @@ assetSuiteRouter.get('/resources/:resource', async (req, res, next) => {
     const { sql, values } = searchableWhere(config, req.query);
     const limit = Math.min(Math.max(Number(req.query.limit) || 300, 1), 1000);
     const idColumn = config.id;
-    const [rows] = await pool.query(`SELECT ${config.columns.map((column) => `\`${column}\``).join(', ')} FROM \`${config.table}\` ${sql} ORDER BY \`${idColumn}\` DESC LIMIT ?`, [...values, limit]);
-    res.json({ data: rows, meta: { resource: req.params.resource, limit } });
+    const orderSql = resolveResourceSort(config, req.query.sort, req.query.order);
+    const [rows] = await pool.query(`SELECT ${config.columns.map((column) => `\`${column}\``).join(', ')} FROM \`${config.table}\` ${sql} ORDER BY ${orderSql}, \`${idColumn}\` DESC LIMIT ?`, [...values, limit]);
+    res.json({ data: rows, meta: { resource: req.params.resource, limit, sort: orderSql } });
   } catch (error) { next(error); }
 });
 

@@ -19,4 +19,7 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
   assert.match(form, /PDF, JPG o PNG/);
   assert.match(suite, /Dashboard de activos/);
   assert.match(suite, /Alertas principales/);
+  assert.match(suite, /Ocultar claves/);
+  assert.match(suite, /aria-sort/);
+  assert.match(suite, /SortableTh/);
 });

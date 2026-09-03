@@ -25,6 +25,24 @@ function display(value) {
   return String(value);
 }
 
+const TABLE_COLLATOR = new Intl.Collator('es-MX', { numeric: true, sensitivity: 'base' });
+const COLUMN_LABELS = {
+  center_code: 'Código TI', source_ids: 'IDs de origen', detected_at: 'Detectado', last_seen_at: 'Última detección',
+  tipo: 'Tipo', marca: 'Marca', modelo: 'Modelo', numero_serie: 'Serie', usuario_asignado: 'Usuario asignado',
+  ms_cuenta: 'Cuenta Microsoft', ms_licencia: 'Licencia Microsoft', software: 'Software', proyecto: 'Proyecto',
+  fecha_expira: 'Vencimiento', av_licencia: 'Licencia antivirus', fecha_vence: 'Vencimiento',
+};
+function columnLabel(field) { return COLUMN_LABELS[field] || field.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase()); }
+function sortTableRows(rows, field, order) {
+  return [...rows].sort((left, right) => {
+    const a = left[field]; const b = right[field];
+    const aEmpty = a === null || a === undefined || a === ''; const bEmpty = b === null || b === undefined || b === '';
+    if (aEmpty || bEmpty) return aEmpty === bEmpty ? 0 : aEmpty ? 1 : -1;
+    const comparison = typeof a === 'number' && typeof b === 'number' ? a - b : TABLE_COLLATOR.compare(String(a), String(b));
+    return order === 'asc' ? comparison : -comparison;
+  });
+}
+
 export function AssetSuiteOverviewPage() {
   const [summary, setSummary] = useState(null); const [dashboard, setDashboard] = useState(null); const [alerts, setAlerts] = useState(null); const [error, setError] = useState(''); const [syncing, setSyncing] = useState(false);
   const isAdmin = profile().role === 'administrator';
@@ -89,20 +107,25 @@ function Distribution({ title, rows, total }) { const max = Math.max(...rows.map
 
 export function AssetCatalogPage() {
   const { resource } = useParams(); const config = CATALOGS[resource]; const isAdmin = profile().role === 'administrator';
-  const [rows, setRows] = useState([]); const [q, setQ] = useState(''); const [includeArchived, setIncludeArchived] = useState(false); const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [revealed, setRevealed] = useState({});
-  const query = useMemo(() => { const p = new URLSearchParams(); if (q) p.set('q', q); if (includeArchived) p.set('includeArchived', '1'); return p.toString(); }, [q, includeArchived]);
-  function load() { if (!config) return; setLoading(true); setError(''); apiFetch(`/activos-suite/resources/${resource}?${query}`).then((body) => setRows(body.data)).catch((err) => setError(err.message)).finally(() => setLoading(false)); }
+  const [rows, setRows] = useState([]); const [q, setQ] = useState(''); const [includeArchived, setIncludeArchived] = useState(false); const [sort, setSort] = useState(''); const [order, setOrder] = useState('asc'); const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [revealed, setRevealed] = useState({});
+  const activeSort = config?.columns.some(([key]) => key === sort) ? sort : config?.columns[0]?.[0] || '';
+  const query = useMemo(() => { const p = new URLSearchParams(); if (q) p.set('q', q); if (includeArchived) p.set('includeArchived', '1'); if (activeSort) p.set('sort', activeSort); p.set('order', order); return p.toString(); }, [q, includeArchived, activeSort, order]);
+  function load() { if (!config) return; setLoading(true); setError(''); setRevealed({}); apiFetch(`/activos-suite/resources/${resource}?${query}`).then((body) => setRows(body.data)).catch((err) => setError(err.message)).finally(() => setLoading(false)); }
   useEffect(() => { void load(); }, [resource, query]);
   if (!config) return <Message error="Catálogo no reconocido" />;
+  function changeSort(nextSort) { if (activeSort === nextSort) setOrder((current) => current === 'asc' ? 'desc' : 'asc'); else { setSort(nextSort); setOrder('asc'); } }
   async function toggleArchive(row) { try { await apiFetch(`/activos-suite/resources/${resource}/${row.id}/${row.archived_at ? 'restore' : 'archive'}`, { method: 'PATCH', body: '{}' }); load(); } catch (err) { setError(err.message); } }
-  async function reveal(row) { try { const body = await apiFetch(`/activos-suite/resources/${resource}/${row.id}/secret`); setRevealed((current) => ({ ...current, [row.id]: body.data })); } catch (err) { setError(err.message); } }
+  async function toggleReveal(row) {
+    if (Object.prototype.hasOwnProperty.call(revealed, row.id)) { setRevealed((current) => { const next = { ...current }; delete next[row.id]; return next; }); return; }
+    try { const body = await apiFetch(`/activos-suite/resources/${resource}/${row.id}/secret`); setRevealed((current) => ({ ...current, [row.id]: body.data })); } catch (err) { setError(err.message); }
+  }
   async function download(row) { try { await apiDownload(`/activos-suite/documents/${row.id}/download`, row.archivo); } catch (err) { setError(err.message); } }
   const actions = (isAdmin && config.archivable !== false) || (isAdmin && config.secret) || config.document;
   return <div>
     <div className="mb-5"><Link to="/operacion" className="text-sm text-sky-400 hover:underline">← Operación de activos</Link><h1 className="mt-2 text-2xl font-bold">{config.title}</h1>{config.description && <p className="mt-1 text-sm text-slate-400">{config.description}</p>}</div>
     <div className="mb-4 flex flex-wrap gap-3"><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar…" className="min-w-64 flex-1 rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm" />{isAdmin && config.archivable !== false && <label className="flex items-center gap-2 rounded-lg border border-slate-800 px-3 text-sm text-slate-300"><input type="checkbox" checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} /> Mostrar archivados</label>}</div>
     {error && <Message error={error} />}
-    <div className="overflow-x-auto rounded-xl border border-slate-800"><table className="min-w-full text-sm"><thead className="bg-slate-900 text-left text-slate-400"><tr>{config.columns.map(([key, label]) => <th key={key} className="whitespace-nowrap px-4 py-3 font-medium">{label}</th>)}{actions && <th className="px-4 py-3 font-medium">Acciones</th>}</tr></thead><tbody>{loading ? <tr><td colSpan={config.columns.length + 1} className="p-8 text-center text-slate-500">Cargando…</td></tr> : rows.length === 0 ? <tr><td colSpan={config.columns.length + 1} className="p-8 text-center text-slate-500">Sin resultados</td></tr> : rows.map((row) => <tr key={row.id ?? row.clave} className={`border-t border-slate-800 ${row.archived_at ? 'opacity-55' : 'hover:bg-slate-900/60'}`}>{config.columns.map(([key]) => <td key={key} className="max-w-72 px-4 py-3"><span className="block truncate" title={display(row[key])}>{display(row[key])}</span>{key === config.columns[0][0] && revealed[row.id] && <span className="mt-2 block whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-xs text-amber-300">{Object.entries(revealed[row.id]).map(([name, value]) => `${name}: ${value || '—'}`).join('\n')}</span>}</td>)}{actions && <td className="whitespace-nowrap px-4 py-3"><div className="flex gap-2">{config.document && row.local_storage_path && <button onClick={() => download(row)} className="text-sky-400 hover:underline">Descargar</button>}{isAdmin && config.secret && <button onClick={() => reveal(row)} className="text-amber-400 hover:underline">Ver claves</button>}{isAdmin && config.archivable !== false && <button onClick={() => toggleArchive(row)} className={row.archived_at ? 'text-emerald-400 hover:underline' : 'text-red-400 hover:underline'}>{row.archived_at ? 'Restaurar' : 'Archivar'}</button>}</div></td>}</tr>)}</tbody></table></div>
+    <div className="overflow-x-auto rounded-xl border border-slate-800"><table className="min-w-full text-sm"><thead className="bg-slate-900 text-left text-slate-400"><tr>{config.columns.map(([key, label]) => <SortableTh key={key} sortKey={key} sort={activeSort} order={order} onSort={changeSort}>{label}</SortableTh>)}{actions && <th className="px-4 py-3 font-medium">Acciones</th>}</tr></thead><tbody>{loading ? <tr><td colSpan={config.columns.length + (actions ? 1 : 0)} className="p-8 text-center text-slate-500">Cargando…</td></tr> : rows.length === 0 ? <tr><td colSpan={config.columns.length + (actions ? 1 : 0)} className="p-8 text-center text-slate-500">Sin resultados</td></tr> : rows.map((row) => <tr key={row.id ?? row.clave} className={`border-t border-slate-800 ${row.archived_at ? 'opacity-55' : 'hover:bg-slate-900/60'}`}>{config.columns.map(([key]) => <td key={key} className="max-w-72 px-4 py-3"><span className="block truncate" title={display(row[key])}>{display(row[key])}</span>{key === config.columns[0][0] && Object.prototype.hasOwnProperty.call(revealed, row.id) && <span className="mt-2 block whitespace-pre-wrap rounded bg-black/30 p-2 font-mono text-xs text-amber-300">{Object.entries(revealed[row.id]).map(([name, value]) => `${name}: ${value || '—'}`).join('\n')}</span>}</td>)}{actions && <td className="whitespace-nowrap px-4 py-3"><div className="flex gap-2">{config.document && row.local_storage_path && <button onClick={() => download(row)} className="text-sky-400 hover:underline">Descargar</button>}{isAdmin && config.secret && <button onClick={() => toggleReveal(row)} className="text-amber-400 hover:underline">{Object.prototype.hasOwnProperty.call(revealed, row.id) ? 'Ocultar claves' : 'Ver claves'}</button>}{isAdmin && config.archivable !== false && <button onClick={() => toggleArchive(row)} className={row.archived_at ? 'text-emerald-400 hover:underline' : 'text-red-400 hover:underline'}>{row.archived_at ? 'Restaurar' : 'Archivar'}</button>}</div></td>}</tr>)}</tbody></table></div>
   </div>;
 }
 
@@ -114,5 +137,11 @@ export function AssetAlertsPage() {
 }
 
 function AlertCard({ title, count }) { return <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5"><p className="text-sm text-amber-200">{title}</p><p className="mt-2 text-3xl font-bold text-amber-400">{count}</p></div>; }
-function AlertTable({ title, rows, fields }) { return <section className="mb-5 rounded-xl border border-slate-800 p-4"><h2 className="mb-3 font-semibold">{title} <span className="text-slate-500">({rows.length})</span></h2>{rows.length === 0 ? <p className="text-sm text-slate-500">Sin pendientes.</p> : <div className="overflow-x-auto"><table className="min-w-full text-sm"><tbody>{rows.map((row, index) => <tr key={row.id || index} className="border-t border-slate-800 first:border-0">{fields.map((field) => <td key={field} className="px-3 py-2">{display(row[field])}</td>)}</tr>)}</tbody></table></div>}</section>; }
+function AlertTable({ title, rows, fields }) {
+  const [sort, setSort] = useState(fields[0]); const [order, setOrder] = useState('asc');
+  const sortedRows = useMemo(() => sortTableRows(rows, sort, order), [rows, sort, order]);
+  function changeSort(nextSort) { if (sort === nextSort) setOrder((current) => current === 'asc' ? 'desc' : 'asc'); else { setSort(nextSort); setOrder('asc'); } }
+  return <section className="mb-5 rounded-xl border border-slate-800 p-4"><h2 className="mb-3 font-semibold">{title} <span className="text-slate-500">({rows.length})</span></h2>{rows.length === 0 ? <p className="text-sm text-slate-500">Sin pendientes.</p> : <div className="overflow-x-auto"><table className="min-w-full text-sm"><thead className="bg-slate-900 text-left text-slate-400"><tr>{fields.map((field) => <SortableTh key={field} sortKey={field} sort={sort} order={order} onSort={changeSort}>{columnLabel(field)}</SortableTh>)}</tr></thead><tbody>{sortedRows.map((row, index) => <tr key={row.id || index} className="border-t border-slate-800">{fields.map((field) => <td key={field} className="px-3 py-2">{display(row[field])}</td>)}</tr>)}</tbody></table></div>}</section>;
+}
+function SortableTh({ children, sortKey, sort, order, onSort }) { const active = sort === sortKey; return <th className="whitespace-nowrap px-4 py-3 font-medium" aria-sort={active ? (order === 'asc' ? 'ascending' : 'descending') : undefined}><button type="button" onClick={() => onSort(sortKey)} className={`inline-flex items-center gap-1 hover:text-slate-200 ${active ? 'text-sky-400' : ''}`}>{children}<span aria-hidden="true" className="text-[9px]">{active ? (order === 'asc' ? '▲' : '▼') : '⇅'}</span></button></th>; }
 function Message({ error }) { return <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300">{error}</div>; }
