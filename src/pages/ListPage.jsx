@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { apiFetch } from '../api.js';
+import { apiFetch, rhAssetAssignmentProfilesFetch } from '../api.js';
 
 const EMPTY_STATS = { total: 0, activos: 0, mantenimiento: 0, inactivos: 0, baja: 0 };
 
@@ -18,6 +18,7 @@ export function ListPage() {
   const [order, setOrder] = useState('desc');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [employeeProfiles, setEmployeeProfiles] = useState({ byEmployeeId: {}, byPortalUserId: {} });
 
   useEffect(() => {
     void Promise.all([
@@ -43,6 +44,27 @@ export function ListPage() {
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
   }, [q, area, tipo, estado, unidad, empresa, sort, order]);
+
+  useEffect(() => {
+    let current = true;
+    const references = items.flatMap((item) => item.rh_employee_id
+      ? [{ employee_id: item.rh_employee_id }]
+      : item.portal_user_id ? [{ portal_user_id: item.portal_user_id }] : []);
+    if (!references.length) {
+      setEmployeeProfiles({ byEmployeeId: {}, byPortalUserId: {} });
+      return () => { current = false; };
+    }
+    rhAssetAssignmentProfilesFetch(references).then((profiles) => {
+      if (!current) return;
+      setEmployeeProfiles({
+        byEmployeeId: Object.fromEntries(profiles.map((profile) => [String(profile.id), profile])),
+        byPortalUserId: Object.fromEntries(profiles.filter((profile) => profile.portal_user_id).map((profile) => [profile.portal_user_id, profile])),
+      });
+    }).catch(() => {
+      if (current) setEmployeeProfiles({ byEmployeeId: {}, byPortalUserId: {} });
+    });
+    return () => { current = false; };
+  }, [items]);
 
   function changeSort(nextSort) {
     if (sort === nextSort) {
@@ -91,7 +113,11 @@ export function ListPage() {
               <tbody>
                 {loading ? <tr><td colSpan={10} className="px-4 py-12 text-center text-slate-500">Cargando inventario…</td></tr>
                   : items.length === 0 ? <tr><td colSpan={10} className="px-4 py-12 text-center text-slate-500">No hay equipos que coincidan con los filtros.</td></tr>
-                    : items.map((item) => <AssetRow key={item.id} item={item} />)}
+                    : items.map((item) => <AssetRow key={item.id} item={item} employeeProfile={
+                      (item.rh_employee_id && employeeProfiles.byEmployeeId[String(item.rh_employee_id)])
+                      || (item.portal_user_id && employeeProfiles.byPortalUserId[item.portal_user_id])
+                      || null
+                    } />)}
               </tbody>
             </table>
           </div>
@@ -101,10 +127,12 @@ export function ListPage() {
   );
 }
 
-function AssetRow({ item }) {
+function AssetRow({ item, employeeProfile }) {
   const age = assetAge(item.fecha_compra);
   const navigate = useNavigate();
   const linkedToRh = Boolean(item.portal_user_id || item.tercero_id || item.rh_employee_id);
+  const inheritedEmployeeId = item.id_empleado && item.id_empleado !== '-' ? item.id_empleado : null;
+  const employeeNumber = employeeProfile?.employee_number || inheritedEmployeeId;
   return (
     <tr
       className="cursor-pointer border-t border-slate-800 align-top transition hover:bg-slate-900/75"
@@ -114,7 +142,7 @@ function AssetRow({ item }) {
       <td className="px-3 py-3.5"><span className="rounded bg-slate-800 px-2 py-1 text-[10px] font-medium text-slate-300">{item.tipo || '—'}</span></td>
       <td className="px-3 py-3.5"><strong className="block text-slate-100">{item.marca || '—'}</strong><span className="mt-0.5 block max-w-40 truncate text-slate-500" title={item.modelo || item.descripcion}>{item.modelo || item.descripcion || '—'}</span></td>
       <td className="px-3 py-3.5 font-mono"><span className="block text-slate-200">{item.service_tag || '—'}</span><span className="mt-0.5 block text-[10px] text-slate-500">{item.numero_serie || '—'}</span></td>
-      <td className="px-3 py-3.5"><AssignmentBadge assigned={linkedToRh} /><span className="mt-1 block max-w-48 text-slate-100">{item.usuario_asignado || '—'}</span><span className="mt-0.5 block text-[10px] text-slate-500">ID: {item.id_empleado || '—'}</span></td>
+      <td className="px-3 py-3.5"><AssignmentBadge assigned={linkedToRh} /><span className="mt-1 block max-w-48 text-slate-100">{item.usuario_asignado || '—'}</span><span className="mt-0.5 block text-[10px] text-slate-500">ID: {employeeNumber || '—'}</span></td>
       <td className="px-3 py-3.5"><span className="block text-slate-200">{item.unidad || '—'}</span><span className="mt-0.5 block max-w-36 truncate text-[10px] text-slate-500" title={item.area}>{item.area || '—'}</span></td>
       <td className="px-3 py-3.5"><span className="block max-w-48 text-slate-200">{item.empresa || '—'}</span></td>
       <td className="px-3 py-3.5"><EstadoBadge estado={item.estado} /></td>

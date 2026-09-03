@@ -147,6 +147,25 @@ export async function rhAssetAssignmentProfileFetch({ employeeId, portalUserId }
   return body.data;
 }
 
+export async function rhAssetAssignmentProfilesFetch(references) {
+  const token = getToken();
+  const response = await fetch('/rh-api/api/rh-self/asset-assignment-profiles', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ references }),
+  });
+  if (response.status === 401) {
+    goToPortalLogin();
+    throw new Error('No autenticado');
+  }
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || `MRTI RH respondió ${response.status}`);
+  return body.data || [];
+}
+
 export function obsLinkDevice(deviceId, assetUid) {
   return obsRequest(`/links/${encodeURIComponent(deviceId)}`, {
     method: 'PATCH',
