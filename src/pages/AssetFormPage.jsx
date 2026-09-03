@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiDownload, apiFetch, obsFetch, obsLinkDevice, obsUnlinkedDevices, rhAssetAssignmentProfileFetch, rhDirectoryFetch, ticketsFetch } from '../api.js';
 
 export function AssetFormPage({ mode }) {
@@ -211,10 +211,9 @@ function DocumentIcon() {
   return <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0 text-sky-400" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 2h8l4 4v16H6z" /><path d="M14 2v5h5M9 13h6M9 17h6" /></svg>;
 }
 
-// Quien tiene el activo hoy puede ser un empleado con cuenta en Core
-// (portal_user_id, administrado desde ahí) o un tercero registrado en
-// /terceros (contratista, proveedor, visita) -- este panel solo maneja la
-// segunda vía; la primera sigue siendo cosa de Core.
+// Toda persona asignable se registra primero en RH, venga o no de CONTPAQi.
+// Activos conserva únicamente la referencia estable de RH/Core y presenta
+// la ficha laboral en vivo.
 function employeeLabel(employee) {
   const name = `${employee.first_name} ${employee.last_name_p}${employee.last_name_m ? ` ${employee.last_name_m}` : ''}`;
   const detail = [employee.job_title, employee.department_name].filter(Boolean).join(' · ');
@@ -222,20 +221,14 @@ function employeeLabel(employee) {
 }
 
 function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId, usuarioAsignado, onChange }) {
-  const [terceros, setTerceros] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [employeeSearch, setEmployeeSearch] = useState('');
-  const [selected, setSelected] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [holderProfile, setHolderProfile] = useState(null);
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
-
-  useEffect(() => {
-    apiFetch('/terceros').then((r) => setTerceros(r.data)).catch(() => {});
-  }, []);
 
   useEffect(() => {
     rhDirectoryFetch(employeeSearch).then(setEmployees).catch((err) => setError(err.message));
@@ -272,21 +265,6 @@ function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId, usuar
       .catch((err) => { if (current) setError(err.message); });
     return () => { current = false; };
   }, [selectedEmployeeId]);
-
-  async function assign() {
-    if (!selected) return;
-    setBusy(true);
-    setError('');
-    try {
-      await apiFetch(`/activos/${assetId}/asignaciones`, { method: 'POST', body: JSON.stringify({ tercero_id: selected }) });
-      setSelected('');
-      await onChange();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function assignEmployee() {
     if (!selectedEmployee) return;
@@ -333,7 +311,7 @@ function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId, usuar
           {portalUserId ? (
             <span><span className="text-slate-500">Empleado (Core):</span> <span className="text-slate-200">{usuarioAsignado || portalUserId}</span></span>
           ) : terceroId ? (
-            <span><span className="text-slate-500">Tercero externo:</span> <span className="text-slate-200">{usuarioAsignado}</span></span>
+            <span><span className="text-slate-500">Asignación heredada:</span> <span className="text-slate-200">{usuarioAsignado}</span></span>
           ) : rhEmployeeId ? (
             <span><span className="text-slate-500">Empleado (RH, sin cuenta de Core aún):</span> <span className="text-slate-200">{usuarioAsignado}</span></span>
           ) : (
@@ -382,23 +360,10 @@ function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId, usuar
           <p className="text-xs text-slate-500 mt-2">Este empleado todavía no tiene una cuenta de Core vinculada — el equipo quedará asignado a su ficha de RH y se enlazará a Core automáticamente cuando la tenga.</p>
         )}
         {selectedProfile && <div className="mt-3"><EmployeeAssignmentDetails profile={selectedProfile} title="Datos que se mostrarán desde RH" /></div>}
+        <p className="mt-3 text-xs text-slate-500">
+          Si la persona no viene de CONTPAQi, regístrala como colaborador en <a href="/rh/empleados/nuevo" className="text-sky-400 hover:underline">MRTI RH</a> y después selecciónala aquí.
+        </p>
       </div>
-
-      <div className="flex flex-col md:flex-row gap-2 mt-4">
-        <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2 basis-full">Tercero externo (sin ficha en RH)</p>
-        <select className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm" value={selected} onChange={(e) => setSelected(e.target.value)}>
-          <option value="">Asignar a un tercero registrado…</option>
-          {terceros.map((t) => (
-            <option key={t.id} value={t.id}>{t.nombre}{t.organizacion ? ` (${t.organizacion})` : ''}</option>
-          ))}
-        </select>
-        <button type="button" disabled={!selected || busy} onClick={assign} className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-[#2a1c05] font-semibold px-4 py-2 rounded-lg whitespace-nowrap">
-          {busy ? 'Asignando…' : 'Asignar'}
-        </button>
-      </div>
-      <p className="text-xs text-slate-500 mt-2">
-        ¿No está en la lista? <Link to="/terceros" className="text-sky-400 hover:underline">Regístralo primero</Link>.
-      </p>
     </fieldset>
   );
 }
