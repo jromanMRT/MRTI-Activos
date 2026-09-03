@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { apiDownload, apiFetch, obsFetch, obsLinkDevice, obsUnlinkedDevices, rhDirectoryFetch, ticketsFetch } from '../api.js';
+import { apiDownload, apiFetch, obsFetch, obsLinkDevice, obsUnlinkedDevices, rhAssetAssignmentProfileFetch, rhDirectoryFetch, ticketsFetch } from '../api.js';
 
 export function AssetFormPage({ mode }) {
   const { id } = useParams();
@@ -95,7 +95,7 @@ export function AssetFormPage({ mode }) {
   const groupsByKey = Object.fromEntries(groups.map((group) => [group.key, group]));
   const tabs = [
     { key: 'general', label: 'General', groups: ['identificacion', 'software'] },
-    { key: 'asignacion', label: 'Asignación', groups: ['asignacion'] },
+    ...(mode === 'edit' ? [{ key: 'asignacion', label: 'Asignación', groups: [] }] : []),
     { key: 'administracion', label: 'Administración', groups: ['compra', 'baja'] },
     { key: 'windows', label: 'Windows', groups: ['windows'] },
     { key: 'microsoft365', label: 'Microsoft', groups: ['microsoft365'] },
@@ -229,6 +229,9 @@ function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId, usuar
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [holderProfile, setHolderProfile] = useState(null);
+  const [selectedProfile, setSelectedProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   useEffect(() => {
     apiFetch('/terceros').then((r) => setTerceros(r.data)).catch(() => {});
@@ -238,9 +241,37 @@ function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId, usuar
     rhDirectoryFetch(employeeSearch).then(setEmployees).catch((err) => setError(err.message));
   }, [employeeSearch]);
 
+  useEffect(() => {
+    let current = true;
+    if (terceroId || (!rhEmployeeId && !portalUserId)) {
+      setHolderProfile(null);
+      return () => { current = false; };
+    }
+    setHolderProfile(null);
+    setProfileLoading(true);
+    rhAssetAssignmentProfileFetch({ employeeId: rhEmployeeId, portalUserId })
+      .then((profile) => { if (current) setHolderProfile(profile); })
+      .catch((err) => { if (current) setError(err.message); })
+      .finally(() => { if (current) setProfileLoading(false); });
+    return () => { current = false; };
+  }, [rhEmployeeId, portalUserId, terceroId]);
+
   const activeEmployees = employees.filter((employee) => employee.employment_status === 'active');
   const inactiveEmployees = employees.filter((employee) => employee.employment_status !== 'active');
   const selectedEmployee = employees.find((employee) => String(employee.id) === String(selectedEmployeeId));
+
+  useEffect(() => {
+    let current = true;
+    if (!selectedEmployeeId) {
+      setSelectedProfile(null);
+      return () => { current = false; };
+    }
+    setSelectedProfile(null);
+    rhAssetAssignmentProfileFetch({ employeeId: selectedEmployeeId })
+      .then((profile) => { if (current) setSelectedProfile(profile); })
+      .catch((err) => { if (current) setError(err.message); });
+    return () => { current = false; };
+  }, [selectedEmployeeId]);
 
   async function assign() {
     if (!selected) return;
@@ -315,6 +346,11 @@ function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId, usuar
           </button>
         )}
       </div>
+      {(profileLoading || holderProfile) && (
+        <div className="mt-4">
+          {profileLoading ? <p className="text-sm text-slate-500">Consultando ficha vigente en RH…</p> : <EmployeeAssignmentDetails profile={holderProfile} />}
+        </div>
+      )}
       <div className="mt-4">
         <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2">Empleado registrado en RH</p>
         <div className="flex flex-col md:flex-row gap-2">
@@ -345,6 +381,7 @@ function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId, usuar
         {selectedEmployee && !selectedEmployee.portal_user_id && (
           <p className="text-xs text-slate-500 mt-2">Este empleado todavía no tiene una cuenta de Core vinculada — el equipo quedará asignado a su ficha de RH y se enlazará a Core automáticamente cuando la tenga.</p>
         )}
+        {selectedProfile && <div className="mt-3"><EmployeeAssignmentDetails profile={selectedProfile} title="Datos que se mostrarán desde RH" /></div>}
       </div>
 
       <div className="flex flex-col md:flex-row gap-2 mt-4">
@@ -363,6 +400,31 @@ function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId, usuar
         ¿No está en la lista? <Link to="/terceros" className="text-sky-400 hover:underline">Regístralo primero</Link>.
       </p>
     </fieldset>
+  );
+}
+
+function EmployeeAssignmentDetails({ profile, title = 'Datos vigentes en RH' }) {
+  const details = [
+    ['Empresa', profile.company_name],
+    ['Número de empleado', profile.employee_number],
+    ['Empleado', profile.full_name],
+    ['Unidad', profile.unit_name],
+    ['Área', profile.area_name],
+    ['Celular', profile.phone],
+  ];
+  return (
+    <section className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-4">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-sky-400">{title}</p>
+      <dl className="grid grid-cols-1 gap-x-5 gap-y-3 md:grid-cols-2">
+        {details.map(([label, value]) => (
+          <div key={label}>
+            <dt className="text-xs text-slate-500">{label}</dt>
+            <dd className="mt-0.5 text-sm text-slate-200">{value || 'Sin registrar'}</dd>
+          </div>
+        ))}
+      </dl>
+      {profile.job_title && <p className="mt-3 border-t border-slate-800 pt-3 text-xs text-slate-500">Puesto: <span className="text-slate-300">{profile.job_title}</span></p>}
+    </section>
   );
 }
 

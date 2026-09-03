@@ -20,18 +20,6 @@ export const FIELD_GROUPS = [
     ],
   },
   {
-    key: 'asignacion',
-    label: 'Asignación',
-    fields: [
-      { key: 'empresa', label: 'Empresa', type: 'text' },
-      { key: 'id_empleado', label: 'ID de empleado', type: 'text' },
-      { key: 'usuario_asignado', label: 'Usuario asignado', type: 'text' },
-      { key: 'unidad', label: 'Unidad', type: 'text' },
-      { key: 'area', label: 'Área', type: 'text' },
-      { key: 'cel_empleado', label: 'Celular de empleado', type: 'text' },
-    ],
-  },
-  {
     key: 'compra',
     label: 'Compra y administración',
     fields: [
