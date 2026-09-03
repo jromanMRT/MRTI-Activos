@@ -130,18 +130,42 @@ export function AssetCatalogPage() {
 }
 
 export function AssetAlertsPage() {
-  const [data, setData] = useState(null); const [error, setError] = useState('');
+  const [data, setData] = useState(null); const [error, setError] = useState(''); const [selectedAlert, setSelectedAlert] = useState('all');
   useEffect(() => { apiFetch('/activos-suite/alerts').then((body) => setData(body.data)).catch((err) => setError(err.message)); }, []);
   if (error) return <Message error={error} />; if (!data) return <p className="text-slate-500">Cargando alertas…</p>;
-  return <div><h1 className="text-2xl font-bold">Alertas de activos</h1><p className="mb-6 mt-1 text-sm text-slate-400">Pendientes calculados desde la copia local.</p><div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6"><AlertCard title="Duplicados en origen" count={data.duplicados.length} /><AlertCard title="Sin documentos" count={data.sin_documentos} /><AlertCard title="Datos incompletos" count={data.incompletos.length} /><AlertCard title="FortiGate" count={data.fortigate.length} /><AlertCard title="Antivirus" count={data.antivirus.length} /><AlertCard title="Office 365" count={data.office365.length} /></div><AlertTable title="Códigos duplicados en el origen" rows={data.duplicados} fields={['center_code', 'source_ids', 'detected_at', 'last_seen_at']} /><AlertTable title="Datos incompletos" rows={data.incompletos} fields={['center_code', 'tipo', 'marca', 'modelo', 'numero_serie', 'usuario_asignado']} /><AlertTable title="Licencias perpetuas" rows={data.perpetuas} fields={['center_code', 'usuario_asignado', 'ms_cuenta', 'ms_licencia']} /><AlertTable title="FortiGate vencido o próximo" rows={data.fortigate} fields={['software', 'numero_serie', 'proyecto', 'fecha_expira']} /><AlertTable title="Antivirus vencido o próximo" rows={data.antivirus} fields={['center_code', 'usuario_asignado', 'av_licencia', 'fecha_vence']} /><AlertTable title="Office 365 vencido o próximo" rows={data.office365} fields={['center_code', 'usuario_asignado', 'ms_licencia', 'fecha_vence']} /></div>;
+  const sections = [
+    { key: 'duplicados', label: 'Duplicados', title: 'Códigos duplicados en el origen', rows: data.duplicados, fields: ['center_code', 'source_ids', 'detected_at', 'last_seen_at'] },
+    { key: 'sin_documentos', label: 'Sin documentos', title: 'Activos sin documentos', count: data.sin_documentos, rows: data.sin_documentos_detalle || [], fields: ['center_code', 'tipo', 'marca', 'modelo', 'usuario_asignado', 'unidad'] },
+    { key: 'incompletos', label: 'Datos incompletos', title: 'Datos incompletos', rows: data.incompletos, fields: ['center_code', 'tipo', 'marca', 'modelo', 'numero_serie', 'usuario_asignado'] },
+    { key: 'perpetuas', label: 'Licencias perpetuas', title: 'Licencias perpetuas', rows: data.perpetuas, fields: ['center_code', 'usuario_asignado', 'ms_cuenta', 'ms_licencia'] },
+    { key: 'fortigate', label: 'FortiGate', title: 'FortiGate vencido o próximo', rows: data.fortigate, fields: ['software', 'numero_serie', 'proyecto', 'fecha_expira'] },
+    { key: 'antivirus', label: 'Antivirus', title: 'Antivirus vencido o próximo', rows: data.antivirus, fields: ['center_code', 'usuario_asignado', 'av_licencia', 'fecha_vence'] },
+    { key: 'office365', label: 'Office 365', title: 'Office 365 vencido o próximo', rows: data.office365, fields: ['center_code', 'usuario_asignado', 'ms_licencia', 'fecha_vence'] },
+  ].map((section) => ({ ...section, count: section.count ?? section.rows.length }));
+  const visibleSections = selectedAlert === 'all' ? sections : sections.filter((section) => section.key === selectedAlert);
+  const totalAlerts = sections.reduce((total, section) => total + Number(section.count || 0), 0);
+  return <div>
+    <h1 className="text-2xl font-bold">Alertas de activos</h1>
+    <p className="mt-1 text-sm text-slate-400">Selecciona un tipo para revisar sólo los pendientes que necesitas.</p>
+    <div className="my-6 flex gap-2 overflow-x-auto pb-2" role="tablist" aria-label="Filtrar por tipo de alerta">
+      <AlertFilter active={selectedAlert === 'all'} count={totalAlerts} onClick={() => setSelectedAlert('all')}>Todas</AlertFilter>
+      {sections.map((section) => <AlertFilter key={section.key} active={selectedAlert === section.key} count={section.count} onClick={() => setSelectedAlert(section.key)}>{section.label}</AlertFilter>)}
+    </div>
+    <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {sections.map((section) => <AlertCard key={section.key} title={section.label} count={section.count} active={selectedAlert === section.key} onClick={() => setSelectedAlert(section.key)} />)}
+    </div>
+    <div className="mb-4 flex items-center justify-between gap-3"><p className="text-sm text-slate-400">Mostrando: <span className="font-semibold text-slate-200">{selectedAlert === 'all' ? 'Todas las alertas' : sections.find((section) => section.key === selectedAlert)?.label}</span></p>{selectedAlert !== 'all' && <button type="button" onClick={() => setSelectedAlert('all')} className="text-sm text-sky-400 hover:underline">Mostrar todas</button>}</div>
+    {visibleSections.map((section) => <AlertTable key={section.key} title={section.title} rows={section.rows} fields={section.fields} total={section.count} />)}
+  </div>;
 }
 
-function AlertCard({ title, count }) { return <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5"><p className="text-sm text-amber-200">{title}</p><p className="mt-2 text-3xl font-bold text-amber-400">{count}</p></div>; }
-function AlertTable({ title, rows, fields }) {
+function AlertFilter({ children, active, count, onClick }) { return <button type="button" role="tab" aria-selected={active} onClick={onClick} className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-sm transition ${active ? 'border-sky-400 bg-sky-500/15 text-sky-300' : 'border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-500'}`}>{children}<span className={`rounded-full px-2 py-0.5 text-xs ${active ? 'bg-sky-400/20' : 'bg-slate-800'}`}>{count}</span></button>; }
+function AlertCard({ title, count, active, onClick }) { return <button type="button" onClick={onClick} className={`rounded-xl border p-4 text-left transition hover:-translate-y-0.5 ${active ? 'border-sky-400 bg-sky-500/15 ring-1 ring-sky-400/40' : 'border-amber-500/30 bg-amber-500/10'}`}><p className={active ? 'text-sm text-sky-200' : 'text-sm text-amber-200'}>{title}</p><p className={active ? 'mt-2 text-3xl font-bold text-sky-300' : 'mt-2 text-3xl font-bold text-amber-400'}>{count}</p><p className="mt-1 text-xs text-slate-500">Ver sólo esta alerta</p></button>; }
+function AlertTable({ title, rows, fields, total = rows.length }) {
   const [sort, setSort] = useState(fields[0]); const [order, setOrder] = useState('asc');
   const sortedRows = useMemo(() => sortTableRows(rows, sort, order), [rows, sort, order]);
   function changeSort(nextSort) { if (sort === nextSort) setOrder((current) => current === 'asc' ? 'desc' : 'asc'); else { setSort(nextSort); setOrder('asc'); } }
-  return <section className="mb-5 rounded-xl border border-slate-800 p-4"><h2 className="mb-3 font-semibold">{title} <span className="text-slate-500">({rows.length})</span></h2>{rows.length === 0 ? <p className="text-sm text-slate-500">Sin pendientes.</p> : <div className="overflow-x-auto"><table className="min-w-full text-sm"><thead className="bg-slate-900 text-left text-slate-400"><tr>{fields.map((field) => <SortableTh key={field} sortKey={field} sort={sort} order={order} onSort={changeSort}>{columnLabel(field)}</SortableTh>)}</tr></thead><tbody>{sortedRows.map((row, index) => <tr key={row.id || index} className="border-t border-slate-800">{fields.map((field) => <td key={field} className="px-3 py-2">{display(row[field])}</td>)}</tr>)}</tbody></table></div>}</section>;
+  return <section className="mb-5 rounded-xl border border-slate-800 p-4"><h2 className="mb-3 font-semibold">{title} <span className="text-slate-500">({total})</span></h2>{rows.length === 0 ? <p className="text-sm text-slate-500">Sin pendientes.</p> : <div className="overflow-x-auto"><table className="min-w-full text-sm"><thead className="bg-slate-900 text-left text-slate-400"><tr>{fields.map((field) => <SortableTh key={field} sortKey={field} sort={sort} order={order} onSort={changeSort}>{columnLabel(field)}</SortableTh>)}</tr></thead><tbody>{sortedRows.map((row, index) => <tr key={row.id || index} className="border-t border-slate-800">{fields.map((field) => <td key={field} className="px-3 py-2">{display(row[field])}</td>)}</tr>)}</tbody></table>{total > rows.length && <p className="mt-3 text-xs text-slate-500">Se muestran los primeros {rows.length} de {total} pendientes.</p>}</div>}</section>;
 }
 function SortableTh({ children, sortKey, sort, order, onSort }) { const active = sort === sortKey; return <th className="whitespace-nowrap px-4 py-3 font-medium" aria-sort={active ? (order === 'asc' ? 'ascending' : 'descending') : undefined}><button type="button" onClick={() => onSort(sortKey)} className={`inline-flex items-center gap-1 hover:text-slate-200 ${active ? 'text-sky-400' : ''}`}>{children}<span aria-hidden="true" className="text-[9px]">{active ? (order === 'asc' ? '▲' : '▼') : '⇅'}</span></button></th>; }
 function Message({ error }) { return <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300">{error}</div>; }

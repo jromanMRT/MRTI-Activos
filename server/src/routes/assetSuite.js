@@ -117,11 +117,16 @@ assetSuiteRouter.get('/dashboard', async (_req, res, next) => {
 
 assetSuiteRouter.get('/alerts', async (_req, res, next) => {
   try {
-    const [missingResult, fortigateResult, antivirusResult, officeResult, perpetualResult, incompleteResult, duplicateResult] = await Promise.all([
+    const [missingResult, missingDetailResult, fortigateResult, antivirusResult, officeResult, perpetualResult, incompleteResult, duplicateResult] = await Promise.all([
       pool.query(`SELECT COUNT(*) AS total FROM activos a WHERE a.estado = 'Activo' AND NOT EXISTS (
         SELECT 1 FROM sap_documentos d WHERE d.archived_at IS NULL
           AND (d.asset_uid = a.asset_uid OR (d.asset_uid IS NULL AND d.center_code = a.center_code))
       )`),
+      pool.query(`SELECT a.id, a.center_code, a.tipo, a.marca, a.modelo, a.usuario_asignado, a.unidad
+        FROM activos a WHERE a.estado = 'Activo' AND NOT EXISTS (
+          SELECT 1 FROM sap_documentos d WHERE d.archived_at IS NULL
+            AND (d.asset_uid = a.asset_uid OR (d.asset_uid IS NULL AND d.center_code = a.center_code))
+        ) ORDER BY a.center_code LIMIT 500`),
       pool.query(`SELECT id, software, numero_serie, proyecto, fecha_expira FROM sap_fortigate WHERE archived_at IS NULL AND fecha_expira IS NOT NULL AND fecha_expira <= DATE_ADD(CURDATE(), INTERVAL 90 DAY) ORDER BY fecha_expira`),
       pool.query(`SELECT id, center_code, usuario_asignado, av_licencia, av_caducidad, DATE_ADD(av_caducidad, INTERVAL 1 YEAR) AS fecha_vence FROM activos WHERE estado = 'Activo' AND av_caducidad IS NOT NULL AND DATE_ADD(av_caducidad, INTERVAL 1 YEAR) <= DATE_ADD(CURDATE(), INTERVAL 90 DAY) ORDER BY fecha_vence`),
       pool.query(`SELECT id, center_code, usuario_asignado, ms_cuenta, ms_usuario, ms_licencia, fecha_suscripcion, anos_suscripcion, DATE_ADD(fecha_suscripcion, INTERVAL COALESCE(anos_suscripcion, 1) YEAR) AS fecha_vence FROM activos WHERE estado = 'Activo' AND fecha_suscripcion IS NOT NULL AND COALESCE(anos_suscripcion, 1) > 0 AND DATE_ADD(fecha_suscripcion, INTERVAL COALESCE(anos_suscripcion, 1) YEAR) <= DATE_ADD(CURDATE(), INTERVAL 90 DAY) ORDER BY fecha_vence`),
@@ -131,7 +136,7 @@ assetSuiteRouter.get('/alerts', async (_req, res, next) => {
     ]);
     const missingDocuments = missingResult[0][0];
     const duplicates = duplicateResult[0].map((row) => ({ ...row, source_ids: JSON.parse(row.source_ids_json || '[]').join(', ') }));
-    res.json({ data: { sin_documentos: missingDocuments.total, fortigate: fortigateResult[0], antivirus: antivirusResult[0], office365: officeResult[0], perpetuas: perpetualResult[0], incompletos: incompleteResult[0], duplicados: duplicates } });
+    res.json({ data: { sin_documentos: Number(missingDocuments.total || 0), sin_documentos_detalle: missingDetailResult[0], fortigate: fortigateResult[0], antivirus: antivirusResult[0], office365: officeResult[0], perpetuas: perpetualResult[0], incompletos: incompleteResult[0], duplicados: duplicates } });
   } catch (error) { next(error); }
 });
 
