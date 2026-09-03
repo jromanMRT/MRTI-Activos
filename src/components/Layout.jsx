@@ -6,7 +6,7 @@ import { ModuleHeader } from './ModuleHeader.jsx';
 
 function currentRouteLabel(pathname) {
   if (pathname === '/nuevo') return 'Nuevo activo';
-  if (pathname === '/operacion') return 'Operación de activos';
+  if (pathname === '/operacion') return 'Dashboard de activos';
   if (pathname === '/alertas') return 'Alertas';
   if (pathname.startsWith('/catalogos/')) return 'Catálogos de activos';
   if (pathname !== '/') return 'Detalle del activo';

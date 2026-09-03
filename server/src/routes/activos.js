@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { pool } from '../db.js';
 import { ALL_FIELDS, DATE_FIELDS, FIELD_GROUPS, LIST_COLUMNS, normalizeAssetDates } from '../meta.js';
 import { pushAssetToSap } from '../integrations/sapClient.js';
+import { fetchCurrentUser } from '../auth.js';
+import { assetDocumentUpload, cleanOriginalFilename, detectAssetDocument, removeStoredAssetDocument, storeAssetDocument } from '../documentStorage.js';
 
 // Empuja el renglón recién creado/editado hacia SAP (ver plan de la
 // integración SAP: copia local + escritura en ambos lados). Si SAP no está
@@ -368,11 +370,11 @@ activosRouter.post('/:id/mantenimientos', async (req, res, next) => {
 activosRouter.get('/:id/documentos', async (req, res, next) => {
   try {
     const [rows] = await pool.query(
-      `SELECT d.id, d.sap_id, d.center_code, d.nombre, d.tipo, d.archivo,
-              d.tamano, d.subido_por, d.sap_creado_en,
+      `SELECT d.id, d.sap_id, d.asset_uid, d.center_code, d.nombre, d.tipo, d.archivo,
+              d.tamano, d.subido_por, d.sap_creado_en, d.mime_type, d.sha256, d.document_origin,
               CASE WHEN d.local_storage_path IS NULL THEN 0 ELSE 1 END AS archivo_disponible
          FROM activos a
-         JOIN sap_documentos d ON d.center_code = a.center_code
+         JOIN sap_documentos d ON d.asset_uid = a.asset_uid OR (d.asset_uid IS NULL AND d.center_code = a.center_code)
         WHERE a.id = ? AND d.archived_at IS NULL
         ORDER BY d.sap_creado_en DESC, d.id DESC`,
       [req.params.id]
@@ -380,6 +382,44 @@ activosRouter.get('/:id/documentos', async (req, res, next) => {
     res.json({ data: rows.map((row) => ({ ...row, archivo_disponible: Boolean(row.archivo_disponible) })) });
   } catch (error) {
     next(error);
+  }
+});
+
+activosRouter.post('/:id/documentos', assetDocumentUpload.single('file'), async (req, res, next) => {
+  let stored = null;
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Selecciona un archivo' });
+    const detected = detectAssetDocument(req.file.buffer);
+    if (!detected) return res.status(400).json({ error: 'Formato no permitido. Usa PDF, JPG o PNG' });
+    const [[asset]] = await pool.query('SELECT id, asset_uid, center_code FROM activos WHERE id = ?', [req.params.id]);
+    if (!asset) return res.status(404).json({ error: 'Activo no encontrado' });
+
+    const originalFilename = cleanOriginalFilename(req.file.originalname);
+    const requestedName = String(req.body?.nombre || '').trim();
+    const documentName = (requestedName || originalFilename.replace(/\.[^.]+$/, '') || 'Documento').slice(0, 255);
+    const allowedTypes = new Set(['Remision', 'Factura', 'Garantia', 'Otro']);
+    const documentType = allowedTypes.has(req.body?.tipo) ? req.body.tipo : 'Otro';
+    const actor = await fetchCurrentUser(req.headers.authorization);
+    stored = await storeAssetDocument(req.file.buffer, detected.extension);
+    const [result] = await pool.query(
+      `INSERT INTO sap_documentos
+        (sap_id, asset_uid, center_code, nombre, tipo, archivo, tamano, subido_por,
+         sap_creado_en, local_storage_path, mime_type, sha256, document_origin, uploaded_by_user_id)
+       VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, 'local', ?)`,
+      [asset.asset_uid, asset.center_code, documentName, documentType, originalFilename,
+        req.file.size, actor?.name || 'Usuario MRTI', stored.relativePath, detected.mimeType,
+        stored.sha256, actor?.id || null]
+    );
+    const [[document]] = await pool.query(
+      `SELECT id, sap_id, asset_uid, center_code, nombre, tipo, archivo, tamano, subido_por,
+              sap_creado_en, mime_type, sha256, document_origin, 1 AS archivo_disponible
+         FROM sap_documentos WHERE id = ?`,
+      [result.insertId]
+    );
+    return res.status(201).json({ data: { ...document, archivo_disponible: true } });
+  } catch (error) {
+    if (stored?.relativePath) await removeStoredAssetDocument(stored.relativePath).catch(() => {});
+    return next(error);
   }
 });
 

@@ -49,6 +49,22 @@ export async function apiDownload(path, fallbackName = 'documento.pdf') {
   URL.revokeObjectURL(url);
 }
 
+export async function apiUpload(path, formData) {
+  const token = getToken();
+  const response = await fetch(`/activos-api/api${path}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (response.status === 401) {
+    goToPortalLogin();
+    throw new Error('No autenticado');
+  }
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || `Error ${response.status}`);
+  return body;
+}
+
 async function obsRequest(path, options = {}) {
   const token = getToken();
   const response = await fetch(`/api/obs/assets${path}`, {

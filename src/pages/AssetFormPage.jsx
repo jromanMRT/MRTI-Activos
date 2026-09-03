@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { apiDownload, apiFetch, obsFetch, obsLinkDevice, obsUnlinkedDevices, rhAssetAssignmentProfileFetch, rhDirectoryFetch, ticketsFetch } from '../api.js';
+import { apiDownload, apiFetch, apiUpload, obsFetch, obsLinkDevice, obsUnlinkedDevices, rhAssetAssignmentProfileFetch, rhDirectoryFetch, ticketsFetch } from '../api.js';
 
 export function AssetFormPage({ mode }) {
   const { id } = useParams();
@@ -144,7 +144,7 @@ export function AssetFormPage({ mode }) {
               return <section key={group.key} className="mb-7 last:mb-0"><h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">{group.label}</h2><div className="grid grid-cols-1 gap-4 md:grid-cols-2">{group.fields.map((field) => <Field key={field.key} field={field} value={values[field.key]} onChange={setField} />)}</div></section>;
             })}
             {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
-            {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel documents={documents} error={documentsError} onError={setDocumentsError} />}
+            {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel assetId={id} documents={documents} error={documentsError} onError={setDocumentsError} onChange={() => apiFetch(`/activos/${id}/documentos`).then((result) => setDocuments(result.data || []))} />}
             {activeTab === 'monitor' && mode === 'edit' && <ObservabilityPanel assetUid={values.asset_uid} data={observability} error={observabilityError} onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))} />}
             {activeTab === 'tickets' && mode === 'edit' && <TicketsPanel assetUid={values.asset_uid} createTicketUrl={createTicketUrl} />}
           </>}
@@ -159,8 +159,12 @@ export function AssetFormPage({ mode }) {
   );
 }
 
-function DocumentsPanel({ documents, error, onError }) {
+function DocumentsPanel({ assetId, documents, error, onError, onChange }) {
   const [downloadingId, setDownloadingId] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [documentName, setDocumentName] = useState('');
+  const [documentType, setDocumentType] = useState('Remision');
+  const fileRef = useRef(null);
 
   async function download(document) {
     setDownloadingId(document.id);
@@ -174,12 +178,53 @@ function DocumentsPanel({ documents, error, onError }) {
     }
   }
 
+  async function upload(event) {
+    event.preventDefault();
+    const file = fileRef.current?.files?.[0];
+    if (!file) { onError('Selecciona un archivo PDF, JPG o PNG'); return; }
+    setUploading(true);
+    onError('');
+    try {
+      const formData = new FormData();
+      formData.append('nombre', documentName);
+      formData.append('tipo', documentType);
+      formData.append('file', file);
+      await apiUpload(`/activos/${assetId}/documentos`, formData);
+      setDocumentName('');
+      setDocumentType('Remision');
+      if (fileRef.current) fileRef.current.value = '';
+      await onChange();
+    } catch (uploadError) {
+      onError(uploadError.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
     <fieldset className="border border-slate-800 rounded-xl p-4">
       <legend className="text-sm font-semibold text-slate-300 px-1">Facturas, remisiones y documentos</legend>
       {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
+      <form onSubmit={upload} className="mb-5 rounded-xl border border-dashed border-sky-500/30 bg-sky-500/5 p-4">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div><h3 className="font-medium text-slate-100">Subir documento</h3><p className="mt-1 text-xs text-slate-500">PDF, JPG o PNG · máximo 25 MB. El archivo queda privado dentro de MRTI Activos.</p></div>
+          <span className="rounded-full bg-sky-500/15 px-2 py-1 text-xs text-sky-400">Nuevo</span>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="text-xs text-slate-400">Nombre del documento
+            <input value={documentName} onChange={(event) => setDocumentName(event.target.value)} placeholder="Ej. Remisión firmada" maxLength={255} className="mt-1 block w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100" />
+          </label>
+          <label className="text-xs text-slate-400">Tipo
+            <select value={documentType} onChange={(event) => setDocumentType(event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100">
+              <option value="Remision">Remisión de resguardo</option><option value="Factura">Factura</option><option value="Garantia">Garantía</option><option value="Otro">Otro</option>
+            </select>
+          </label>
+          <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-300 file:mr-3 file:rounded file:border-0 file:bg-sky-500/15 file:px-3 file:py-1 file:text-sky-400" />
+          <button disabled={uploading} className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">{uploading ? 'Subiendo…' : 'Subir archivo'}</button>
+        </div>
+      </form>
       {documents.length === 0 ? (
-        <p className="text-sm text-slate-500">Este activo no tiene documentos registrados en la plataforma anterior.</p>
+        <p className="text-sm text-slate-500">Este activo todavía no tiene documentos.</p>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {documents.map((document) => (
@@ -195,9 +240,10 @@ function DocumentsPanel({ documents, error, onError }) {
                 <p className="truncate" title={document.archivo}>{document.archivo}</p>
                 {document.sap_creado_en && <p>{new Date(document.sap_creado_en).toLocaleString('es-MX')}</p>}
                 {document.subido_por && <p>Subido por {document.subido_por}</p>}
+                {document.document_origin === 'local' && <p className="text-emerald-400">Agregado en MRTI Activos</p>}
               </div>
               <button type="button" onClick={() => download(document)} disabled={!document.archivo_disponible || downloadingId === document.id} className="mt-4 w-full rounded-lg border border-sky-500/40 px-3 py-2 text-sm font-medium text-sky-400 hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-50">
-                {!document.archivo_disponible ? 'Archivo no disponible' : downloadingId === document.id ? 'Descargando…' : 'Descargar PDF'}
+                {!document.archivo_disponible ? 'Archivo no disponible' : downloadingId === document.id ? 'Descargando…' : 'Descargar archivo'}
               </button>
             </article>
           ))}

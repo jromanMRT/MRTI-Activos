@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { access } from 'node:fs/promises';
 import { Router } from 'express';
@@ -6,8 +5,9 @@ import { pool } from '../db.js';
 import { administratorOnly } from '../auth.js';
 import { decryptSecret } from '../integrations/credentialCrypto.js';
 import { syncAllSap } from '../integrations/sapSync.js';
+import { safeDocumentPath } from '../documentStorage.js';
 
-const STORAGE_ROOT = path.resolve(process.env.ASSET_DOCUMENTS_DIR || path.resolve(process.cwd(), 'storage/asset-documents'));
+export { safeDocumentPath } from '../documentStorage.js';
 
 export const RESOURCE_CONFIG = Object.freeze({
   credenciales: {
@@ -24,7 +24,7 @@ export const RESOURCE_CONFIG = Object.freeze({
   dominios: { table: 'sap_dominios', columns: ['id', 'sap_id', 'dominio', 'servicios', 'fecha_expira', 'status', 'comentario', 'synced_at', 'archived_at'], search: ['dominio', 'servicios', 'status', 'comentario'] },
   mantenimientos: { table: 'sap_mantenimientos', columns: ['id', 'sap_id', 'center_code', 'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones', 'synced_at', 'archived_at'], search: ['center_code', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'numero_ticket', 'estado'] },
   unidades: { table: 'sap_unidades', columns: ['id', 'sap_id', 'nombre', 'activa', 'orden', 'synced_at', 'archived_at'], search: ['nombre'] },
-  documentos: { table: 'sap_documentos', columns: ['id', 'sap_id', 'center_code', 'nombre', 'tipo', 'archivo', 'tamano', 'subido_por', 'sap_creado_en', 'synced_at', 'archived_at', 'local_storage_path'], search: ['center_code', 'nombre', 'tipo', 'archivo', 'subido_por'] },
+  documentos: { table: 'sap_documentos', columns: ['id', 'sap_id', 'asset_uid', 'center_code', 'nombre', 'tipo', 'archivo', 'tamano', 'subido_por', 'sap_creado_en', 'synced_at', 'archived_at', 'local_storage_path', 'mime_type', 'sha256', 'document_origin'], search: ['center_code', 'nombre', 'tipo', 'archivo', 'subido_por'] },
   'config-alertas': { table: 'sap_config_alertas', id: 'clave', archivable: false, columns: ['clave', 'nombre', 'dias_aviso', 'activo', 'sap_actualizado_en', 'synced_at'], search: ['clave', 'nombre'] },
 });
 
@@ -32,12 +32,6 @@ function resourceOrThrow(name) {
   const config = RESOURCE_CONFIG[name];
   if (!config) { const error = new Error('Catálogo no reconocido'); error.status = 404; throw error; }
   return { id: 'id', archivable: true, ...config };
-}
-
-export function safeDocumentPath(relativePath) {
-  if (!relativePath || path.isAbsolute(relativePath)) return null;
-  const resolved = path.resolve(STORAGE_ROOT, relativePath);
-  return resolved.startsWith(`${STORAGE_ROOT}${path.sep}`) ? resolved : null;
 }
 
 function searchableWhere(config, query) {
@@ -76,10 +70,51 @@ assetSuiteRouter.get('/summary', async (_req, res, next) => {
   } catch (error) { next(error); }
 });
 
+assetSuiteRouter.get('/dashboard', async (_req, res, next) => {
+  try {
+    const [inventoryResult, typeResult, unitResult, recentAssetsResult, recentDocumentsResult] = await Promise.all([
+      pool.query(`SELECT COUNT(*) AS total,
+        SUM(estado = 'Activo') AS activos,
+        SUM(estado = 'En mantenimiento') AS mantenimiento,
+        SUM(estado = 'Inactivo') AS inactivos,
+        SUM(estado = 'Baja') AS bajas,
+        SUM(estado = 'Activo' AND (portal_user_id IS NOT NULL OR rh_employee_id IS NOT NULL OR tercero_id IS NOT NULL)) AS asignados,
+        SUM(estado = 'Activo' AND portal_user_id IS NULL AND rh_employee_id IS NULL AND tercero_id IS NULL) AS sin_asignar,
+        SUM(estado = 'Activo' AND EXISTS (
+          SELECT 1 FROM sap_documentos d WHERE d.archived_at IS NULL
+            AND (d.asset_uid = activos.asset_uid OR (d.asset_uid IS NULL AND d.center_code = activos.center_code))
+        )) AS con_documentos
+        FROM activos`),
+      pool.query(`SELECT COALESCE(NULLIF(tipo, ''), 'Sin tipo') AS label, COUNT(*) AS total
+        FROM activos WHERE estado = 'Activo' GROUP BY label ORDER BY total DESC, label LIMIT 8`),
+      pool.query(`SELECT COALESCE(NULLIF(unidad, ''), 'Sin unidad') AS label, COUNT(*) AS total
+        FROM activos WHERE estado = 'Activo' GROUP BY label ORDER BY total DESC, label LIMIT 8`),
+      pool.query(`SELECT id, center_code, tipo, marca, modelo, estado, usuario_asignado, actualizado_en
+        FROM activos ORDER BY actualizado_en DESC, id DESC LIMIT 6`),
+      pool.query(`SELECT d.id, d.asset_uid, d.center_code, d.nombre, d.tipo, d.archivo, d.subido_por,
+          d.sap_creado_en, d.document_origin, a.id AS asset_id
+        FROM sap_documentos d
+        LEFT JOIN activos a ON a.asset_uid = d.asset_uid OR (d.asset_uid IS NULL AND a.center_code = d.center_code)
+        WHERE d.archived_at IS NULL ORDER BY COALESCE(d.sap_creado_en, d.synced_at) DESC, d.id DESC LIMIT 6`),
+    ]);
+    const inventory = inventoryResult[0][0];
+    res.json({ data: {
+      inventory: Object.fromEntries(Object.entries(inventory).map(([key, value]) => [key, Number(value || 0)])),
+      by_type: typeResult[0].map((row) => ({ ...row, total: Number(row.total) })),
+      by_unit: unitResult[0].map((row) => ({ ...row, total: Number(row.total) })),
+      recent_assets: recentAssetsResult[0],
+      recent_documents: recentDocumentsResult[0],
+    } });
+  } catch (error) { next(error); }
+});
+
 assetSuiteRouter.get('/alerts', async (_req, res, next) => {
   try {
     const [missingResult, fortigateResult, antivirusResult, officeResult, perpetualResult, incompleteResult, duplicateResult] = await Promise.all([
-      pool.query(`SELECT COUNT(*) AS total FROM activos a LEFT JOIN sap_documentos d ON d.center_code = a.center_code AND d.archived_at IS NULL WHERE a.estado = 'Activo' AND d.id IS NULL`),
+      pool.query(`SELECT COUNT(*) AS total FROM activos a WHERE a.estado = 'Activo' AND NOT EXISTS (
+        SELECT 1 FROM sap_documentos d WHERE d.archived_at IS NULL
+          AND (d.asset_uid = a.asset_uid OR (d.asset_uid IS NULL AND d.center_code = a.center_code))
+      )`),
       pool.query(`SELECT id, software, numero_serie, proyecto, fecha_expira FROM sap_fortigate WHERE archived_at IS NULL AND fecha_expira IS NOT NULL AND fecha_expira <= DATE_ADD(CURDATE(), INTERVAL 90 DAY) ORDER BY fecha_expira`),
       pool.query(`SELECT id, center_code, usuario_asignado, av_licencia, av_caducidad, DATE_ADD(av_caducidad, INTERVAL 1 YEAR) AS fecha_vence FROM activos WHERE estado = 'Activo' AND av_caducidad IS NOT NULL AND DATE_ADD(av_caducidad, INTERVAL 1 YEAR) <= DATE_ADD(CURDATE(), INTERVAL 90 DAY) ORDER BY fecha_vence`),
       pool.query(`SELECT id, center_code, usuario_asignado, ms_cuenta, ms_usuario, ms_licencia, fecha_suscripcion, anos_suscripcion, DATE_ADD(fecha_suscripcion, INTERVAL COALESCE(anos_suscripcion, 1) YEAR) AS fecha_vence FROM activos WHERE estado = 'Activo' AND fecha_suscripcion IS NOT NULL AND COALESCE(anos_suscripcion, 1) > 0 AND DATE_ADD(fecha_suscripcion, INTERVAL COALESCE(anos_suscripcion, 1) YEAR) <= DATE_ADD(CURDATE(), INTERVAL 90 DAY) ORDER BY fecha_vence`),

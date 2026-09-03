@@ -4,7 +4,7 @@ import { useTheme } from '../hooks/useTheme.js';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Inventario', icon: 'inventory' },
-  { to: '/operacion', label: 'Resumen operativo', icon: 'dashboard' },
+  { to: '/operacion', label: 'Dashboard', icon: 'dashboard' },
   { to: '/alertas', label: 'Alertas', icon: 'alert' },
   { to: '/catalogos/credenciales', label: 'Credenciales', icon: 'catalog' },
   { to: '/catalogos/componentes', label: 'Componentes', icon: 'catalog' },

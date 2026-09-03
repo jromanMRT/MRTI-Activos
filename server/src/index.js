@@ -31,6 +31,12 @@ app.use('/api', moduleAccessRequired, tercerosRouter);
 app.use((err, _req, res, _next) => {
   // eslint-disable-next-line no-console
   console.error(err);
+  if (err?.name === 'MulterError') {
+    const message = err.code === 'LIMIT_FILE_SIZE'
+      ? 'El archivo excede el límite de 25 MB'
+      : 'No se pudo procesar el archivo enviado';
+    return res.status(400).json({ error: message });
+  }
   res.status(err.status || 500).json({ error: err.message || 'Error interno' });
 });
 
