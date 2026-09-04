@@ -34,8 +34,8 @@ test('la remisión escapa datos dinámicos y nunca imprime secretos heredados', 
   assert.match(html, /Nombre vigente/);
   assert.match(html, /1978/);
   assert.match(html, /Unidad Norte/);
-  assert.match(html, /Operaciones/);
   assert.doesNotMatch(html, /Nombre antiguo/);
   assert.doesNotMatch(html, /SECRETO-WINDOWS|SECRETO-MICROSOFT|SECRETO-DROPBOX/);
-  assert.match(html, /sin contraseñas/i);
+  assert.match(html, /Contraseña/);
+  assert.match(html, /No se imprime/);
 });

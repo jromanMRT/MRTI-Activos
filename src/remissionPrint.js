@@ -36,7 +36,6 @@ export function buildRemissionHtml({ asset, employeeProfile = null, actorName = 
   const phone = employeeProfile?.phone || asset.cel_empleado;
   const company = asset.empresa || employeeProfile?.company_name || 'Minera Río Tinto';
   const unit = employeeProfile?.unit_name || asset.unidad;
-  const area = employeeProfile?.area_name || asset.area;
   const jobTitle = employeeProfile?.job_title || asset.correo_puesto;
   const responsibleSignature = [employeeNumber, employeeName].filter(Boolean).join(' · ');
   const generatedDate = calendarDate(generatedAt);
@@ -49,24 +48,30 @@ export function buildRemissionHtml({ asset, employeeProfile = null, actorName = 
   <title>Remisión ${value(asset.center_code, '')}</title>
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; background: #fff; color: #111; font-family: Arial, sans-serif; font-size: 8.5pt; }
-    .page { width: 210mm; margin: 0 auto; padding: 7mm 9mm; }
-    .header { display: flex; justify-content: space-between; gap: 12mm; align-items: flex-start; border-bottom: 2px solid #111; padding-bottom: 4px; }
-    .company { font-size: 13pt; font-weight: 700; }
-    .title { margin-top: 2px; font-size: 11pt; font-weight: 700; }
-    .document-meta { flex: 0 0 62mm; text-align: right; font-size: 7.5pt; line-height: 1.35; }
-    .document-number { font-size: 9.5pt; font-weight: 700; }
-    .section-title { margin-top: 5px; padding: 3px 5px; background: #404040; color: #fff; font-weight: 700; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { border: 1px solid #111; padding: 3px 5px; vertical-align: top; }
-    th { background: #d8d8d8; text-align: left; }
-    .conditions { margin-top: 5px; border: 1px solid #111; padding: 5px; font-size: 7.2pt; line-height: 1.3; }
-    .conditions p { margin: 0 0 2px; }
-    .signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
-    .signature { min-height: 37px; border-top: 1px solid #111; padding-top: 4px; text-align: center; font-size: 7.5pt; }
-    .footer { margin-top: 4px; color: #555; text-align: right; font-size: 6.8pt; }
-    @page { size: letter portrait; margin: 5mm; }
-    @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } .page { page-break-inside: avoid; } }
+    html, body { min-height: 100%; }
+    body { margin: 0; background: #fff; color: #000; font-family: Arial, Helvetica, sans-serif; font-size: 7pt; }
+    .page { width: 216mm; min-height: 279mm; margin: 0 auto; padding: 12mm 9mm 8mm; }
+    .header { display: flex; min-height: 26mm; justify-content: space-between; gap: 10mm; align-items: flex-start; border-bottom: 1px solid #000; padding-bottom: 2px; }
+    .company { font-size: 10pt; font-weight: 700; }
+    .title { margin-top: 1px; font-size: 8.5pt; font-weight: 700; }
+    .document-meta { flex: 0 0 58mm; text-align: right; font-size: 6.2pt; line-height: 1.15; }
+    .document-number { margin-bottom: 1px; font-size: 7.2pt; font-weight: 700; }
+    .section-title { margin-top: 3px; border: 1px solid #000; padding: 2px 3px; background: #3f3f3f; color: #fff; font-size: 6.7pt; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { height: 4.3mm; border: 1px solid #000; padding: 1px 3px; overflow-wrap: anywhere; vertical-align: middle; line-height: 1.05; }
+    th { background: #d9d9d9; text-align: left; font-weight: 700; }
+    .access-head th { background: #cfcfcf; }
+    .conditions { margin-top: 3px; border: 1px solid #000; padding: 3px; font-size: 5.8pt; line-height: 1.08; }
+    .conditions p { margin: 0 0 1px; }
+    .signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin-top: 17mm; }
+    .signature { min-height: 17mm; border-top: 1px solid #000; padding-top: 9mm; text-align: center; font-size: 6pt; line-height: 1.2; }
+    .signature strong { display: block; }
+    .footer { margin-top: -5mm; text-align: right; font-size: 5.5pt; }
+    @page { size: letter portrait; margin: 0; }
+    @media print {
+      body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .page { page-break-inside: avoid; }
+    }
   </style>
 </head>
 <body>
@@ -74,42 +79,47 @@ export function buildRemissionHtml({ asset, employeeProfile = null, actorName = 
     <header class="header">
       <div><div class="company">${value(company)}</div><div class="title">REMISIÓN DE ENTREGA DE EQUIPO</div></div>
       <div class="document-meta">
-        <div class="document-number">No. remisión: ${value(asset.center_code)}</div>
-        <div>Activo fijo: ${value(asset.cod_activo_fijo)}</div>
+        <div class="document-number">No. Remisión: ${value(asset.center_code)} Rev 0</div>
         <div>Fecha: ${value(generatedDate)}</div>
-        <div>Generó: ${value(actorName)}</div>
-        <div>MRTI Activos · Remisión v3</div>
+        <div>Página 1</div>
+        <div>Autor: ${value(actorName)}</div>
+        <div>Remisión V 2.0-2023</div>
       </div>
     </header>
 
     <div class="section-title">Descripción del equipo</div>
     <table>
-      <tr><th style="width:16%">Marca / modelo</th><td style="width:32%">${value(asset.marca)}<br>${value(asset.modelo)}</td><th style="width:14%">Service tag</th><td>${value(asset.service_tag)}</td><th style="width:10%">Serie</th><td>${value(asset.numero_serie)}</td></tr>
-      <tr><th>Tipo</th><td>${value(asset.tipo)}</td><th>Cuenta contable</th><td>${value(asset.cuenta_contable)}</td><th>Estado</th><td>${value(asset.estado)}</td></tr>
+      <colgroup><col style="width:15%"><col style="width:35%"><col style="width:13%"><col style="width:17%"><col style="width:8%"><col style="width:12%"></colgroup>
+      <tr><th>Marca/Modelo</th><td>${value(asset.marca)}<br>${value(asset.modelo)}</td><th>Service TAG</th><td>${value(asset.service_tag)}</td><th>PIN</th><td>${value(asset.service_tag)}</td></tr>
+      <tr><th>Tipo</th><td>${value(asset.tipo)}</td><th>Serie</th><td>${value(asset.numero_serie)}</td><th>Activo<br>Fijo</th><td>${value(asset.cod_activo_fijo)}</td></tr>
       <tr><th>Descripción</th><td colspan="5">${value(asset.descripcion || asset.esp_tec)}</td></tr>
     </table>
 
     <div class="section-title">Datos del empleado / asignación</div>
     <table>
-      <tr><th style="width:16%">No. empleado</th><td>${value(employeeNumber)}</td><th style="width:14%">Empleado</th><td>${value(employeeName)}</td><th style="width:10%">Celular</th><td>${value(phone)}</td></tr>
-      <tr><th>Puesto</th><td>${value(jobTitle)}</td><th>Unidad destino</th><td>${value(unit)}</td><th>Área</th><td>${value(area)}</td></tr>
+      <colgroup><col style="width:15%"><col style="width:14%"><col style="width:14%"><col style="width:27%"><col style="width:10%"><col style="width:20%"></colgroup>
+      <tr><th>No. Empleado</th><td>${value(employeeNumber)}</td><th>Empleado</th><td>${value(employeeName)}</td><th>Cel.</th><td>${value(phone)}</td></tr>
+      <tr><th>Puesto</th><td>${value(jobTitle)}</td><th>Unidad Destino</th><td>${value(unit)}</td><th>Contabilidad</th><td>${value(asset.cuenta_contable)}</td></tr>
     </table>
 
-    <div class="section-title">Cuentas de acceso (sin contraseñas)</div>
+    <div class="section-title">Características de acceso / credenciales</div>
     <table>
-      <tr><th style="width:27%">Cuenta</th><th style="width:38%">Usuario</th><th>Licencia / suscripción</th></tr>
-      <tr><td>Windows local</td><td>${value(asset.win_usuario || asset.win_cuenta)}</td><td>${EMPTY_VALUE}</td></tr>
-      <tr><td>Microsoft 365</td><td>${value(asset.ms_usuario || asset.ms_cuenta || asset.correo_corporativo)}</td><td>${value(asset.ms_licencia || asset.ms_suscripcion)}</td></tr>
-      <tr><td>Correo MRT</td><td>${value(asset.correo_mrt)}</td><td>${EMPTY_VALUE}</td></tr>
-      <tr><td>Correo corporativo</td><td>${value(asset.correo_corporativo)}</td><td>${EMPTY_VALUE}</td></tr>
-      <tr><td>Dropbox</td><td>${value(asset.db_usuario || asset.db_cuenta)}</td><td>${value(asset.db_licencia)}</td></tr>
+      <colgroup><col style="width:30%"><col style="width:35%"><col style="width:35%"></colgroup>
+      <tr class="access-head"><th>Cuenta</th><th>Usuario</th><th>Contraseña</th></tr>
+      <tr><td>Usuario Windows Local</td><td>${value(asset.win_usuario || asset.win_cuenta)}</td><td>No se imprime</td></tr>
+      <tr><td>Cuenta Microsoft / Office</td><td>${value(asset.ms_usuario || asset.ms_cuenta || asset.correo_corporativo, 'Sin cuenta')}</td><td>No se imprime</td></tr>
+      <tr><td>Correo Autorizado (MRT)</td><td>${value(asset.correo_mrt)}</td><td>No se imprime</td></tr>
+      <tr><td>Correo Corporativo</td><td>${value(asset.correo_corporativo)}</td><td>No se imprime</td></tr>
+      <tr><td>Dropbox</td><td>${value(asset.db_usuario || asset.db_cuenta, 'Sin cuenta')}</td><td>No se imprime</td></tr>
     </table>
 
     <div class="section-title">Software incluido / licencias</div>
     <table>
-      <tr><th style="width:27%">Concepto</th><th>Detalle</th></tr>
+      <colgroup><col style="width:30%"><col style="width:70%"></colgroup>
+      <tr class="access-head"><th>Concepto</th><th>Detalle</th></tr>
       <tr><td>Software incluido</td><td>${value(asset.software_incluido)}</td></tr>
-      <tr><td>Versión / especificaciones</td><td>${value([asset.version, asset.esp_tec].filter(Boolean).join(' · '))}</td></tr>
+      <tr><td>Microsoft / Office 365</td><td>${value(asset.ms_suscripcion || asset.ms_licencia)}</td></tr>
+      <tr><td>Dropbox</td><td>${value(asset.db_licencia)}</td></tr>
       <tr><td>Antivirus</td><td>${value(asset.av_comentario || asset.av_team || asset.av_licencia)}</td></tr>
     </table>
 
@@ -125,9 +135,9 @@ export function buildRemissionHtml({ asset, employeeProfile = null, actorName = 
     </section>
 
     <section class="signatures">
-      <div class="signature"><strong>${value(responsibleSignature, '')}</strong><br>Responsable del equipo</div>
-      <div class="signature">Nombre, firma y fecha<br>Recepción RH / devolución de equipo</div>
-      <div class="signature">Nombre, firma y fecha<br>Autorización TI</div>
+      <div class="signature"><strong>${value(responsibleSignature, '')}</strong>Responsable del equipo</div>
+      <div class="signature"><strong>Nombre, firma y fecha</strong>Envío RH · Recepción de equipo</div>
+      <div class="signature"><strong>Nombre, firma y fecha</strong>Autorización TI</div>
     </section>
     <footer class="footer">${value(asset.center_code)} · ${value(asset.service_tag, '')} · Generado el ${value(generatedDate)}</footer>
   </main>
