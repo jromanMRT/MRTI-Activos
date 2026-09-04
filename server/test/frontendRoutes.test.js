@@ -45,6 +45,6 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
   assert.match(list, /employeeProfile\?\.employee_number \|\| inheritedEmployeeId/);
   assert.match(list, /Imprimir remisión de/);
   assert.match(form, /Imprimir remisión/);
-  assert.match(remission, /REMISIÓN DE ENTREGA DE EQUIPO/);
+  assert.match(remission, /REMISION DE ENTREGA DE EQUIPO/);
   assert.match(remission, /rhAssetAssignmentProfileFetch/);
 });
