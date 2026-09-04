@@ -20,28 +20,9 @@ const NAV_ITEMS = [
   { to: '/catalogos/config-alertas', label: 'Configurar alertas', icon: 'catalog' },
 ];
 
-// Core deja el perfil en localStorage al iniciar sesión (mismo origen que
-// todos los módulos), así que aquí se lee directo en lugar de pedirlo de
-// nuevo -- ver /var/www/mrt/MRTI/MRTI/src/main.js.
-function readAuthProfile() {
-  try { return JSON.parse(localStorage.getItem('auth_profile') || '{}'); } catch { return {}; }
-}
-
-async function handleLogout() {
-  try {
-    const token = localStorage.getItem('auth_token');
-    await fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: '{}' });
-  } catch { /* cierre local garantizado aunque el aviso a Core falle */ }
-  localStorage.removeItem('auth_token');
-  localStorage.removeItem('auth_profile');
-  window.location.replace('/');
-}
-
 export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
   const [theme, setTheme] = useTheme();
   const [logoUrl, setLogoUrl] = useState('/company-logo.svg');
-  const profile = readAuthProfile();
-  const isAdministrator = profile.role === 'administrator';
 
   // El logo lo administra Core (Centro de control → Recursos de marca); se
   // consulta en vivo para que un cambio ahí se refleje aquí sin tocar código.
@@ -59,15 +40,17 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
       }`}
     >
       <div className={`portal-module-brand portal-module-brand-row flex items-center gap-3 p-4 border-b border-slate-800 ${collapsed ? 'justify-center' : ''}`}>
-        <a href="/" title="Ir a Mi espacio" aria-label="Ir a Mi espacio" className="portal-module-brand-link grid h-[42px] w-[42px] shrink-0 place-items-center rounded-xl">
+        <a href="/" title="Ir a MRTI Core" aria-label="Ir a MRTI Core" className={`portal-module-brand-home flex w-full items-center gap-3 rounded-xl ${collapsed ? 'justify-center' : ''}`}>
+          <span className="portal-module-brand-link grid h-[42px] w-[42px] shrink-0 place-items-center rounded-xl">
           <img src={logoUrl} alt="" className="h-[34px] w-[34px]" />
-        </a>
+          </span>
         {!collapsed && (
           <div className="portal-module-brand-copy">
-            <strong>MRTI</strong>
+            <strong><span>MRTI</span><span className="portal-module-brand-name">Activos</span></strong>
             <small>Minera Río Tinto</small>
           </div>
         )}
+        </a>
       </div>
 
       <nav className="portal-module-nav flex-1 py-4 overflow-y-auto">
@@ -91,14 +74,6 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
             </li>
           ))}
         </ul>
-        <div className="portal-module-section mt-5 border-t border-slate-800 pt-4">
-          {!collapsed && <p className="mb-2 px-4 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Mi cuenta</p>}
-          <div className="space-y-1 px-2">
-            <ModuleLink href="/?view=account" label="Perfil" collapsed={collapsed} onNavigate={onNavigate} icon="○" />
-            {isAdministrator && <ModuleLink href="/?view=brand-assets" label="Recursos de marca" collapsed={collapsed} onNavigate={onNavigate} icon="◆" />}
-            {isAdministrator && <ModuleLink href="/?view=control-center" label="Centro de control" collapsed={collapsed} onNavigate={onNavigate} icon="⚙" />}
-          </div>
-        </div>
       </nav>
 
       <div className={`portal-module-footer border-t border-slate-800 p-4 flex items-center ${collapsed ? 'flex-col gap-2' : 'justify-between'}`}>
@@ -121,22 +96,9 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
         >
           <CollapseIcon collapsed={collapsed} />
         </button>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="p-2 rounded-lg text-slate-400 hover:bg-red-500/15 hover:text-red-400 transition-colors"
-          title="Cerrar sesión"
-          aria-label="Cerrar sesión"
-        >
-          <LogoutIcon />
-        </button>
       </div>
     </aside>
   );
-}
-
-function ModuleLink({ href, label, collapsed, onNavigate, icon }) {
-  return <a href={href} onClick={onNavigate} title={label} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 ${collapsed ? 'justify-center' : ''}`}><span className="grid h-5 w-5 place-items-center text-xs" aria-hidden="true">{icon}</span>{!collapsed && <span className="truncate text-sm">{label}</span>}</a>;
 }
 
 function ThemeIcon({ theme }) {
@@ -147,10 +109,6 @@ function ThemeIcon({ theme }) {
 
 function CollapseIcon({ collapsed }) {
   return <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={collapsed ? 'm9 18 6-6-6-6' : 'm15 18-6-6 6-6'} /></svg>;
-}
-
-function LogoutIcon() {
-  return <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></svg>;
 }
 
 function NavIcon({ name }) {
