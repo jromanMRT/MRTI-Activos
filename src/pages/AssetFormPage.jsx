@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiDownload, apiFetch, apiUpload, obsFetch, obsLinkDevice, obsUnlinkedDevices, rhAssetAssignmentProfileFetch, rhDirectoryFetch, ticketsFetch } from '../api.js';
+import { openAssetRemission } from '../remissionPrint.js';
 
 export function AssetFormPage({ mode }) {
   const { id } = useParams();
@@ -117,6 +118,15 @@ export function AssetFormPage({ mode }) {
     if (!saving) navigate('/inventario');
   }
 
+  async function printRemission() {
+    setError('');
+    try {
+      await openAssetRemission({ assetId: id });
+    } catch (printError) {
+      setError(printError.message);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/65 p-0 backdrop-blur-sm sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) closeModal(); }}>
       <form onSubmit={handleSubmit} role="dialog" aria-modal="true" aria-labelledby="asset-dialog-title" className="flex h-full w-full flex-col overflow-hidden bg-slate-950 shadow-2xl sm:h-[85dvh] sm:max-h-[880px] sm:max-w-6xl sm:rounded-2xl sm:border sm:border-slate-800">
@@ -126,6 +136,7 @@ export function AssetFormPage({ mode }) {
             {mode === 'edit' && <p className="mt-1 text-sm text-slate-500">{values.center_code || 'Cargando información…'}{values.descripcion ? ` · ${values.descripcion}` : ''}</p>}
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {mode === 'edit' && <button type="button" onClick={printRemission} disabled={loading} className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-900 disabled:opacity-50">Imprimir remisión</button>}
             {createTicketUrl && <a href={createTicketUrl} className="rounded-lg border border-sky-500/40 px-3 py-2 text-sm font-medium text-sky-400 hover:bg-sky-500/10">Crear ticket</a>}
             <button type="button" onClick={closeModal} disabled={saving} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-800 text-slate-400 hover:bg-slate-900 hover:text-slate-100 disabled:opacity-50" aria-label="Cerrar">×</button>
           </div>

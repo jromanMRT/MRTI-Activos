@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiFetch, rhAssetAssignmentProfilesFetch } from '../api.js';
+import { openAssetRemission } from '../remissionPrint.js';
 
 const EMPTY_STATS = { total: 0, activos: 0, mantenimiento: 0, inactivos: 0, baja: 0 };
 
@@ -107,12 +108,12 @@ export function ListPage() {
             <table className="min-w-[1180px] w-full text-xs">
               <thead className="bg-slate-800/70 text-left uppercase tracking-wide text-slate-500">
                 <tr>
-                  <Th sortKey="center_code" sort={sort} order={order} onSort={changeSort}>Código TI</Th><Th sortKey="tipo" sort={sort} order={order} onSort={changeSort}>Tipo</Th><Th sortKey="brand" sort={sort} order={order} onSort={changeSort}>Marca / modelo</Th><Th sortKey="service" sort={sort} order={order} onSort={changeSort}>Service tag / serie</Th><Th sortKey="user" sort={sort} order={order} onSort={changeSort}>Usuario asignado</Th><Th sortKey="location" sort={sort} order={order} onSort={changeSort}>Unidad / área</Th><Th sortKey="company" sort={sort} order={order} onSort={changeSort}>Empresa</Th><Th sortKey="status" sort={sort} order={order} onSort={changeSort}>Estado</Th><Th sortKey="age" sort={sort} order={order} onSort={changeSort}>Antigüedad</Th><Th sortKey="documents" sort={sort} order={order} onSort={changeSort}>Docs</Th>
+                  <Th sortKey="center_code" sort={sort} order={order} onSort={changeSort}>Código TI</Th><Th sortKey="tipo" sort={sort} order={order} onSort={changeSort}>Tipo</Th><Th sortKey="brand" sort={sort} order={order} onSort={changeSort}>Marca / modelo</Th><Th sortKey="service" sort={sort} order={order} onSort={changeSort}>Service tag / serie</Th><Th sortKey="user" sort={sort} order={order} onSort={changeSort}>Usuario asignado</Th><Th sortKey="location" sort={sort} order={order} onSort={changeSort}>Unidad / área</Th><Th sortKey="company" sort={sort} order={order} onSort={changeSort}>Empresa</Th><Th sortKey="status" sort={sort} order={order} onSort={changeSort}>Estado</Th><Th sortKey="age" sort={sort} order={order} onSort={changeSort}>Antigüedad</Th><Th sortKey="documents" sort={sort} order={order} onSort={changeSort}>Docs</Th><Th>Acciones</Th>
                 </tr>
               </thead>
               <tbody>
-                {loading ? <tr><td colSpan={10} className="px-4 py-12 text-center text-slate-500">Cargando inventario…</td></tr>
-                  : items.length === 0 ? <tr><td colSpan={10} className="px-4 py-12 text-center text-slate-500">No hay equipos que coincidan con los filtros.</td></tr>
+                {loading ? <tr><td colSpan={11} className="px-4 py-12 text-center text-slate-500">Cargando inventario…</td></tr>
+                  : items.length === 0 ? <tr><td colSpan={11} className="px-4 py-12 text-center text-slate-500">No hay equipos que coincidan con los filtros.</td></tr>
                     : items.map((item) => <AssetRow key={item.id} item={item} employeeProfile={
                       (item.rh_employee_id && employeeProfiles.byEmployeeId[String(item.rh_employee_id)])
                       || (item.portal_user_id && employeeProfiles.byPortalUserId[item.portal_user_id])
@@ -133,6 +134,14 @@ function AssetRow({ item, employeeProfile }) {
   const linkedToRh = Boolean(item.portal_user_id || item.tercero_id || item.rh_employee_id);
   const inheritedEmployeeId = item.id_empleado && item.id_empleado !== '-' ? item.id_empleado : null;
   const employeeNumber = employeeProfile?.employee_number || inheritedEmployeeId;
+  async function printRemission(event) {
+    event.stopPropagation();
+    try {
+      await openAssetRemission({ assetId: item.id, employeeProfile });
+    } catch (printError) {
+      window.alert(printError.message);
+    }
+  }
   return (
     <tr
       className="cursor-pointer border-t border-slate-800 align-top transition hover:bg-slate-900/75"
@@ -148,6 +157,7 @@ function AssetRow({ item, employeeProfile }) {
       <td className="px-3 py-3.5"><EstadoBadge estado={item.estado} /></td>
       <td className="px-3 py-3.5"><strong className="block text-emerald-400">{age.label}</strong><span className="mt-0.5 block text-[10px] text-slate-500">{age.date}</span></td>
       <td className="px-3 py-3.5"><DocumentBadge item={item} /></td>
+      <td className="px-3 py-3.5"><button type="button" onClick={printRemission} className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-sky-500/40 px-2 py-1 text-[10px] font-semibold text-sky-400 hover:bg-sky-500/10" title={`Imprimir remisión de ${item.center_code}`} aria-label={`Imprimir remisión de ${item.center_code}`}><PrintIcon />Imprimir</button></td>
     </tr>
   );
 }
@@ -189,3 +199,4 @@ function AssignmentBadge({ assigned }) {
     : <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-400"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" />Sin asignar</span>;
 }
 function DocumentIcon() { return <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 2h8l4 4v16H6z" /><path d="M14 2v5h5" /></svg>; }
+function PrintIcon() { return <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 14h12v8H6z" /></svg>; }
