@@ -141,7 +141,7 @@ export function AssetFormPage({ mode }) {
             {tabs.find((tab) => tab.key === activeTab)?.groups?.map((groupKey) => {
               const group = groupsByKey[groupKey];
               if (!group) return null;
-              return <section key={group.key} className="mb-7 last:mb-0"><h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">{group.label}</h2><div className="grid grid-cols-1 gap-4 md:grid-cols-2">{group.fields.map((field) => <Field key={field.key} field={field} value={values[field.key]} onChange={setField} />)}</div></section>;
+              return <section key={group.key} className="mb-7 last:mb-0"><h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">{group.label}</h2><div className="grid grid-cols-1 gap-4 md:grid-cols-2">{group.fields.map((field) => <AssetField key={field.key} field={field} value={values[field.key]} onChange={setField} />)}</div></section>;
             })}
             {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
             {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel assetId={id} documents={documents} error={documentsError} onError={setDocumentsError} onChange={() => apiFetch(`/activos/${id}/documentos`).then((result) => setDocuments(result.data || []))} />}
@@ -266,7 +266,7 @@ function employeeLabel(employee) {
   return `${name}${detail ? ` — ${detail}` : ''}${employee.employment_status !== 'active' ? ' (baja)' : ''}`;
 }
 
-function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId, usuarioAsignado, onChange }) {
+export function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId, usuarioAsignado, onChange }) {
   const [employees, setEmployees] = useState([]);
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
@@ -584,7 +584,7 @@ function OperationalValue({ label, value }) {
   return <div><span className="block text-xs text-slate-500">{label}</span><span className="text-slate-200">{value}</span></div>;
 }
 
-function Field({ field, value, onChange }) {
+export function AssetField({ field, value, onChange }) {
   const commonClass = 'w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100';
   const isWide = ['descripcion', 'software_incluido', 'version', 'esp_tec', 'notas'].includes(field.key);
 

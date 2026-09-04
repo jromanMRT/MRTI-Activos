@@ -11,6 +11,8 @@ export const FIELD_GROUPS = [
       { key: 'cod_activo_fijo', label: 'Código de activo fijo', type: 'text' },
       { key: 'tipo', label: 'Tipo', type: 'select', options: ['Laptop', 'PC', 'Servidor'] },
       { key: 'descripcion', label: 'Descripción', type: 'text' },
+      { key: 'empresa', label: 'Empresa', type: 'text' },
+      { key: 'unidad', label: 'Unidad', type: 'text' },
       { key: 'marca', label: 'Marca', type: 'text' },
       { key: 'modelo', label: 'Modelo', type: 'text' },
       { key: 'service_tag', label: 'Service tag', type: 'text' },

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RESOURCE_CONFIG, resolveResourceSort, safeDocumentPath } from '../src/routes/assetSuite.js';
+import { findIncompleteAssetFields, RESOURCE_CONFIG, resolveResourceSort, safeDocumentPath } from '../src/routes/assetSuite.js';
 
 test('los catálogos públicos nunca incluyen columnas cifradas', () => {
   for (const config of Object.values(RESOURCE_CONFIG)) {
@@ -20,4 +20,11 @@ test('el orden de catálogos sólo admite columnas públicas conocidas', () => {
   assert.equal(resolveResourceSort(RESOURCE_CONFIG.componentes, 'marca', 'desc'), '`marca` DESC');
   assert.equal(resolveResourceSort(RESOURCE_CONFIG.componentes, 'marca; DROP TABLE activos', 'asc'), '`id` ASC');
   assert.equal(resolveResourceSort(RESOURCE_CONFIG['config-alertas'], 'clave', 'desc'), '`clave` DESC');
+});
+
+test('los campos incompletos se reportan sin considerar espacios como información', () => {
+  const fields = findIncompleteAssetFields({
+    marca: 'MRT', modelo: '  ', service_tag: null, numero_serie: 'SER-1', usuario_asignado: 'Ana', unidad: 'TI', fecha_compra: '2026-09-04', empresa: '',
+  });
+  assert.deepEqual(fields, ['modelo', 'service_tag', 'empresa']);
 });

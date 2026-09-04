@@ -30,6 +30,10 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
   assert.match(suite, /Filtrar por tipo de alerta/);
   assert.match(suite, /selectedAlert/);
   assert.match(suite, /Activos sin documentos/);
+  assert.match(suite, /Selecciona un renglón para completar la información del activo/);
+  assert.match(suite, /IncompleteAssetModal/);
+  assert.match(suite, /Guardar y finalizar/);
+  assert.match(suite, /AssignmentPanel/);
   assert.match(api, /rhAssetAssignmentProfilesFetch/);
   assert.match(api, /asset-assignment-profiles/);
   assert.match(list, /employeeProfile\?\.employee_number \|\| inheritedEmployeeId/);

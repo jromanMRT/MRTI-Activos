@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiDownload, apiFetch } from '../api.js';
+import { AssetField, AssignmentPanel } from './AssetFormPage.jsx';
 
 export const CATALOGS = {
   credenciales: { title: 'Credenciales de equipos', description: 'Cuentas y licencias asociadas. Las contraseñas de los activos no se copian.', columns: [['center_code', 'Centro'], ['usuario_asignado', 'Usuario'], ['win_usuario', 'Windows'], ['ms_usuario', 'Microsoft'], ['ms_licencia', 'Licencia'], ['correo_mrt', 'Correo MRT'], ['av_caducidad', 'Caducidad antivirus']] },
@@ -30,8 +31,10 @@ const COLUMN_LABELS = {
   center_code: 'Código TI', source_ids: 'IDs de origen', detected_at: 'Detectado', last_seen_at: 'Última detección',
   tipo: 'Tipo', marca: 'Marca', modelo: 'Modelo', numero_serie: 'Serie', usuario_asignado: 'Usuario asignado',
   ms_cuenta: 'Cuenta Microsoft', ms_licencia: 'Licencia Microsoft', software: 'Software', proyecto: 'Proyecto',
-  fecha_expira: 'Vencimiento', av_licencia: 'Licencia antivirus', fecha_vence: 'Vencimiento',
+  fecha_expira: 'Vencimiento', av_licencia: 'Licencia antivirus', fecha_vence: 'Vencimiento', missing_fields: 'Datos faltantes',
 };
+const INCOMPLETE_ASSET_FIELDS = ['marca', 'modelo', 'service_tag', 'numero_serie', 'usuario_asignado', 'unidad', 'fecha_compra', 'empresa'];
+function isMissing(value) { return value === null || value === undefined || (typeof value === 'string' && value.trim() === ''); }
 function columnLabel(field) { return COLUMN_LABELS[field] || field.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase()); }
 function sortTableRows(rows, field, order) {
   return [...rows].sort((left, right) => {
@@ -130,13 +133,16 @@ export function AssetCatalogPage() {
 }
 
 export function AssetAlertsPage() {
-  const [data, setData] = useState(null); const [error, setError] = useState(''); const [selectedAlert, setSelectedAlert] = useState('all');
-  useEffect(() => { apiFetch('/activos-suite/alerts').then((body) => setData(body.data)).catch((err) => setError(err.message)); }, []);
+  const [data, setData] = useState(null); const [error, setError] = useState(''); const [selectedAlert, setSelectedAlert] = useState('all'); const [incompleteAsset, setIncompleteAsset] = useState(null);
+  async function loadAlerts() {
+    try { const body = await apiFetch('/activos-suite/alerts'); setData(body.data); setError(''); } catch (err) { setError(err.message); }
+  }
+  useEffect(() => { void loadAlerts(); }, []);
   if (error) return <Message error={error} />; if (!data) return <p className="text-slate-500">Cargando alertas…</p>;
   const sections = [
     { key: 'duplicados', label: 'Duplicados', title: 'Códigos duplicados en el origen', rows: data.duplicados, fields: ['center_code', 'source_ids', 'detected_at', 'last_seen_at'] },
     { key: 'sin_documentos', label: 'Sin documentos', title: 'Activos sin documentos', count: data.sin_documentos, rows: data.sin_documentos_detalle || [], fields: ['center_code', 'tipo', 'marca', 'modelo', 'usuario_asignado', 'unidad'] },
-    { key: 'incompletos', label: 'Datos incompletos', title: 'Datos incompletos', rows: data.incompletos, fields: ['center_code', 'tipo', 'marca', 'modelo', 'numero_serie', 'usuario_asignado'] },
+    { key: 'incompletos', label: 'Datos incompletos', title: 'Datos incompletos', rows: data.incompletos, fields: ['center_code', 'tipo', 'marca', 'modelo', 'numero_serie', 'usuario_asignado', 'missing_fields'], onRowClick: setIncompleteAsset },
     { key: 'perpetuas', label: 'Licencias perpetuas', title: 'Licencias perpetuas', rows: data.perpetuas, fields: ['center_code', 'usuario_asignado', 'ms_cuenta', 'ms_licencia'] },
     { key: 'fortigate', label: 'FortiGate', title: 'FortiGate vencido o próximo', rows: data.fortigate, fields: ['software', 'numero_serie', 'proyecto', 'fecha_expira'] },
     { key: 'antivirus', label: 'Antivirus', title: 'Antivirus vencido o próximo', rows: data.antivirus, fields: ['center_code', 'usuario_asignado', 'av_licencia', 'fecha_vence'] },
@@ -155,17 +161,67 @@ export function AssetAlertsPage() {
       {sections.map((section) => <AlertCard key={section.key} title={section.label} count={section.count} active={selectedAlert === section.key} onClick={() => setSelectedAlert(section.key)} />)}
     </div>
     <div className="mb-4 flex items-center justify-between gap-3"><p className="text-sm text-slate-400">Mostrando: <span className="font-semibold text-slate-200">{selectedAlert === 'all' ? 'Todas las alertas' : sections.find((section) => section.key === selectedAlert)?.label}</span></p>{selectedAlert !== 'all' && <button type="button" onClick={() => setSelectedAlert('all')} className="text-sm text-sky-400 hover:underline">Mostrar todas</button>}</div>
-    {visibleSections.map((section) => <AlertTable key={section.key} title={section.title} rows={section.rows} fields={section.fields} total={section.count} />)}
+    {visibleSections.map((section) => <AlertTable key={section.key} title={section.title} rows={section.rows} fields={section.fields} total={section.count} onRowClick={section.onRowClick} />)}
+    {incompleteAsset && <IncompleteAssetModal row={incompleteAsset} onClose={() => setIncompleteAsset(null)} onSaved={loadAlerts} />}
   </div>;
 }
 
 function AlertFilter({ children, active, count, onClick }) { return <button type="button" role="tab" aria-selected={active} onClick={onClick} className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-sm transition ${active ? 'border-sky-400 bg-sky-500/15 text-sky-300' : 'border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-500'}`}>{children}<span className={`rounded-full px-2 py-0.5 text-xs ${active ? 'bg-sky-400/20' : 'bg-slate-800'}`}>{count}</span></button>; }
 function AlertCard({ title, count, active, onClick }) { return <button type="button" onClick={onClick} className={`rounded-xl border p-4 text-left transition hover:-translate-y-0.5 ${active ? 'border-sky-400 bg-sky-500/15 ring-1 ring-sky-400/40' : 'border-amber-500/30 bg-amber-500/10'}`}><p className={active ? 'text-sm text-sky-200' : 'text-sm text-amber-200'}>{title}</p><p className={active ? 'mt-2 text-3xl font-bold text-sky-300' : 'mt-2 text-3xl font-bold text-amber-400'}>{count}</p><p className="mt-1 text-xs text-slate-500">Ver sólo esta alerta</p></button>; }
-function AlertTable({ title, rows, fields, total = rows.length }) {
+function AlertTable({ title, rows, fields, total = rows.length, onRowClick }) {
   const [sort, setSort] = useState(fields[0]); const [order, setOrder] = useState('asc');
   const sortedRows = useMemo(() => sortTableRows(rows, sort, order), [rows, sort, order]);
   function changeSort(nextSort) { if (sort === nextSort) setOrder((current) => current === 'asc' ? 'desc' : 'asc'); else { setSort(nextSort); setOrder('asc'); } }
-  return <section className="mb-5 rounded-xl border border-slate-800 p-4"><h2 className="mb-3 font-semibold">{title} <span className="text-slate-500">({total})</span></h2>{rows.length === 0 ? <p className="text-sm text-slate-500">Sin pendientes.</p> : <div className="overflow-x-auto"><table className="min-w-full text-sm"><thead className="bg-slate-900 text-left text-slate-400"><tr>{fields.map((field) => <SortableTh key={field} sortKey={field} sort={sort} order={order} onSort={changeSort}>{columnLabel(field)}</SortableTh>)}</tr></thead><tbody>{sortedRows.map((row, index) => <tr key={row.id || index} className="border-t border-slate-800">{fields.map((field) => <td key={field} className="px-3 py-2">{display(row[field])}</td>)}</tr>)}</tbody></table>{total > rows.length && <p className="mt-3 text-xs text-slate-500">Se muestran los primeros {rows.length} de {total} pendientes.</p>}</div>}</section>;
+  return <section className="mb-5 rounded-xl border border-slate-800 p-4"><div className="mb-3"><h2 className="font-semibold">{title} <span className="text-slate-500">({total})</span></h2>{onRowClick && rows.length > 0 && <p className="mt-1 text-xs text-slate-500">Selecciona un renglón para completar la información del activo.</p>}</div>{rows.length === 0 ? <p className="text-sm text-slate-500">Sin pendientes.</p> : <div className="overflow-x-auto"><table className="min-w-full text-sm"><thead className="bg-slate-900 text-left text-slate-400"><tr>{fields.map((field) => <SortableTh key={field} sortKey={field} sort={sort} order={order} onSort={changeSort}>{columnLabel(field)}</SortableTh>)}</tr></thead><tbody>{sortedRows.map((row, index) => <tr key={row.id ?? index} role={onRowClick ? 'button' : undefined} tabIndex={onRowClick ? 0 : undefined} onClick={onRowClick ? () => onRowClick(row) : undefined} onKeyDown={onRowClick ? (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onRowClick(row); } } : undefined} className={`border-t border-slate-800 ${onRowClick ? 'cursor-pointer transition hover:bg-sky-500/10 focus:bg-sky-500/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-400' : ''}`}>{fields.map((field) => <td key={field} className="px-3 py-2">{field === 'missing_fields' ? (row[field] || []).map(columnLabel).join(', ') : display(row[field])}</td>)}</tr>)}</tbody></table>{total > rows.length && <p className="mt-3 text-xs text-slate-500">Se muestran los primeros {rows.length} de {total} pendientes.</p>}</div>}</section>;
+}
+
+function IncompleteAssetModal({ row, onClose, onSaved }) {
+  const [groups, setGroups] = useState([]); const [values, setValues] = useState(null); const [fieldsToComplete, setFieldsToComplete] = useState([]); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState('');
+  useEffect(() => {
+    let current = true;
+    Promise.all([apiFetch('/activos/meta'), apiFetch(`/activos/${row.id}`)])
+      .then(([meta, asset]) => { if (current) { setGroups(meta.groups || []); setValues(asset.data || {}); setFieldsToComplete(INCOMPLETE_ASSET_FIELDS.filter((field) => isMissing(asset.data?.[field]))); } })
+      .catch((err) => { if (current) setError(err.message); })
+      .finally(() => { if (current) setLoading(false); });
+    return () => { current = false; };
+  }, [row.id]);
+  useEffect(() => {
+    function closeOnEscape(event) { if (event.key === 'Escape' && !saving) onClose(); }
+    document.addEventListener('keydown', closeOnEscape); const previousOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', closeOnEscape); document.body.style.overflow = previousOverflow; };
+  }, [onClose, saving]);
+  const fieldMap = Object.fromEntries(groups.flatMap((group) => group.fields).map((field) => [field.key, field]));
+  const editableFields = fieldsToComplete.filter((field) => field !== 'usuario_asignado').map((field) => fieldMap[field]).filter(Boolean);
+  const assignmentMissing = fieldsToComplete.includes('usuario_asignado') && isMissing(values?.usuario_asignado);
+  async function assignmentChanged() {
+    try {
+      const asset = await apiFetch(`/activos/${row.id}`);
+      setValues((current) => ({ ...asset.data, ...Object.fromEntries(editableFields.map((field) => [field.key, current?.[field.key]])) }));
+      if (!isMissing(asset.data?.usuario_asignado)) setFieldsToComplete((current) => current.filter((field) => field !== 'usuario_asignado'));
+      await onSaved();
+    } catch (err) { setError(err.message); }
+  }
+  async function submit(event) {
+    event.preventDefault(); setError('');
+    if (assignmentMissing) { setError('Selecciona a la persona responsable del activo antes de finalizar.'); return; }
+    const unfilled = editableFields.filter((field) => isMissing(values[field.key]));
+    if (unfilled.length) { setError(`Completa: ${unfilled.map((field) => field.label).join(', ')}.`); return; }
+    setSaving(true);
+    try {
+      if (editableFields.length) {
+        const body = Object.fromEntries(editableFields.map((field) => [field.key, values[field.key]]));
+        await apiFetch(`/activos/${row.id}`, { method: 'PATCH', body: JSON.stringify(body) });
+      }
+      await onSaved(); onClose();
+    } catch (err) { setError(err.message); } finally { setSaving(false); }
+  }
+  return <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 p-0 backdrop-blur-sm sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose(); }}>
+    <form onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="incomplete-asset-title" className="flex max-h-full w-full flex-col overflow-hidden bg-slate-950 shadow-2xl sm:max-h-[85dvh] sm:max-w-3xl sm:rounded-2xl sm:border sm:border-slate-800">
+      <header className="flex items-start justify-between gap-4 border-b border-slate-800 px-5 py-4 sm:px-7"><div><p className="text-xs font-semibold uppercase tracking-widest text-amber-400">Datos incompletos</p><h2 id="incomplete-asset-title" className="mt-1 text-xl font-bold">Completar activo {row.center_code}</h2><p className="mt-1 text-sm text-slate-500">Sólo se muestran los datos esenciales que aún faltan.</p></div><button type="button" onClick={onClose} disabled={saving} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-800 text-slate-400 hover:bg-slate-900 hover:text-slate-100 disabled:opacity-50" aria-label="Cerrar">×</button></header>
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7">{error && <Message error={error} />}{loading ? <p className="py-10 text-center text-slate-500">Cargando activo…</p> : fieldsToComplete.length === 0 ? <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-300">Este activo ya tiene completos todos sus datos esenciales.</div> : <div className="space-y-5">{editableFields.length > 0 && <div className="grid grid-cols-1 gap-4 md:grid-cols-2">{editableFields.map((field) => <AssetField key={field.key} field={field} value={values[field.key]} onChange={(key, value) => setValues((current) => ({ ...current, [key]: value }))} />)}</div>}{assignmentMissing && <AssignmentPanel assetId={row.id} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} onChange={assignmentChanged} />}</div>}</div>
+      <footer className="flex justify-end gap-2 border-t border-slate-800 bg-slate-900/50 px-5 py-4 sm:px-7"><button type="button" onClick={onClose} disabled={saving} className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50">Cancelar</button><button type="submit" disabled={loading || saving || assignmentMissing} className="rounded-lg bg-sky-500 px-5 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">{saving ? 'Guardando…' : fieldsToComplete.length ? 'Guardar y finalizar' : 'Cerrar'}</button></footer>
+    </form>
+  </div>;
 }
 function SortableTh({ children, sortKey, sort, order, onSort }) { const active = sort === sortKey; return <th className="whitespace-nowrap px-4 py-3 font-medium" aria-sort={active ? (order === 'asc' ? 'ascending' : 'descending') : undefined}><button type="button" onClick={() => onSort(sortKey)} className={`inline-flex items-center gap-1 hover:text-slate-200 ${active ? 'text-sky-400' : ''}`}>{children}<span aria-hidden="true" className="text-[9px]">{active ? (order === 'asc' ? '▲' : '▼') : '⇅'}</span></button></th>; }
 function Message({ error }) { return <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300">{error}</div>; }

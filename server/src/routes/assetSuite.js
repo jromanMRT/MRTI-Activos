@@ -6,8 +6,20 @@ import { administratorOnly } from '../auth.js';
 import { decryptSecret } from '../integrations/credentialCrypto.js';
 import { syncAllSap } from '../integrations/sapSync.js';
 import { safeDocumentPath } from '../documentStorage.js';
+import { normalizeAssetDates } from '../meta.js';
 
 export { safeDocumentPath } from '../documentStorage.js';
+
+export const INCOMPLETE_ASSET_FIELDS = Object.freeze([
+  'marca', 'modelo', 'service_tag', 'numero_serie', 'usuario_asignado', 'unidad', 'fecha_compra', 'empresa',
+]);
+
+export function findIncompleteAssetFields(asset) {
+  return INCOMPLETE_ASSET_FIELDS.filter((field) => {
+    const value = asset?.[field];
+    return value === null || value === undefined || (typeof value === 'string' && value.trim() === '');
+  });
+}
 
 export const RESOURCE_CONFIG = Object.freeze({
   credenciales: {
@@ -131,12 +143,16 @@ assetSuiteRouter.get('/alerts', async (_req, res, next) => {
       pool.query(`SELECT id, center_code, usuario_asignado, av_licencia, av_caducidad, DATE_ADD(av_caducidad, INTERVAL 1 YEAR) AS fecha_vence FROM activos WHERE estado = 'Activo' AND av_caducidad IS NOT NULL AND DATE_ADD(av_caducidad, INTERVAL 1 YEAR) <= DATE_ADD(CURDATE(), INTERVAL 90 DAY) ORDER BY fecha_vence`),
       pool.query(`SELECT id, center_code, usuario_asignado, ms_cuenta, ms_usuario, ms_licencia, fecha_suscripcion, anos_suscripcion, DATE_ADD(fecha_suscripcion, INTERVAL COALESCE(anos_suscripcion, 1) YEAR) AS fecha_vence FROM activos WHERE estado = 'Activo' AND fecha_suscripcion IS NOT NULL AND COALESCE(anos_suscripcion, 1) > 0 AND DATE_ADD(fecha_suscripcion, INTERVAL COALESCE(anos_suscripcion, 1) YEAR) <= DATE_ADD(CURDATE(), INTERVAL 90 DAY) ORDER BY fecha_vence`),
       pool.query(`SELECT id, center_code, usuario_asignado, ms_cuenta, ms_usuario, ms_licencia FROM activos WHERE estado = 'Activo' AND anos_suscripcion = 0 ORDER BY center_code`),
-      pool.query(`SELECT id, center_code, tipo, marca, modelo, service_tag, numero_serie, usuario_asignado, unidad, empresa FROM activos WHERE estado = 'Activo' AND (marca IS NULL OR marca = '' OR modelo IS NULL OR modelo = '' OR service_tag IS NULL OR service_tag = '' OR numero_serie IS NULL OR numero_serie = '' OR usuario_asignado IS NULL OR usuario_asignado = '' OR unidad IS NULL OR unidad = '' OR fecha_compra IS NULL OR empresa IS NULL OR empresa = '') ORDER BY center_code LIMIT 300`),
+      pool.query(`SELECT id, center_code, tipo, marca, modelo, service_tag, numero_serie, usuario_asignado, unidad, fecha_compra, empresa FROM activos WHERE estado = 'Activo' AND (marca IS NULL OR marca = '' OR modelo IS NULL OR modelo = '' OR service_tag IS NULL OR service_tag = '' OR numero_serie IS NULL OR numero_serie = '' OR usuario_asignado IS NULL OR usuario_asignado = '' OR unidad IS NULL OR unidad = '' OR fecha_compra IS NULL OR empresa IS NULL OR empresa = '') ORDER BY center_code LIMIT 300`),
       pool.query(`SELECT center_code, source_ids_json, detected_at, last_seen_at FROM sap_asset_duplicates WHERE resolved_at IS NULL ORDER BY center_code`),
     ]);
     const missingDocuments = missingResult[0][0];
     const duplicates = duplicateResult[0].map((row) => ({ ...row, source_ids: JSON.parse(row.source_ids_json || '[]').join(', ') }));
-    res.json({ data: { sin_documentos: Number(missingDocuments.total || 0), sin_documentos_detalle: missingDetailResult[0], fortigate: fortigateResult[0], antivirus: antivirusResult[0], office365: officeResult[0], perpetuas: perpetualResult[0], incompletos: incompleteResult[0], duplicados: duplicates } });
+    const incompleteAssets = incompleteResult[0].map((row) => {
+      const normalized = normalizeAssetDates(row);
+      return { ...normalized, missing_fields: findIncompleteAssetFields(normalized) };
+    });
+    res.json({ data: { sin_documentos: Number(missingDocuments.total || 0), sin_documentos_detalle: missingDetailResult[0], fortigate: fortigateResult[0], antivirus: antivirusResult[0], office365: officeResult[0], perpetuas: perpetualResult[0], incompletos: incompleteAssets, duplicados: duplicates } });
   } catch (error) { next(error); }
 });
 
