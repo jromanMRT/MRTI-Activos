@@ -3,8 +3,8 @@ import { NavLink } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme.js';
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Inventario', icon: 'inventory' },
-  { to: '/operacion', label: 'Dashboard', icon: 'dashboard' },
+  { to: '/', label: 'Dashboard', icon: 'dashboard' },
+  { to: '/inventario', label: 'Inventario', icon: 'inventory' },
   { to: '/alertas', label: 'Alertas', icon: 'alert' },
   { to: '/catalogos/credenciales', label: 'Credenciales', icon: 'catalog' },
   { to: '/catalogos/componentes', label: 'Componentes', icon: 'catalog' },

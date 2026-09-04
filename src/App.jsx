@@ -8,9 +8,10 @@ export default function App() {
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<ListPage />} />
-        <Route path="/terceros" element={<Navigate replace to="/" />} />
-        <Route path="/operacion" element={<AssetSuiteOverviewPage />} />
+        <Route path="/" element={<AssetSuiteOverviewPage />} />
+        <Route path="/inventario" element={<ListPage />} />
+        <Route path="/terceros" element={<Navigate replace to="/inventario" />} />
+        <Route path="/operacion" element={<Navigate replace to="/" />} />
         <Route path="/catalogos/:resource" element={<AssetCatalogPage />} />
         <Route path="/alertas" element={<AssetAlertsPage />} />
         <Route path="/nuevo" element={<><ListPage /><AssetFormPage mode="create" /></>} />

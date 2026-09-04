@@ -16,7 +16,10 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
   assert.doesNotMatch(sidebar, /Terceros externos|to:\s*['"]\/terceros/);
   assert.doesNotMatch(form, /Asignar a un tercero|Tercero externo \(sin ficha en RH\)/);
   assert.match(form, /\/rh\/empleados\/nuevo/);
-  assert.match(app, /path="\/terceros" element={<Navigate replace to="\/"/);
+  assert.match(app, /path="\/" element={<AssetSuiteOverviewPage \/>}/);
+  assert.match(app, /path="\/inventario" element={<ListPage \/>}/);
+  assert.match(app, /path="\/terceros" element={<Navigate replace to="\/inventario"/);
+  assert.match(app, /path="\/operacion" element={<Navigate replace to="\/"/);
   assert.match(form, /Subir documento/);
   assert.match(form, /PDF, JPG o PNG/);
   assert.match(suite, /Dashboard de activos/);

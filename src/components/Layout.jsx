@@ -6,11 +6,11 @@ import { ModuleHeader } from './ModuleHeader.jsx';
 
 function currentRouteLabel(pathname) {
   if (pathname === '/nuevo') return 'Nuevo activo';
-  if (pathname === '/operacion') return 'Dashboard de activos';
+  if (pathname === '/' || pathname === '/operacion') return 'Dashboard de activos';
+  if (pathname === '/inventario') return 'Inventario';
   if (pathname === '/alertas') return 'Alertas';
   if (pathname.startsWith('/catalogos/')) return 'Catálogos de activos';
-  if (pathname !== '/') return 'Detalle del activo';
-  return 'Inventario';
+  return 'Detalle del activo';
 }
 
 export function Layout({ children }) {

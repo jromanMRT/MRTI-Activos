@@ -23,7 +23,7 @@ export function AssetFormPage({ mode }) {
 
   useEffect(() => {
     function closeOnEscape(event) {
-      if (event.key === 'Escape' && !saving) navigate('/');
+      if (event.key === 'Escape' && !saving) navigate('/inventario');
     }
     document.addEventListener('keydown', closeOnEscape);
     const previousOverflow = document.body.style.overflow;
@@ -73,7 +73,7 @@ export function AssetFormPage({ mode }) {
         navigate(`/${result.data.id}`);
       } else {
         await apiFetch(`/activos/${id}`, { method: 'PATCH', body: JSON.stringify(values) });
-        navigate('/');
+        navigate('/inventario');
       }
     } catch (err) {
       setError(err.message);
@@ -86,7 +86,7 @@ export function AssetFormPage({ mode }) {
     if (!window.confirm('¿Retirar este activo? Se conservará su historial y dejará de estar asignado.')) return;
     try {
       await apiFetch(`/activos/${id}`, { method: 'DELETE' });
-      navigate('/');
+      navigate('/inventario');
     } catch (err) {
       setError(err.message);
     }
@@ -114,7 +114,7 @@ export function AssetFormPage({ mode }) {
     : null;
 
   function closeModal() {
-    if (!saving) navigate('/');
+    if (!saving) navigate('/inventario');
   }
 
   return (
