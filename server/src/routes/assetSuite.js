@@ -3,7 +3,7 @@ import { access } from 'node:fs/promises';
 import { Router } from 'express';
 import { pool } from '../db.js';
 import { administratorOnly } from '../auth.js';
-import { decryptSecret } from '../integrations/credentialCrypto.js';
+import { decryptSecret, encryptSecret } from '../integrations/credentialCrypto.js';
 import { syncAllSap } from '../integrations/sapSync.js';
 import { safeDocumentPath } from '../documentStorage.js';
 import { normalizeAssetDates } from '../meta.js';
@@ -27,15 +27,15 @@ export const RESOURCE_CONFIG = Object.freeze({
     columns: ['id', 'center_code', 'usuario_asignado', 'win_cuenta', 'win_usuario', 'ms_cuenta', 'ms_usuario', 'ms_licencia', 'ms_suscripcion', 'db_cuenta', 'db_usuario', 'db_licencia', 'correo_mrt', 'correo_corporativo', 'av_licencia', 'av_caducidad'],
     search: ['center_code', 'usuario_asignado', 'win_usuario', 'ms_usuario', 'correo_mrt', 'correo_corporativo'],
   },
-  componentes: { table: 'sap_componentes', columns: ['id', 'sap_id', 'center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'ip_address', 'hostname', 'unidad', 'departamento', 'usuario', 'comentario', 'synced_at', 'archived_at'], search: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'usuario'] },
-  impresoras: { table: 'sap_impresoras', columns: ['id', 'sap_id', 'usuario', 'ubicacion', 'ip_address', 'mac_address', 'hostname', 'modelo', 'numero_serie', 'conteo_paginas', 'comentario', 'synced_at', 'archived_at'], search: ['usuario', 'ubicacion', 'ip_address', 'hostname', 'modelo', 'numero_serie'] },
-  nvr: { table: 'sap_nvr', columns: ['id', 'sap_id', 'alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'acceso_local', 'localidad', 'ubicacion', 'synced_at', 'archived_at'], search: ['alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'localidad', 'ubicacion'], secretColumns: ['password_encrypted', 'clave_cifrado_encrypted', 'codigo_verificacion_encrypted'] },
-  passwords: { table: 'sap_passwords', columns: ['id', 'sap_id', 'categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario', 'synced_at', 'archived_at'], search: ['categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario'], secretColumns: ['password_encrypted'] },
-  starlink: { table: 'sap_starlink', columns: ['id', 'sap_id', 'correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'importe_mes', 'dia_corte', 'suscripcion', 'cliente', 'comentario', 'synced_at', 'archived_at'], search: ['correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'suscripcion', 'cliente'] },
-  fortigate: { table: 'sap_fortigate', columns: ['id', 'sap_id', 'software', 'numero_serie', 'proyecto', 'fecha_expira', 'comentario', 'synced_at', 'archived_at'], search: ['software', 'numero_serie', 'proyecto', 'comentario'] },
-  dominios: { table: 'sap_dominios', columns: ['id', 'sap_id', 'dominio', 'servicios', 'fecha_expira', 'status', 'comentario', 'synced_at', 'archived_at'], search: ['dominio', 'servicios', 'status', 'comentario'] },
-  mantenimientos: { table: 'sap_mantenimientos', columns: ['id', 'sap_id', 'center_code', 'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones', 'synced_at', 'archived_at'], search: ['center_code', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'numero_ticket', 'estado'] },
-  unidades: { table: 'sap_unidades', columns: ['id', 'sap_id', 'nombre', 'activa', 'orden', 'synced_at', 'archived_at'], search: ['nombre'] },
+  componentes: { table: 'sap_componentes', columns: ['id', 'sap_id', 'center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'ip_address', 'hostname', 'unidad', 'departamento', 'usuario', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'usuario'], create: { fields: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'firmware', 'ip_address', 'mac_address', 'hostname', 'unidad', 'departamento', 'usuario', 'contabilidad', 'orden_compra', 'comentario'], required: ['nombre'] } },
+  impresoras: { table: 'sap_impresoras', columns: ['id', 'sap_id', 'usuario', 'ubicacion', 'ip_address', 'mac_address', 'hostname', 'modelo', 'numero_serie', 'conteo_paginas', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['usuario', 'ubicacion', 'ip_address', 'hostname', 'modelo', 'numero_serie'], create: { fields: ['usuario', 'ubicacion', 'ip_address', 'mac_address', 'hostname', 'modelo', 'numero_serie', 'conteo_paginas', 'comentario'], required: ['modelo'], numbers: ['conteo_paginas'] } },
+  nvr: { table: 'sap_nvr', columns: ['id', 'sap_id', 'alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'acceso_local', 'localidad', 'ubicacion', 'record_origin', 'synced_at', 'archived_at'], search: ['alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'localidad', 'ubicacion'], secretColumns: ['password_encrypted', 'clave_cifrado_encrypted', 'codigo_verificacion_encrypted'], create: { fields: ['alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'acceso_local', 'localidad', 'ubicacion'], required: ['alias'], secrets: { password: 'password_encrypted', clave_cifrado: 'clave_cifrado_encrypted', codigo_verificacion: 'codigo_verificacion_encrypted' } } },
+  passwords: { table: 'sap_passwords', columns: ['id', 'sap_id', 'categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario'], secretColumns: ['password_encrypted'], create: { fields: ['categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario'], required: ['categoria', 'password'], secrets: { password: 'password_encrypted' } } },
+  starlink: { table: 'sap_starlink', columns: ['id', 'sap_id', 'correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'importe_mes', 'dia_corte', 'suscripcion', 'cliente', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'suscripcion', 'cliente'], create: { fields: ['correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'importe_mes', 'dia_corte', 'suscripcion', 'cliente', 'comentario'], required: ['id_starlink'], numbers: ['importe_mes'] } },
+  fortigate: { table: 'sap_fortigate', columns: ['id', 'sap_id', 'software', 'numero_serie', 'proyecto', 'fecha_expira', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['software', 'numero_serie', 'proyecto', 'comentario'], create: { fields: ['software', 'numero_serie', 'proyecto', 'fecha_expira', 'comentario'], required: ['numero_serie'], dates: ['fecha_expira'] } },
+  dominios: { table: 'sap_dominios', columns: ['id', 'sap_id', 'dominio', 'servicios', 'fecha_expira', 'status', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['dominio', 'servicios', 'status', 'comentario'], create: { fields: ['dominio', 'servicios', 'fecha_expira', 'status', 'comentario'], required: ['dominio'], dates: ['fecha_expira'] } },
+  mantenimientos: { table: 'sap_mantenimientos', columns: ['id', 'sap_id', 'center_code', 'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones', 'record_origin', 'synced_at', 'archived_at'], search: ['center_code', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'numero_ticket', 'estado'], create: { fields: ['center_code', 'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones'], required: ['center_code', 'fecha_servicio', 'tipo_servicio'], numbers: ['costo'], dates: ['fecha_servicio', 'fecha_fin', 'garantia_hasta'] } },
+  unidades: { table: 'sap_unidades', columns: ['id', 'sap_id', 'nombre', 'activa', 'orden', 'record_origin', 'synced_at', 'archived_at'], search: ['nombre'], create: { fields: ['nombre', 'activa', 'orden'], required: ['nombre'], numbers: ['orden'], booleans: ['activa'] } },
   documentos: { table: 'sap_documentos', columns: ['id', 'sap_id', 'asset_uid', 'center_code', 'nombre', 'tipo', 'archivo', 'tamano', 'subido_por', 'sap_creado_en', 'synced_at', 'archived_at', 'local_storage_path', 'mime_type', 'sha256', 'document_origin'], search: ['center_code', 'nombre', 'tipo', 'archivo', 'subido_por'] },
   'config-alertas': { table: 'sap_config_alertas', id: 'clave', archivable: false, columns: ['clave', 'nombre', 'dias_aviso', 'activo', 'sap_actualizado_en', 'synced_at'], search: ['clave', 'nombre'] },
 });
@@ -62,6 +62,41 @@ function searchableWhere(config, query) {
     values.push(`%${String(query.q).slice(0, 120)}%`);
   }
   return { sql: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '', values };
+}
+
+export function normalizeResourceCreateInput(config, body = {}) {
+  if (!config.create) { const error = new Error('Este catálogo no admite altas directas'); error.status = 405; throw error; }
+  const create = config.create;
+  const values = {};
+  for (const field of create.fields) {
+    if (!Object.prototype.hasOwnProperty.call(body, field)) continue;
+    const raw = body[field];
+    if (raw === '' || raw === null || raw === undefined) { values[field] = null; continue; }
+    if (create.numbers?.includes(field)) {
+      const number = Number(raw);
+      if (!Number.isFinite(number)) { const error = new Error(`${field} debe ser numérico`); error.status = 400; throw error; }
+      values[field] = number;
+    } else if (create.booleans?.includes(field)) {
+      values[field] = raw === true || raw === 1 || raw === '1' ? 1 : 0;
+    } else if (create.dates?.includes(field)) {
+      const value = String(raw).slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) { const error = new Error(`${field} debe tener formato AAAA-MM-DD`); error.status = 400; throw error; }
+      values[field] = value;
+    } else {
+      values[field] = String(raw).trim() || null;
+    }
+  }
+  const secretValues = {};
+  for (const [input, column] of Object.entries(create.secrets || {})) {
+    const value = body[input] === null || body[input] === undefined ? '' : String(body[input]);
+    if (value) secretValues[column] = value;
+  }
+  const missing = (create.required || []).filter((field) => {
+    if (Object.prototype.hasOwnProperty.call(create.secrets || {}, field)) return !secretValues[create.secrets[field]];
+    return values[field] === null || values[field] === undefined || values[field] === '';
+  });
+  if (missing.length) { const error = new Error(`Faltan campos obligatorios: ${missing.join(', ')}`); error.status = 400; throw error; }
+  return { values, secretValues };
 }
 
 async function auditSecretRead(req) {
@@ -165,6 +200,22 @@ assetSuiteRouter.get('/resources/:resource', async (req, res, next) => {
     const orderSql = resolveResourceSort(config, req.query.sort, req.query.order);
     const [rows] = await pool.query(`SELECT ${config.columns.map((column) => `\`${column}\``).join(', ')} FROM \`${config.table}\` ${sql} ORDER BY ${orderSql}, \`${idColumn}\` DESC LIMIT ?`, [...values, limit]);
     res.json({ data: rows, meta: { resource: req.params.resource, limit, sort: orderSql } });
+  } catch (error) { next(error); }
+});
+
+assetSuiteRouter.post('/resources/:resource', administratorOnly, async (req, res, next) => {
+  try {
+    const config = resourceOrThrow(req.params.resource);
+    const { values, secretValues } = normalizeResourceCreateInput(config, req.body || {});
+    const storedSecrets = Object.fromEntries(Object.entries(secretValues).map(([column, value]) => [column, encryptSecret(value)]));
+    const record = { ...values, ...storedSecrets, record_origin: 'local', created_by_user_id: req.portalUser.id };
+    const columns = Object.keys(record);
+    const [result] = await pool.query(
+      `INSERT INTO \`${config.table}\` (${columns.map((column) => `\`${column}\``).join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
+      columns.map((column) => record[column])
+    );
+    const [rows] = await pool.query(`SELECT ${config.columns.map((column) => `\`${column}\``).join(', ')} FROM \`${config.table}\` WHERE \`${config.id}\` = ? LIMIT 1`, [result.insertId]);
+    res.status(201).json({ data: rows[0] });
   } catch (error) { next(error); }
 });
 

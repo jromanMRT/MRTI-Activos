@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { pool } from './db.js';
 import { fetchCurrentUser } from './auth.js';
 
-const SENSITIVE_KEY = /password|passphrase|token|secret|authorization|cookie|api.?key|credential|hash|curp|rfc|nss|salary|sueldo|bank|clabe|medical|health|birth.?date/i;
+const SENSITIVE_KEY = /password|passphrase|token|secret|authorization|cookie|api.?key|credential|clave|verific|hash|curp|rfc|nss|salary|sueldo|bank|clabe|medical|health|birth.?date/i;
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 export function sanitizeAuditValue(value, depth = 0) {
   if (value === null || value === undefined) return value;

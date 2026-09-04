@@ -1,0 +1,45 @@
+-- ============================================================
+-- 010: Altas locales en catálogos sincronizados desde SAP
+--
+-- Los registros con sap_id NULL pertenecen a MRTI Activos y nunca son
+-- objetivo del upsert periódico, que sólo identifica filas por el id real
+-- de SAP. Las filas ya existentes conservan record_origin='sap'.
+-- ============================================================
+
+USE mrti_activos;
+
+SET @ddl = IF((SELECT IS_NULLABLE FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_componentes' AND column_name='sap_id')='NO','ALTER TABLE sap_componentes MODIFY sap_id INT UNSIGNED NULL','SELECT 1'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_componentes' AND column_name='record_origin'),'SELECT 1','ALTER TABLE sap_componentes ADD COLUMN record_origin VARCHAR(20) NOT NULL DEFAULT ''sap'' AFTER sap_id'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_componentes' AND column_name='created_by_user_id'),'SELECT 1','ALTER TABLE sap_componentes ADD COLUMN created_by_user_id CHAR(36) NULL AFTER record_origin'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF((SELECT IS_NULLABLE FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_impresoras' AND column_name='sap_id')='NO','ALTER TABLE sap_impresoras MODIFY sap_id INT UNSIGNED NULL','SELECT 1'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_impresoras' AND column_name='record_origin'),'SELECT 1','ALTER TABLE sap_impresoras ADD COLUMN record_origin VARCHAR(20) NOT NULL DEFAULT ''sap'' AFTER sap_id'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_impresoras' AND column_name='created_by_user_id'),'SELECT 1','ALTER TABLE sap_impresoras ADD COLUMN created_by_user_id CHAR(36) NULL AFTER record_origin'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF((SELECT IS_NULLABLE FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_nvr' AND column_name='sap_id')='NO','ALTER TABLE sap_nvr MODIFY sap_id INT UNSIGNED NULL','SELECT 1'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_nvr' AND column_name='record_origin'),'SELECT 1','ALTER TABLE sap_nvr ADD COLUMN record_origin VARCHAR(20) NOT NULL DEFAULT ''sap'' AFTER sap_id'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_nvr' AND column_name='created_by_user_id'),'SELECT 1','ALTER TABLE sap_nvr ADD COLUMN created_by_user_id CHAR(36) NULL AFTER record_origin'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF((SELECT IS_NULLABLE FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_passwords' AND column_name='sap_id')='NO','ALTER TABLE sap_passwords MODIFY sap_id INT UNSIGNED NULL','SELECT 1'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_passwords' AND column_name='record_origin'),'SELECT 1','ALTER TABLE sap_passwords ADD COLUMN record_origin VARCHAR(20) NOT NULL DEFAULT ''sap'' AFTER sap_id'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_passwords' AND column_name='created_by_user_id'),'SELECT 1','ALTER TABLE sap_passwords ADD COLUMN created_by_user_id CHAR(36) NULL AFTER record_origin'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF((SELECT IS_NULLABLE FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_starlink' AND column_name='sap_id')='NO','ALTER TABLE sap_starlink MODIFY sap_id INT UNSIGNED NULL','SELECT 1'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_starlink' AND column_name='record_origin'),'SELECT 1','ALTER TABLE sap_starlink ADD COLUMN record_origin VARCHAR(20) NOT NULL DEFAULT ''sap'' AFTER sap_id'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_starlink' AND column_name='created_by_user_id'),'SELECT 1','ALTER TABLE sap_starlink ADD COLUMN created_by_user_id CHAR(36) NULL AFTER record_origin'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF((SELECT IS_NULLABLE FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_fortigate' AND column_name='sap_id')='NO','ALTER TABLE sap_fortigate MODIFY sap_id INT UNSIGNED NULL','SELECT 1'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_fortigate' AND column_name='record_origin'),'SELECT 1','ALTER TABLE sap_fortigate ADD COLUMN record_origin VARCHAR(20) NOT NULL DEFAULT ''sap'' AFTER sap_id'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_fortigate' AND column_name='created_by_user_id'),'SELECT 1','ALTER TABLE sap_fortigate ADD COLUMN created_by_user_id CHAR(36) NULL AFTER record_origin'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF((SELECT IS_NULLABLE FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_dominios' AND column_name='sap_id')='NO','ALTER TABLE sap_dominios MODIFY sap_id INT UNSIGNED NULL','SELECT 1'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_dominios' AND column_name='record_origin'),'SELECT 1','ALTER TABLE sap_dominios ADD COLUMN record_origin VARCHAR(20) NOT NULL DEFAULT ''sap'' AFTER sap_id'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_dominios' AND column_name='created_by_user_id'),'SELECT 1','ALTER TABLE sap_dominios ADD COLUMN created_by_user_id CHAR(36) NULL AFTER record_origin'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF((SELECT IS_NULLABLE FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_mantenimientos' AND column_name='sap_id')='NO','ALTER TABLE sap_mantenimientos MODIFY sap_id INT UNSIGNED NULL','SELECT 1'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_mantenimientos' AND column_name='record_origin'),'SELECT 1','ALTER TABLE sap_mantenimientos ADD COLUMN record_origin VARCHAR(20) NOT NULL DEFAULT ''sap'' AFTER sap_id'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_mantenimientos' AND column_name='created_by_user_id'),'SELECT 1','ALTER TABLE sap_mantenimientos ADD COLUMN created_by_user_id CHAR(36) NULL AFTER record_origin'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF((SELECT IS_NULLABLE FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_unidades' AND column_name='sap_id')='NO','ALTER TABLE sap_unidades MODIFY sap_id INT UNSIGNED NULL','SELECT 1'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_unidades' AND column_name='record_origin'),'SELECT 1','ALTER TABLE sap_unidades ADD COLUMN record_origin VARCHAR(20) NOT NULL DEFAULT ''sap'' AFTER sap_id'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_unidades' AND column_name='created_by_user_id'),'SELECT 1','ALTER TABLE sap_unidades ADD COLUMN created_by_user_id CHAR(36) NULL AFTER record_origin'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;

@@ -90,10 +90,10 @@ export async function preserveSapAssetDuplicates(rows) {
   return { total: duplicates.length };
 }
 
-// Espejo genérico de solo lectura: upsert por `sap_id` (o la llave que se
-// indique) en una tabla `sap_*`. `renameMap` cubre las pocas columnas que
-// no se llaman igual en MySQL (creado_en -> sap_creado_en, etc.); el resto
-// de `columns` se lee del renglón de SAP con el mismo nombre.
+// Espejo genérico de SAP: upsert únicamente por `sap_id` (o la llave que se
+// indique) en una tabla `sap_*`. Las altas propias de MRTI usan sap_id NULL,
+// por lo que nunca coinciden ni son reemplazadas por este proceso.
+// `renameMap` cubre las pocas columnas que no se llaman igual en MySQL.
 async function mirrorRows(table, rows, columns, { idColumn = 'sap_id', idSource = 'id', renameMap = {} } = {}) {
   for (const row of rows) {
     const values = { [idColumn]: row[idSource] };
@@ -113,9 +113,9 @@ async function mirrorRows(table, rows, columns, { idColumn = 'sap_id', idSource 
 
 const TIMESTAMP_RENAME = { sap_creado_en: 'creado_en', sap_actualizado_en: 'actualizado_en' };
 
-// Los otros 11 dominios: sin escritura, sin UI todavía -- solo que el dato
-// exista en MySQL. Cada uno es independiente; si uno falla (ej. SAP quitó
-// una columna) no debe tumbar a los demás.
+// Cada catálogo se actualiza de manera independiente; si uno falla (por
+// ejemplo, SAP quitó una columna) no debe tumbar a los demás ni afectar las
+// filas locales identificadas por sap_id NULL.
 export async function syncSapMirrors() {
   const jobs = [
     ['sap_componentes', fetchSapComponentes, [

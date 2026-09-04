@@ -124,11 +124,14 @@ CREATE TABLE IF NOT EXISTS activo_mantenimientos (
 );
 
 -- ============================================================
--- Espejos de solo lectura de SAP (ver mysql/migrations/005_sap_activos_sync.sql)
+-- Catálogos sincronizados desde SAP con altas locales aisladas por sap_id NULL
+-- (ver migraciones 005 y 010).
 -- ============================================================
 CREATE TABLE IF NOT EXISTS sap_componentes (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  sap_id INT UNSIGNED NOT NULL,
+  sap_id INT UNSIGNED NULL,
+  record_origin VARCHAR(20) NOT NULL DEFAULT 'sap',
+  created_by_user_id CHAR(36) NULL,
   center_code VARCHAR(50) NULL,
   code VARCHAR(20) NULL,
   nombre VARCHAR(200) NULL,
@@ -157,7 +160,9 @@ CREATE TABLE IF NOT EXISTS sap_componentes (
 
 CREATE TABLE IF NOT EXISTS sap_impresoras (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  sap_id INT UNSIGNED NOT NULL,
+  sap_id INT UNSIGNED NULL,
+  record_origin VARCHAR(20) NOT NULL DEFAULT 'sap',
+  created_by_user_id CHAR(36) NULL,
   usuario VARCHAR(200) NULL,
   ubicacion VARCHAR(100) NULL,
   ip_address VARCHAR(50) NULL,
@@ -177,7 +182,9 @@ CREATE TABLE IF NOT EXISTS sap_impresoras (
 
 CREATE TABLE IF NOT EXISTS sap_nvr (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  sap_id INT UNSIGNED NOT NULL,
+  sap_id INT UNSIGNED NULL,
+  record_origin VARCHAR(20) NOT NULL DEFAULT 'sap',
+  created_by_user_id CHAR(36) NULL,
   alias VARCHAR(100) NULL,
   device_domain VARCHAR(100) NULL,
   device_serial VARCHAR(100) NULL,
@@ -200,7 +207,9 @@ CREATE TABLE IF NOT EXISTS sap_nvr (
 
 CREATE TABLE IF NOT EXISTS sap_passwords (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  sap_id INT UNSIGNED NOT NULL,
+  sap_id INT UNSIGNED NULL,
+  record_origin VARCHAR(20) NOT NULL DEFAULT 'sap',
+  created_by_user_id CHAR(36) NULL,
   categoria VARCHAR(100) NULL,
   subcategoria VARCHAR(100) NULL,
   ip VARCHAR(50) NULL,
@@ -218,7 +227,9 @@ CREATE TABLE IF NOT EXISTS sap_passwords (
 
 CREATE TABLE IF NOT EXISTS sap_starlink (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  sap_id INT UNSIGNED NOT NULL,
+  sap_id INT UNSIGNED NULL,
+  record_origin VARCHAR(20) NOT NULL DEFAULT 'sap',
+  created_by_user_id CHAR(36) NULL,
   correo_cuenta VARCHAR(200) NULL,
   ubicacion VARCHAR(200) NULL,
   id_starlink VARCHAR(100) NULL,
@@ -238,7 +249,9 @@ CREATE TABLE IF NOT EXISTS sap_starlink (
 
 CREATE TABLE IF NOT EXISTS sap_fortigate (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  sap_id INT UNSIGNED NOT NULL,
+  sap_id INT UNSIGNED NULL,
+  record_origin VARCHAR(20) NOT NULL DEFAULT 'sap',
+  created_by_user_id CHAR(36) NULL,
   software VARCHAR(200) NULL,
   numero_serie VARCHAR(100) NULL,
   proyecto VARCHAR(100) NULL,
@@ -254,7 +267,9 @@ CREATE TABLE IF NOT EXISTS sap_fortigate (
 
 CREATE TABLE IF NOT EXISTS sap_dominios (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  sap_id INT UNSIGNED NOT NULL,
+  sap_id INT UNSIGNED NULL,
+  record_origin VARCHAR(20) NOT NULL DEFAULT 'sap',
+  created_by_user_id CHAR(36) NULL,
   dominio VARCHAR(100) NULL,
   servicios VARCHAR(200) NULL,
   fecha_expira DATE NULL,
@@ -270,7 +285,9 @@ CREATE TABLE IF NOT EXISTS sap_dominios (
 
 CREATE TABLE IF NOT EXISTS sap_mantenimientos (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  sap_id INT UNSIGNED NOT NULL,
+  sap_id INT UNSIGNED NULL,
+  record_origin VARCHAR(20) NOT NULL DEFAULT 'sap',
+  created_by_user_id CHAR(36) NULL,
   center_code VARCHAR(50) NULL,
   fecha_servicio DATE NULL,
   fecha_fin DATE NULL,
@@ -309,7 +326,9 @@ CREATE TABLE IF NOT EXISTS sap_mantenimiento_componentes (
 
 CREATE TABLE IF NOT EXISTS sap_unidades (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  sap_id INT UNSIGNED NOT NULL,
+  sap_id INT UNSIGNED NULL,
+  record_origin VARCHAR(20) NOT NULL DEFAULT 'sap',
+  created_by_user_id CHAR(36) NULL,
   nombre VARCHAR(150) NULL,
   activa TINYINT(1) NULL,
   orden INT NULL,

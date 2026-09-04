@@ -34,6 +34,11 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
   assert.match(suite, /IncompleteAssetModal/);
   assert.match(suite, /Guardar y finalizar/);
   assert.match(suite, /AssignmentPanel/);
+  assert.match(suite, /CATALOG_CREATE_FORMS/);
+  assert.match(suite, /\+ Nuevo registro/);
+  assert.match(suite, /Crear registro/);
+  assert.match(suite, /Creado en MRTI/);
+  assert.match(suite, /Adjuntar desde un activo/);
   assert.match(api, /rhAssetAssignmentProfilesFetch/);
   assert.match(api, /asset-assignment-profiles/);
   assert.match(list, /employeeProfile\?\.employee_number \|\| inheritedEmployeeId/);
