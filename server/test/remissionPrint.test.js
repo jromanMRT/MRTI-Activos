@@ -51,3 +51,19 @@ test('la remisión escapa datos dinámicos e imprime las credenciales autorizada
   assert.match(html, /Password/);
   assert.match(html, /size:215\.9mm 279\.4mm/);
 });
+
+test('mantiene independientes Microsoft y el correo corporativo en la remisión', () => {
+  const onlyCorporate = buildRemissionHtml({
+    asset: { center_code: 'TI-00001', correo_corporativo: 'persona@corporativo.mx' },
+    credentials: { password_corporativo: 'CLAVE-SOLO-CORPORATIVA' },
+  });
+  assert.match(onlyCorporate, /<tr><td>Cuenta Microsoft \/ Office<\/td><td>—<\/td><td>—<\/td><\/tr>/);
+  assert.match(onlyCorporate, /<tr><td>Correo Corporativo<\/td><td>persona@corporativo\.mx<\/td><td>CLAVE-SOLO-CORPORATIVA<\/td><\/tr>/);
+
+  const onlyMicrosoft = buildRemissionHtml({
+    asset: { center_code: 'TI-00002', ms_usuario: 'persona@microsoft.com' },
+    credentials: { ms_password: 'CLAVE-SOLO-MICROSOFT' },
+  });
+  assert.match(onlyMicrosoft, /<tr><td>Cuenta Microsoft \/ Office<\/td><td>persona@microsoft\.com<\/td><td>CLAVE-SOLO-MICROSOFT<\/td><\/tr>/);
+  assert.match(onlyMicrosoft, /<tr><td>Correo Corporativo<\/td><td>—<\/td><td>—<\/td><\/tr>/);
+});

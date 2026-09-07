@@ -100,7 +100,7 @@ export function buildRemissionHtml({ asset, credentials = {}, employeeProfile = 
     <table>
       <tr><th style="width:30%">Cuenta</th><th style="width:35%">Usuario</th><th>Password</th></tr>
       <tr><td>Usuario Windows Local</td><td>${value(asset.win_usuario)}</td><td>${value(credentials.win_password)}</td></tr>
-      <tr><td>Cuenta Microsoft / Office</td><td>${value(asset.ms_usuario || asset.correo_corporativo)}</td><td>${value(credentials.ms_password || credentials.password_corporativo)}</td></tr>
+      <tr><td>Cuenta Microsoft / Office</td><td>${value(asset.ms_usuario || asset.ms_cuenta || asset.cuenta_microsoft)}</td><td>${value(credentials.ms_password)}</td></tr>
       <tr><td>Correo Autorizado (MRT)</td><td>${value(asset.correo_mrt)}</td><td>${value(credentials.password_mrt)}</td></tr>
       <tr><td>Correo Corporativo</td><td>${value(asset.correo_corporativo)}</td><td>${value(credentials.password_corporativo)}</td></tr>
       <tr><td>DropBox</td><td>${value(asset.db_usuario, 'Sin cuenta')}</td><td>${value(credentials.db_password)}</td></tr>
