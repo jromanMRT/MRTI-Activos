@@ -46,6 +46,8 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
   assert.match(list, /Imprimir remisión de/);
   assert.match(form, /Imprimir remisión/);
   assert.match(form, /Credenciales de remisión/);
+  assert.match(form, /Contraseñas \(remisión\)/);
+  assert.match(form, /Contraseña de Windows local/);
   assert.match(form, /remission-credential-status/);
   assert.match(form, /Guardar credenciales/);
   assert.match(remission, /REMISION DE ENTREGA DE EQUIPO/);

@@ -101,6 +101,7 @@ export function AssetFormPage({ mode }) {
   const groupsByKey = Object.fromEntries(groups.map((group) => [group.key, group]));
   const tabs = [
     { key: 'general', label: 'General', groups: ['identificacion', 'software'] },
+    ...(mode === 'edit' && isAdministrator ? [{ key: 'credenciales-remision', label: 'Contraseñas (remisión)' }] : []),
     ...(mode === 'edit' ? [{ key: 'asignacion', label: 'Asignación', groups: [] }] : []),
     { key: 'administracion', label: 'Administración', groups: ['compra', 'baja'] },
     { key: 'windows', label: 'Windows', groups: ['windows'] },
@@ -109,7 +110,6 @@ export function AssetFormPage({ mode }) {
     { key: 'correo', label: 'Correo', groups: ['correo'] },
     { key: 'antivirus', label: 'Antivirus', groups: ['antivirus'] },
     ...(mode === 'edit' ? [
-      ...(isAdministrator ? [{ key: 'credenciales-remision', label: 'Credenciales' }] : []),
       { key: 'documentos', label: 'Documentos', count: documents.length },
       { key: 'monitor', label: 'Monitor' },
       { key: 'tickets', label: 'Tickets' },
@@ -160,6 +160,10 @@ export function AssetFormPage({ mode }) {
               if (!group) return null;
               return <section key={group.key} className="mb-7 last:mb-0"><h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">{group.label}</h2><div className="grid grid-cols-1 gap-4 md:grid-cols-2">{group.fields.map((field) => <AssetField key={field.key} field={field} value={values[field.key]} onChange={setField} />)}</div></section>;
             })}
+            {activeTab === 'windows' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel assetId={id} fieldKeys={['win_password']} title="Contraseña de Windows para la remisión" />}
+            {activeTab === 'microsoft365' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel assetId={id} fieldKeys={['ms_password']} title="Contraseña de Microsoft / Office para la remisión" />}
+            {activeTab === 'dropbox' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel assetId={id} fieldKeys={['db_password']} title="Contraseña de Dropbox para la remisión" />}
+            {activeTab === 'correo' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel assetId={id} fieldKeys={['password_mrt', 'password_corporativo']} title="Contraseñas de correo para la remisión" />}
             {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
             {activeTab === 'credenciales-remision' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel assetId={id} />}
             {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel assetId={id} documents={documents} error={documentsError} onError={setDocumentsError} onChange={() => apiFetch(`/activos/${id}/documentos`).then((result) => setDocuments(result.data || []))} />}
@@ -170,7 +174,7 @@ export function AssetFormPage({ mode }) {
 
         <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-800 bg-slate-900/50 px-5 py-4 sm:px-7">
           <div>{mode === 'edit' && <button type="button" onClick={handleDelete} disabled={saving || loading} className="rounded-lg border border-red-500/40 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 disabled:opacity-50">Retirar activo</button>}</div>
-          <div className="flex gap-2"><button type="button" onClick={closeModal} disabled={saving} className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50">Cancelar</button><button type="submit" disabled={saving || loading} className="rounded-lg bg-sky-500 px-5 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">{saving ? 'Guardando…' : 'Guardar'}</button></div>
+          <div className="flex gap-2"><button type="button" onClick={closeModal} disabled={saving} className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50">Cancelar</button>{activeTab !== 'credenciales-remision' && <button type="submit" disabled={saving || loading} className="rounded-lg bg-sky-500 px-5 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">{saving ? 'Guardando…' : 'Guardar activo'}</button>}</div>
         </footer>
       </form>
     </div>
@@ -178,14 +182,17 @@ export function AssetFormPage({ mode }) {
 }
 
 const REMISSION_CREDENTIAL_FIELDS = [
-  { key: 'win_password', label: 'Usuario Windows local' },
-  { key: 'ms_password', label: 'Cuenta Microsoft / Office' },
-  { key: 'password_mrt', label: 'Correo autorizado (MRT)' },
-  { key: 'password_corporativo', label: 'Correo corporativo' },
-  { key: 'db_password', label: 'Dropbox' },
+  { key: 'win_password', label: 'Contraseña de Windows local' },
+  { key: 'ms_password', label: 'Contraseña de Microsoft / Office' },
+  { key: 'password_mrt', label: 'Contraseña de correo autorizado (MRT)' },
+  { key: 'password_corporativo', label: 'Contraseña de correo corporativo' },
+  { key: 'db_password', label: 'Contraseña de Dropbox' },
 ];
 
-function RemissionCredentialsPanel({ assetId }) {
+function RemissionCredentialsPanel({ assetId, fieldKeys = null, title = 'Credenciales de remisión' }) {
+  const visibleFields = fieldKeys
+    ? REMISSION_CREDENTIAL_FIELDS.filter(({ key }) => fieldKeys.includes(key))
+    : REMISSION_CREDENTIAL_FIELDS;
   const emptyValues = Object.fromEntries(REMISSION_CREDENTIAL_FIELDS.map(({ key }) => [key, '']));
   const emptyClears = Object.fromEntries(REMISSION_CREDENTIAL_FIELDS.map(({ key }) => [key, false]));
   const [configured, setConfigured] = useState({});
@@ -213,7 +220,7 @@ function RemissionCredentialsPanel({ assetId }) {
 
   async function saveCredentials() {
     const changes = {};
-    for (const { key } of REMISSION_CREDENTIAL_FIELDS) {
+    for (const { key } of visibleFields) {
       if (clear[key]) changes[key] = null;
       else if (values[key] !== '') changes[key] = values[key];
     }
@@ -242,7 +249,7 @@ function RemissionCredentialsPanel({ assetId }) {
 
   return (
     <fieldset className="rounded-xl border border-slate-800 p-4 sm:p-5">
-      <legend className="px-1 text-sm font-semibold text-slate-300">Credenciales de remisión</legend>
+      <legend className="px-1 text-sm font-semibold text-slate-300">{title}</legend>
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm text-slate-300">Captura aquí las contraseñas que recibirá el usuario final en su hoja.</p>
@@ -256,7 +263,7 @@ function RemissionCredentialsPanel({ assetId }) {
       {message && <p className="mb-4 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-sm text-sky-300">{message}</p>}
       {loading ? <p className="py-8 text-center text-sm text-slate-500">Consultando credenciales…</p> : (
         <div className="grid gap-4 md:grid-cols-2">
-          {REMISSION_CREDENTIAL_FIELDS.map(({ key, label }) => (
+          {visibleFields.map(({ key, label }) => (
             <div key={key} className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <label htmlFor={`remission-${key}`} className="text-sm font-medium text-slate-200">{label}</label>
@@ -269,6 +276,7 @@ function RemissionCredentialsPanel({ assetId }) {
                 type={show ? 'text' : 'password'}
                 value={values[key]}
                 onChange={(event) => setValues((previous) => ({ ...previous, [key]: event.target.value }))}
+                onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); saveCredentials(); } }}
                 disabled={clear[key] || saving}
                 maxLength={255}
                 autoComplete="new-password"

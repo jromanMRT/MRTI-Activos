@@ -98,10 +98,18 @@ export async function fetchSapAssetCredentials(centerCode) {
   const pool = await getPool();
   const { recordset } = await pool.request()
     .input('center_code', sql.NVarChar(20), centerCode)
-    .query(`SELECT v.id, v.win_password, v.ms_password, v.password_mrt, v.password_corporativo,
+    .query(`SELECT a.id,
+        (SELECT TOP (1) w.password FROM dbo.CuentaWindows w
+          WHERE w.activo_id = a.id ORDER BY w.id DESC) AS win_password,
+        (SELECT TOP (1) m.password FROM dbo.CuentaMicrosoft m
+          WHERE m.activo_id = a.id ORDER BY m.id DESC) AS ms_password,
+        (SELECT TOP (1) c.password_mrt FROM dbo.CuentaCorreo c
+          WHERE c.activo_id = a.id ORDER BY c.id DESC) AS password_mrt,
+        (SELECT TOP (1) c.password_corporativo FROM dbo.CuentaCorreo c
+          WHERE c.activo_id = a.id ORDER BY c.id DESC) AS password_corporativo,
         (SELECT TOP (1) db.password FROM dbo.CuentaDropBox db
-          WHERE db.activo_id = v.id ORDER BY db.id DESC) AS db_password
-      FROM dbo.Vista_Activos_Completa v WHERE v.center_code = @center_code`);
+          WHERE db.activo_id = a.id ORDER BY db.id DESC) AS db_password
+      FROM dbo.Activos a WHERE a.center_code = @center_code`);
   if (!recordset.length) {
     const error = new Error('El activo no existe en la fuente de credenciales');
     error.status = 404;
