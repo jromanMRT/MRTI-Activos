@@ -100,9 +100,9 @@ export function AssetFormPage({ mode }) {
   }
 
   const groupsByKey = Object.fromEntries(groups.map((group) => [group.key, group]));
+  const credentialAreaActive = mode === 'edit' && isAdministrator && ['windows', 'microsoft365', 'dropbox', 'correo'].includes(activeTab);
   const tabs = [
     { key: 'general', label: 'General', groups: ['identificacion', 'software'] },
-    ...(mode === 'edit' && isAdministrator ? [{ key: 'credenciales-remision', label: 'Contraseñas (remisión)' }] : []),
     ...(mode === 'edit' ? [{ key: 'asignacion', label: 'Asignación', groups: [] }] : []),
     { key: 'administracion', label: 'Administración', groups: ['compra', 'baja'] },
     { key: 'windows', label: 'Windows', groups: ['windows'] },
@@ -161,12 +161,11 @@ export function AssetFormPage({ mode }) {
               if (!group) return null;
               return <section key={group.key} className="mb-7 last:mb-0"><h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">{group.label}</h2><div className="grid grid-cols-1 gap-4 md:grid-cols-2">{group.fields.map((field) => <AssetField key={field.key} field={field} value={values[field.key]} onChange={setField} />)}</div></section>;
             })}
-            {activeTab === 'windows' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel assetId={id} fieldKeys={['win_password']} title="Contraseña de Windows para la remisión" />}
-            {activeTab === 'microsoft365' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel assetId={id} fieldKeys={['ms_password']} title="Contraseña de Microsoft / Office para la remisión" />}
-            {activeTab === 'dropbox' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel assetId={id} fieldKeys={['db_password']} title="Contraseña de Dropbox para la remisión" />}
-            {activeTab === 'correo' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel assetId={id} fieldKeys={['password_mrt', 'password_corporativo']} title="Contraseñas de correo para la remisión" />}
+            {activeTab === 'windows' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['win_password']} title="Contraseña de Windows para la remisión" showSaveButton={false} />}
+            {activeTab === 'microsoft365' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['ms_password']} title="Contraseña de Microsoft / Office para la remisión" showSaveButton={false} />}
+            {activeTab === 'dropbox' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['db_password']} title="Contraseña de Dropbox para la remisión" showSaveButton={false} />}
+            {activeTab === 'correo' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['password_mrt', 'password_corporativo']} title="Contraseñas de correo para la remisión" showSaveButton={false} />}
             {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
-            {activeTab === 'credenciales-remision' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} showSaveButton={false} />}
             {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel assetId={id} documents={documents} error={documentsError} onError={setDocumentsError} onChange={() => apiFetch(`/activos/${id}/documentos`).then((result) => setDocuments(result.data || []))} />}
             {activeTab === 'monitor' && mode === 'edit' && <ObservabilityPanel assetUid={values.asset_uid} data={observability} error={observabilityError} onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))} />}
             {activeTab === 'tickets' && mode === 'edit' && <TicketsPanel assetUid={values.asset_uid} createTicketUrl={createTicketUrl} />}
@@ -175,11 +174,10 @@ export function AssetFormPage({ mode }) {
 
         <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-800 bg-slate-900/50 px-5 py-4 sm:px-7">
           <div>{mode === 'edit' && <button type="button" onClick={handleDelete} disabled={saving || loading} className="rounded-lg border border-red-500/40 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 disabled:opacity-50">Retirar activo</button>}</div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <button type="button" onClick={closeModal} disabled={saving} className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50">Cancelar</button>
-            {activeTab === 'credenciales-remision'
-              ? <button type="button" onClick={() => remissionCredentialsRef.current?.save()} disabled={loading} className="rounded-lg bg-sky-500 px-5 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">Guardar credenciales</button>
-              : <button type="submit" disabled={saving || loading} className="rounded-lg bg-sky-500 px-5 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">{saving ? 'Guardando…' : 'Guardar activo'}</button>}
+            <button type="submit" disabled={saving || loading} className="rounded-lg border border-sky-500/50 px-5 py-2 text-sm font-semibold text-sky-300 hover:bg-sky-500/10 disabled:opacity-50">{saving ? 'Guardando…' : 'Guardar activo'}</button>
+            {credentialAreaActive && <button type="button" onClick={() => remissionCredentialsRef.current?.save()} disabled={loading} className="rounded-lg bg-sky-500 px-5 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">Guardar credenciales</button>}
           </div>
         </footer>
       </form>
@@ -262,7 +260,7 @@ const RemissionCredentialsPanel = forwardRef(function RemissionCredentialsPanel(
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm text-slate-300">Captura aquí las contraseñas que recibirá el usuario final en su hoja.</p>
-          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Por seguridad, las contraseñas guardadas no se muestran en pantalla. Deja un campo vacío para conservar su valor actual. Esta sección y la impresión están disponibles sólo para administradores.</p>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Por seguridad, las contraseñas guardadas no se muestran en pantalla. Deja un campo vacío para conservar su valor actual y usa <strong className="text-slate-300">Guardar credenciales</strong> en el pie fijo. Esta sección y la impresión están disponibles sólo para administradores.</p>
         </div>
         <button type="button" onClick={() => setShow((value) => !value)} className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-900">
           {show ? 'Ocultar mientras escribo' : 'Mostrar mientras escribo'}
