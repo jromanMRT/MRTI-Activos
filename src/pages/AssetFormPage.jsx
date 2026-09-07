@@ -3,6 +3,10 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiDownload, apiFetch, apiUpload, obsFetch, obsLinkDevice, obsUnlinkedDevices, rhAssetAssignmentProfileFetch, rhDirectoryFetch, ticketsFetch } from '../api.js';
 import { openAssetRemission } from '../remissionPrint.js';
 
+function currentProfile() {
+  try { return JSON.parse(localStorage.getItem('auth_profile') || '{}'); } catch { return {}; }
+}
+
 export function AssetFormPage({ mode }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -17,6 +21,7 @@ export function AssetFormPage({ mode }) {
   const [documents, setDocuments] = useState([]);
   const [documentsError, setDocumentsError] = useState('');
   const [activeTab, setActiveTab] = useState(() => new URLSearchParams(location.search).get('tab') || 'general');
+  const isAdministrator = String(currentProfile().role || '').toLowerCase() === 'administrator';
 
   useEffect(() => {
     setActiveTab(new URLSearchParams(location.search).get('tab') || 'general');
@@ -104,6 +109,7 @@ export function AssetFormPage({ mode }) {
     { key: 'correo', label: 'Correo', groups: ['correo'] },
     { key: 'antivirus', label: 'Antivirus', groups: ['antivirus'] },
     ...(mode === 'edit' ? [
+      ...(isAdministrator ? [{ key: 'credenciales-remision', label: 'Credenciales' }] : []),
       { key: 'documentos', label: 'Documentos', count: documents.length },
       { key: 'monitor', label: 'Monitor' },
       { key: 'tickets', label: 'Tickets' },
@@ -155,6 +161,7 @@ export function AssetFormPage({ mode }) {
               return <section key={group.key} className="mb-7 last:mb-0"><h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">{group.label}</h2><div className="grid grid-cols-1 gap-4 md:grid-cols-2">{group.fields.map((field) => <AssetField key={field.key} field={field} value={values[field.key]} onChange={setField} />)}</div></section>;
             })}
             {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
+            {activeTab === 'credenciales-remision' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel assetId={id} />}
             {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel assetId={id} documents={documents} error={documentsError} onError={setDocumentsError} onChange={() => apiFetch(`/activos/${id}/documentos`).then((result) => setDocuments(result.data || []))} />}
             {activeTab === 'monitor' && mode === 'edit' && <ObservabilityPanel assetUid={values.asset_uid} data={observability} error={observabilityError} onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))} />}
             {activeTab === 'tickets' && mode === 'edit' && <TicketsPanel assetUid={values.asset_uid} createTicketUrl={createTicketUrl} />}
@@ -167,6 +174,122 @@ export function AssetFormPage({ mode }) {
         </footer>
       </form>
     </div>
+  );
+}
+
+const REMISSION_CREDENTIAL_FIELDS = [
+  { key: 'win_password', label: 'Usuario Windows local' },
+  { key: 'ms_password', label: 'Cuenta Microsoft / Office' },
+  { key: 'password_mrt', label: 'Correo autorizado (MRT)' },
+  { key: 'password_corporativo', label: 'Correo corporativo' },
+  { key: 'db_password', label: 'Dropbox' },
+];
+
+function RemissionCredentialsPanel({ assetId }) {
+  const emptyValues = Object.fromEntries(REMISSION_CREDENTIAL_FIELDS.map(({ key }) => [key, '']));
+  const emptyClears = Object.fromEntries(REMISSION_CREDENTIAL_FIELDS.map(({ key }) => [key, false]));
+  const [configured, setConfigured] = useState({});
+  const [values, setValues] = useState(emptyValues);
+  const [clear, setClear] = useState(emptyClears);
+  const [show, setShow] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+
+  async function refreshStatus() {
+    const result = await apiFetch(`/activos/${assetId}/remission-credential-status`);
+    setConfigured(result.data || {});
+  }
+
+  useEffect(() => {
+    let current = true;
+    apiFetch(`/activos/${assetId}/remission-credential-status`)
+      .then((result) => { if (current) setConfigured(result.data || {}); })
+      .catch((statusError) => { if (current) setError(statusError.message); })
+      .finally(() => { if (current) setLoading(false); });
+    return () => { current = false; };
+  }, [assetId]);
+
+  async function saveCredentials() {
+    const changes = {};
+    for (const { key } of REMISSION_CREDENTIAL_FIELDS) {
+      if (clear[key]) changes[key] = null;
+      else if (values[key] !== '') changes[key] = values[key];
+    }
+    if (!Object.keys(changes).length) {
+      setMessage('Escribe una contraseña nueva o marca una para quitarla.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    setMessage('');
+    try {
+      await apiFetch(`/activos/${assetId}/remission-credentials`, {
+        method: 'PATCH',
+        body: JSON.stringify(changes),
+      });
+      setValues(emptyValues);
+      setClear(emptyClears);
+      await refreshStatus();
+      setMessage('Credenciales actualizadas. Aparecerán en la próxima remisión que imprimas.');
+    } catch (saveError) {
+      setError(saveError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <fieldset className="rounded-xl border border-slate-800 p-4 sm:p-5">
+      <legend className="px-1 text-sm font-semibold text-slate-300">Credenciales de remisión</legend>
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm text-slate-300">Captura aquí las contraseñas que recibirá el usuario final en su hoja.</p>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Por seguridad, las contraseñas guardadas no se muestran en pantalla. Deja un campo vacío para conservar su valor actual. Esta sección y la impresión están disponibles sólo para administradores.</p>
+        </div>
+        <button type="button" onClick={() => setShow((value) => !value)} className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-900">
+          {show ? 'Ocultar mientras escribo' : 'Mostrar mientras escribo'}
+        </button>
+      </div>
+      {error && <p className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>}
+      {message && <p className="mb-4 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-sm text-sky-300">{message}</p>}
+      {loading ? <p className="py-8 text-center text-sm text-slate-500">Consultando credenciales…</p> : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {REMISSION_CREDENTIAL_FIELDS.map(({ key, label }) => (
+            <div key={key} className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <label htmlFor={`remission-${key}`} className="text-sm font-medium text-slate-200">{label}</label>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${configured[key] ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-800 text-slate-500'}`}>
+                  {configured[key] ? 'Configurada' : 'Sin configurar'}
+                </span>
+              </div>
+              <input
+                id={`remission-${key}`}
+                type={show ? 'text' : 'password'}
+                value={values[key]}
+                onChange={(event) => setValues((previous) => ({ ...previous, [key]: event.target.value }))}
+                disabled={clear[key] || saving}
+                maxLength={255}
+                autoComplete="new-password"
+                placeholder={configured[key] ? 'Dejar vacío para conservar' : 'Escribir contraseña'}
+                className="block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 disabled:opacity-50"
+              />
+              <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-slate-400">
+                <input type="checkbox" checked={clear[key]} disabled={saving} onChange={(event) => setClear((previous) => ({ ...previous, [key]: event.target.checked }))} className="rounded border-slate-700 bg-slate-950 text-sky-500" />
+                Quitar esta contraseña guardada
+              </label>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-800 pt-4">
+        <p className="text-xs text-slate-500">Los cambios quedan auditados sin registrar los valores secretos.</p>
+        <button type="button" onClick={saveCredentials} disabled={loading || saving} className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">
+          {saving ? 'Guardando credenciales…' : 'Guardar credenciales'}
+        </button>
+      </div>
+    </fieldset>
   );
 }
 

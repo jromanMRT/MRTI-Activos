@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import { pool } from '../db.js';
 import { ALL_FIELDS, DATE_FIELDS, FIELD_GROUPS, LIST_COLUMNS, normalizeAssetDates } from '../meta.js';
-import { fetchSapAssetCredentials, pushAssetToSap } from '../integrations/sapClient.js';
+import { fetchSapAssetCredentials, pushAssetToSap, updateSapAssetCredentials } from '../integrations/sapClient.js';
 import { administratorOnly, fetchCurrentUser } from '../auth.js';
 import { assetDocumentUpload, cleanOriginalFilename, detectAssetDocument, removeStoredAssetDocument, storeAssetDocument } from '../documentStorage.js';
 
@@ -438,6 +438,39 @@ activosRouter.get('/:id/remission-credentials', administratorOnly, async (req, r
     ]);
     res.set({ 'Cache-Control': 'no-store, private', Pragma: 'no-cache', Vary: 'Authorization' });
     return res.json({ data: credentials });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+activosRouter.get('/:id/remission-credential-status', administratorOnly, async (req, res, next) => {
+  try {
+    const [[asset]] = await pool.query('SELECT id, center_code FROM activos WHERE id = ?', [req.params.id]);
+    if (!asset) return res.status(404).json({ error: 'Activo no encontrado' });
+    const credentials = await fetchSapAssetCredentials(asset.center_code);
+    const configured = Object.fromEntries(Object.entries(credentials).map(([key, value]) => [key, value !== null && value !== '']));
+    res.set({ 'Cache-Control': 'no-store, private', Pragma: 'no-cache', Vary: 'Authorization' });
+    return res.json({ data: configured });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+activosRouter.patch('/:id/remission-credentials', administratorOnly, async (req, res, next) => {
+  try {
+    const [[asset]] = await pool.query('SELECT id, center_code FROM activos WHERE id = ?', [req.params.id]);
+    if (!asset) return res.status(404).json({ error: 'Activo no encontrado' });
+    const result = await updateSapAssetCredentials(asset.center_code, req.body);
+    await pool.query(`INSERT INTO audit_events
+      (event_uuid, module_code, actor_user_id, actor_name, actor_email, action, entity_type, entity_id,
+       request_id, ip_address, user_agent, metadata_json, status_code)
+      VALUES (?, 'activos', ?, ?, ?, 'credential.remission_updated', 'activo', ?, ?, ?, ?, ?, 200)`, [
+      randomUUID(), req.portalUser.id, req.portalUser.name, req.portalUser.email, String(asset.id),
+      randomUUID(), req.ip || null, String(req.headers['user-agent'] || '').slice(0, 512) || null,
+      JSON.stringify({ center_code: asset.center_code, changed_fields: result.changed_fields, secret_values: '[REDACTADO]' }),
+    ]);
+    res.set({ 'Cache-Control': 'no-store, private', Pragma: 'no-cache', Vary: 'Authorization' });
+    return res.json({ data: result });
   } catch (error) {
     return next(error);
   }

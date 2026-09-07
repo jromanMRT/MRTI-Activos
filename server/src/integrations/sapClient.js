@@ -108,6 +108,99 @@ export async function fetchSapAssetCredentials(centerCode) {
   return pickSapAssetCredentials(recordset[0]);
 }
 
+const REMISSION_CREDENTIAL_TARGETS = Object.freeze({
+  win_password: ['dbo.CuentaWindows', 'password'],
+  ms_password: ['dbo.CuentaMicrosoft', 'password'],
+  db_password: ['dbo.CuentaDropBox', 'password'],
+  password_mrt: ['dbo.CuentaCorreo', 'password_mrt'],
+  password_corporativo: ['dbo.CuentaCorreo', 'password_corporativo'],
+});
+
+export function normalizeSapAssetCredentialChanges(body = {}) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    const error = new Error('Las credenciales deben enviarse como un objeto');
+    error.status = 400;
+    throw error;
+  }
+  const unknown = Object.keys(body).filter((key) => !Object.hasOwn(REMISSION_CREDENTIAL_TARGETS, key));
+  if (unknown.length) {
+    const error = new Error(`Campos de credenciales no permitidos: ${unknown.join(', ')}`);
+    error.status = 400;
+    throw error;
+  }
+  const changes = {};
+  for (const key of Object.keys(REMISSION_CREDENTIAL_TARGETS)) {
+    if (!Object.hasOwn(body, key)) continue;
+    const value = body[key];
+    if (value !== null && typeof value !== 'string') {
+      const error = new Error(`${key} debe ser texto o null`);
+      error.status = 400;
+      throw error;
+    }
+    if (typeof value === 'string' && value.length > 255) {
+      const error = new Error(`${key} no puede exceder 255 caracteres`);
+      error.status = 400;
+      throw error;
+    }
+    changes[key] = value === '' ? null : value;
+  }
+  if (!Object.keys(changes).length) {
+    const error = new Error('Indica al menos una credencial para guardar o quitar');
+    error.status = 400;
+    throw error;
+  }
+  return changes;
+}
+
+// Escritura puntual de los secretos usados en la remisión. ActivosTI sigue
+// siendo la única fuente de verdad; la respuesta sólo enumera qué campos se
+// modificaron y jamás devuelve sus valores.
+export async function updateSapAssetCredentials(centerCode, body) {
+  const changes = normalizeSapAssetCredentialChanges(body);
+  const pool = await getPool();
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin();
+  try {
+    const lookup = await new sql.Request(transaction)
+      .input('center_code', sql.NVarChar(20), centerCode)
+      .query('SELECT id FROM dbo.Activos WITH (UPDLOCK, HOLDLOCK) WHERE center_code = @center_code');
+    if (!lookup.recordset.length) {
+      const error = new Error('El activo no existe en la fuente de credenciales');
+      error.status = 404;
+      throw error;
+    }
+    if (lookup.recordset.length > 1) {
+      const error = new Error('El código TI está duplicado en la fuente; no es seguro modificar sus credenciales');
+      error.status = 409;
+      throw error;
+    }
+    const activoId = lookup.recordset[0].id;
+    const grouped = new Map();
+    for (const [key, value] of Object.entries(changes)) {
+      const [table, column] = REMISSION_CREDENTIAL_TARGETS[key];
+      if (!grouped.has(table)) grouped.set(table, []);
+      grouped.get(table).push([column, value]);
+    }
+    for (const [table, entries] of grouped) {
+      const request = new sql.Request(transaction).input('activo_id', sql.Int, activoId);
+      entries.forEach(([, value], index) => request.input(`secret${index}`, sql.NVarChar(255), value));
+      const exists = await new sql.Request(transaction)
+        .input('activo_id', sql.Int, activoId)
+        .query(`SELECT TOP (1) id FROM ${table} WITH (UPDLOCK, HOLDLOCK) WHERE activo_id = @activo_id`);
+      if (exists.recordset.length) {
+        await request.query(`UPDATE ${table} SET ${entries.map(([column], index) => `${column} = @secret${index}`).join(', ')} WHERE activo_id = @activo_id`);
+      } else {
+        await request.query(`INSERT INTO ${table} (activo_id, ${entries.map(([column]) => column).join(', ')}) VALUES (@activo_id, ${entries.map((_, index) => `@secret${index}`).join(', ')})`);
+      }
+    }
+    await transaction.commit();
+    return { changed_fields: Object.keys(changes) };
+  } catch (error) {
+    await transaction.rollback().catch(() => {});
+    throw error;
+  }
+}
+
 // Cada tabla de credenciales de SAP guarda un subconjunto de columnas de
 // `activos` bajo otro nombre (ver server/src/meta.js para el lado MySQL).
 // Nunca se incluye una columna de password en ningún mapa: esas nunca se
@@ -124,29 +217,31 @@ const CUENTA_CORREO_MAP = {
 };
 const ANTIVIRUS_MAP = { licencia: 'av_licencia', fecha_caducidad: 'av_caducidad', ds_team: 'av_team', comentario: 'av_comentario' };
 
-// Borra e inserta si hay algo que guardar -- mismo patrón que ya usa
-// ti-assets/backend/server.js (insertarCredenciales) para estas 5 tablas,
-// así el resultado se ve igual sin importar cuál de las dos apps escribió.
+// Actualiza únicamente los datos no secretos. No se borra el renglón porque
+// contiene también las contraseñas administradas por la ruta protegida de
+// remisión; una edición normal del activo debe conservarlas.
 async function upsertCredentialTable(transaction, table, activoId, columnMap, fields) {
   const entries = Object.entries(columnMap)
     .filter(([, localKey]) => fields[localKey] !== undefined)
     .map(([sapColumn, localKey]) => [sapColumn, fields[localKey]]);
   const hasData = entries.some(([, value]) => value !== null && value !== '');
 
-  await new sql.Request(transaction).input('activo_id', sql.Int, activoId).query(`DELETE FROM ${table} WHERE activo_id = @activo_id`);
-  if (!hasData) return;
-
   const request = new sql.Request(transaction);
   request.input('activo_id', sql.Int, activoId);
-  const columns = ['activo_id'];
-  const params = ['@activo_id'];
   entries.forEach(([column, value], index) => {
-    const paramName = `p${index}`;
-    columns.push(column);
-    params.push(`@${paramName}`);
-    request.input(paramName, value);
+    request.input(`p${index}`, value);
   });
-  await request.query(`INSERT INTO ${table} (${columns.join(',')}) VALUES (${params.join(',')})`);
+  const exists = await new sql.Request(transaction)
+    .input('activo_id', sql.Int, activoId)
+    .query(`SELECT TOP (1) id FROM ${table} WITH (UPDLOCK, HOLDLOCK) WHERE activo_id = @activo_id`);
+  if (exists.recordset.length) {
+    if (entries.length) {
+      await request.query(`UPDATE ${table} SET ${entries.map(([column], index) => `${column} = @p${index}`).join(', ')} WHERE activo_id = @activo_id`);
+    }
+    return;
+  }
+  if (!hasData) return;
+  await request.query(`INSERT INTO ${table} (activo_id, ${entries.map(([column]) => column).join(', ')}) VALUES (@activo_id, ${entries.map((_, index) => `@p${index}`).join(', ')})`);
 }
 
 // Upsert por center_code (llave natural compartida con MySQL) contra
