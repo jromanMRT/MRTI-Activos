@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiDownload, apiFetch, apiUpload, obsFetch, obsLinkDevice, obsUnlinkedDevices, rhAssetAssignmentProfileFetch, rhDirectoryFetch, ticketsFetch } from '../api.js';
 import { openAssetRemission } from '../remissionPrint.js';
@@ -21,6 +21,7 @@ export function AssetFormPage({ mode }) {
   const [documents, setDocuments] = useState([]);
   const [documentsError, setDocumentsError] = useState('');
   const [activeTab, setActiveTab] = useState(() => new URLSearchParams(location.search).get('tab') || 'general');
+  const remissionCredentialsRef = useRef(null);
   const isAdministrator = String(currentProfile().role || '').toLowerCase() === 'administrator';
 
   useEffect(() => {
@@ -165,7 +166,7 @@ export function AssetFormPage({ mode }) {
             {activeTab === 'dropbox' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel assetId={id} fieldKeys={['db_password']} title="Contraseña de Dropbox para la remisión" />}
             {activeTab === 'correo' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel assetId={id} fieldKeys={['password_mrt', 'password_corporativo']} title="Contraseñas de correo para la remisión" />}
             {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
-            {activeTab === 'credenciales-remision' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel assetId={id} />}
+            {activeTab === 'credenciales-remision' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} showSaveButton={false} />}
             {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel assetId={id} documents={documents} error={documentsError} onError={setDocumentsError} onChange={() => apiFetch(`/activos/${id}/documentos`).then((result) => setDocuments(result.data || []))} />}
             {activeTab === 'monitor' && mode === 'edit' && <ObservabilityPanel assetUid={values.asset_uid} data={observability} error={observabilityError} onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))} />}
             {activeTab === 'tickets' && mode === 'edit' && <TicketsPanel assetUid={values.asset_uid} createTicketUrl={createTicketUrl} />}
@@ -174,7 +175,12 @@ export function AssetFormPage({ mode }) {
 
         <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-800 bg-slate-900/50 px-5 py-4 sm:px-7">
           <div>{mode === 'edit' && <button type="button" onClick={handleDelete} disabled={saving || loading} className="rounded-lg border border-red-500/40 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 disabled:opacity-50">Retirar activo</button>}</div>
-          <div className="flex gap-2"><button type="button" onClick={closeModal} disabled={saving} className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50">Cancelar</button>{activeTab !== 'credenciales-remision' && <button type="submit" disabled={saving || loading} className="rounded-lg bg-sky-500 px-5 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">{saving ? 'Guardando…' : 'Guardar activo'}</button>}</div>
+          <div className="flex gap-2">
+            <button type="button" onClick={closeModal} disabled={saving} className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50">Cancelar</button>
+            {activeTab === 'credenciales-remision'
+              ? <button type="button" onClick={() => remissionCredentialsRef.current?.save()} disabled={loading} className="rounded-lg bg-sky-500 px-5 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">Guardar credenciales</button>
+              : <button type="submit" disabled={saving || loading} className="rounded-lg bg-sky-500 px-5 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">{saving ? 'Guardando…' : 'Guardar activo'}</button>}
+          </div>
         </footer>
       </form>
     </div>
@@ -189,7 +195,7 @@ const REMISSION_CREDENTIAL_FIELDS = [
   { key: 'db_password', label: 'Contraseña de Dropbox' },
 ];
 
-function RemissionCredentialsPanel({ assetId, fieldKeys = null, title = 'Credenciales de remisión' }) {
+const RemissionCredentialsPanel = forwardRef(function RemissionCredentialsPanel({ assetId, fieldKeys = null, title = 'Credenciales de remisión', showSaveButton = true }, ref) {
   const visibleFields = fieldKeys
     ? REMISSION_CREDENTIAL_FIELDS.filter(({ key }) => fieldKeys.includes(key))
     : REMISSION_CREDENTIAL_FIELDS;
@@ -219,6 +225,7 @@ function RemissionCredentialsPanel({ assetId, fieldKeys = null, title = 'Credenc
   }, [assetId]);
 
   async function saveCredentials() {
+    if (loading || saving) return;
     const changes = {};
     for (const { key } of visibleFields) {
       if (clear[key]) changes[key] = null;
@@ -246,6 +253,8 @@ function RemissionCredentialsPanel({ assetId, fieldKeys = null, title = 'Credenc
       setSaving(false);
     }
   }
+
+  useImperativeHandle(ref, () => ({ save: saveCredentials }));
 
   return (
     <fieldset className="rounded-xl border border-slate-800 p-4 sm:p-5">
@@ -293,13 +302,13 @@ function RemissionCredentialsPanel({ assetId, fieldKeys = null, title = 'Credenc
       )}
       <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-800 pt-4">
         <p className="text-xs text-slate-500">Los cambios quedan auditados sin registrar los valores secretos.</p>
-        <button type="button" onClick={saveCredentials} disabled={loading || saving} className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">
+        {showSaveButton && <button type="button" onClick={saveCredentials} disabled={loading || saving} className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">
           {saving ? 'Guardando credenciales…' : 'Guardar credenciales'}
-        </button>
+        </button>}
       </div>
     </fieldset>
   );
-}
+});
 
 function DocumentsPanel({ assetId, documents, error, onError, onChange }) {
   const [downloadingId, setDownloadingId] = useState(null);
