@@ -16,11 +16,11 @@ function value(valueToRender, fallback = EMPTY_VALUE) {
   return escapeRemissionHtml(normalized || fallback);
 }
 
-function currentActorName() {
+function currentProfile() {
   try {
-    return JSON.parse(localStorage.getItem('auth_profile') || '{}').full_name || 'MRTI Activos';
+    return JSON.parse(localStorage.getItem('auth_profile') || '{}');
   } catch {
-    return 'MRTI Activos';
+    return {};
   }
 }
 
@@ -30,7 +30,7 @@ function calendarDate(date) {
   return `${day}-${month}-${String(date.getFullYear()).slice(-2)}`;
 }
 
-export function buildRemissionHtml({ asset, employeeProfile = null, actorName = 'MRTI Activos', generatedAt = new Date() }) {
+export function buildRemissionHtml({ asset, credentials = {}, employeeProfile = null, actorName = 'MRTI Activos', generatedAt = new Date() }) {
   const employeeNumber = employeeProfile?.employee_number || asset.id_empleado;
   const employeeName = employeeProfile?.full_name || asset.usuario_asignado;
   const phone = employeeProfile?.phone || asset.cel_empleado;
@@ -48,9 +48,9 @@ export function buildRemissionHtml({ asset, employeeProfile = null, actorName = 
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:Arial,sans-serif;font-size:9pt;color:#000;background:#fff}
-    html,body{height:auto!important}
-    .page{width:210mm;padding:8mm 10mm;margin:0 auto}
-    @page{margin:5mm;size:letter portrait}
+    html,body{height:auto!important;width:100%}
+    .page{width:100%;max-width:205.9mm;padding:3mm 5mm 0;margin:0 auto}
+    @page{margin:5mm;size:215.9mm 279.4mm}
     .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:4px;margin-bottom:6px}
     .empresa{font-size:13pt;font-weight:bold}
     .titulo{font-size:11pt;font-weight:bold;text-align:center;margin-top:2px}
@@ -65,8 +65,9 @@ export function buildRemissionHtml({ asset, employeeProfile = null, actorName = 
     .firmas{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:15px}
     .firma-box{border-top:1px solid #000;padding-top:4px;text-align:center;font-size:8pt}
     .footer-info{font-size:7pt;color:#555;text-align:right;margin-top:3px}
+    table,.condiciones,.firmas{break-inside:avoid;page-break-inside:avoid}
     .pin-box{border:2px solid #000;display:inline-block;padding:2px 8px;font-size:9pt;font-weight:bold}
-    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{height:auto!important;overflow:visible!important}.page{page-break-after:avoid!important;page-break-inside:avoid!important}@page{margin:5mm;size:letter portrait}}
+    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{height:auto!important;overflow:visible!important}.page{width:100%;max-width:none;padding:3mm 4mm 0;page-break-after:avoid!important;page-break-inside:avoid!important}@page{margin:5mm;size:215.9mm 279.4mm}}
   </style>
 </head>
 <body>
@@ -98,11 +99,11 @@ export function buildRemissionHtml({ asset, employeeProfile = null, actorName = 
     <div class="section-title">Caracteristicas de Acceso / Credenciales</div>
     <table>
       <tr><th style="width:30%">Cuenta</th><th style="width:35%">Usuario</th><th>Password</th></tr>
-      <tr><td>Usuario Windows Local</td><td>${value(asset.win_usuario)}</td><td>${EMPTY_VALUE}</td></tr>
-      <tr><td>Cuenta Microsoft / Office</td><td>${value(asset.ms_usuario || asset.correo_corporativo)}</td><td>${EMPTY_VALUE}</td></tr>
-      <tr><td>Correo Autorizado (MRT)</td><td>${value(asset.correo_mrt)}</td><td>${EMPTY_VALUE}</td></tr>
-      <tr><td>Correo Corporativo</td><td>${value(asset.correo_corporativo)}</td><td>${EMPTY_VALUE}</td></tr>
-      <tr><td>DropBox</td><td>${value(asset.db_usuario, 'Sin cuenta')}</td><td>${EMPTY_VALUE}</td></tr>
+      <tr><td>Usuario Windows Local</td><td>${value(asset.win_usuario)}</td><td>${value(credentials.win_password)}</td></tr>
+      <tr><td>Cuenta Microsoft / Office</td><td>${value(asset.ms_usuario || asset.correo_corporativo)}</td><td>${value(credentials.ms_password || credentials.password_corporativo)}</td></tr>
+      <tr><td>Correo Autorizado (MRT)</td><td>${value(asset.correo_mrt)}</td><td>${value(credentials.password_mrt)}</td></tr>
+      <tr><td>Correo Corporativo</td><td>${value(asset.correo_corporativo)}</td><td>${value(credentials.password_corporativo)}</td></tr>
+      <tr><td>DropBox</td><td>${value(asset.db_usuario, 'Sin cuenta')}</td><td>${value(credentials.db_password)}</td></tr>
     </table>
 
     <div class="section-title">Software Incluido / Licencias</div>
@@ -147,7 +148,11 @@ export async function openAssetRemission({ assetId, employeeProfile = null }) {
   printWindow.document.close();
 
   try {
-    const response = await apiFetch(`/activos/${assetId}`);
+    const profile = currentProfile();
+    const [response, credentialResponse] = await Promise.all([
+      apiFetch(`/activos/${assetId}`),
+      apiFetch(`/activos/${assetId}/remission-credentials`),
+    ]);
     const asset = response.data;
     let resolvedEmployee = employeeProfile;
     if (!resolvedEmployee && (asset.rh_employee_id || asset.portal_user_id)) {
@@ -157,7 +162,12 @@ export async function openAssetRemission({ assetId, employeeProfile = null }) {
       }).catch(() => null);
     }
     printWindow.document.open();
-    printWindow.document.write(buildRemissionHtml({ asset, employeeProfile: resolvedEmployee, actorName: currentActorName() }));
+    printWindow.document.write(buildRemissionHtml({
+      asset,
+      credentials: credentialResponse.data || {},
+      employeeProfile: resolvedEmployee,
+      actorName: profile.full_name || 'MRTI Activos',
+    }));
     printWindow.document.close();
     printWindow.focus();
     printWindow.setTimeout(() => printWindow.print(), 500);

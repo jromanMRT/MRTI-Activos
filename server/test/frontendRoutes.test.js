@@ -47,4 +47,6 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
   assert.match(form, /Imprimir remisión/);
   assert.match(remission, /REMISION DE ENTREGA DE EQUIPO/);
   assert.match(remission, /rhAssetAssignmentProfileFetch/);
+  assert.match(remission, /remission-credentials/);
+  assert.match(remission, /credentials\.win_password/);
 });

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildRemissionHtml, escapeRemissionHtml } from '../../src/remissionPrint.js';
 
-test('la remisión escapa datos dinámicos y nunca imprime secretos heredados', () => {
+test('la remisión escapa datos dinámicos e imprime las credenciales autorizadas', () => {
   const html = buildRemissionHtml({
     asset: {
       center_code: '<script>alert(1)</script>',
@@ -23,6 +23,13 @@ test('la remisión escapa datos dinámicos y nunca imprime secretos heredados', 
       job_title: 'Supervisión',
       phone: '6140000000',
     },
+    credentials: {
+      win_password: '<clave-windows>',
+      ms_password: 'CLAVE-MICROSOFT',
+      password_mrt: 'CLAVE-MRT',
+      password_corporativo: 'CLAVE-CORPORATIVA',
+      db_password: 'CLAVE-DROPBOX',
+    },
     actorName: 'Administrador',
     generatedAt: new Date('2026-09-04T18:00:00Z'),
   });
@@ -36,6 +43,11 @@ test('la remisión escapa datos dinámicos y nunca imprime secretos heredados', 
   assert.match(html, /Unidad Norte/);
   assert.doesNotMatch(html, /Nombre antiguo/);
   assert.doesNotMatch(html, /SECRETO-WINDOWS|SECRETO-MICROSOFT|SECRETO-DROPBOX/);
+  assert.match(html, /&lt;clave-windows&gt;/);
+  assert.match(html, /CLAVE-MICROSOFT/);
+  assert.match(html, /CLAVE-MRT/);
+  assert.match(html, /CLAVE-CORPORATIVA/);
+  assert.match(html, /CLAVE-DROPBOX/);
   assert.match(html, /Password/);
-  assert.match(html, /<td>—<\/td>/);
+  assert.match(html, /size:215\.9mm 279\.4mm/);
 });

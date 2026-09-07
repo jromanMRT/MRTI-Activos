@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import { pool } from '../db.js';
 import { ALL_FIELDS, DATE_FIELDS, FIELD_GROUPS, LIST_COLUMNS, normalizeAssetDates } from '../meta.js';
-import { pushAssetToSap } from '../integrations/sapClient.js';
-import { fetchCurrentUser } from '../auth.js';
+import { fetchSapAssetCredentials, pushAssetToSap } from '../integrations/sapClient.js';
+import { administratorOnly, fetchCurrentUser } from '../auth.js';
 import { assetDocumentUpload, cleanOriginalFilename, detectAssetDocument, removeStoredAssetDocument, storeAssetDocument } from '../documentStorage.js';
 
 // Empuja el renglón recién creado/editado hacia SAP (ver plan de la
@@ -419,6 +419,26 @@ activosRouter.post('/:id/documentos', assetDocumentUpload.single('file'), async 
     return res.status(201).json({ data: { ...document, archivo_disponible: true } });
   } catch (error) {
     if (stored?.relativePath) await removeStoredAssetDocument(stored.relativePath).catch(() => {});
+    return next(error);
+  }
+});
+
+activosRouter.get('/:id/remission-credentials', administratorOnly, async (req, res, next) => {
+  try {
+    const [[asset]] = await pool.query('SELECT id, center_code FROM activos WHERE id = ?', [req.params.id]);
+    if (!asset) return res.status(404).json({ error: 'Activo no encontrado' });
+    const credentials = await fetchSapAssetCredentials(asset.center_code);
+    await pool.query(`INSERT INTO audit_events
+      (event_uuid, module_code, actor_user_id, actor_name, actor_email, action, entity_type, entity_id,
+       request_id, ip_address, user_agent, metadata_json, status_code)
+      VALUES (?, 'activos', ?, ?, ?, 'credential.remission_printed', 'activo', ?, ?, ?, ?, ?, 200)`, [
+      randomUUID(), req.portalUser.id, req.portalUser.name, req.portalUser.email, String(asset.id),
+      randomUUID(), req.ip || null, String(req.headers['user-agent'] || '').slice(0, 512) || null,
+      JSON.stringify({ center_code: asset.center_code, secret_values: '[REDACTADO]' }),
+    ]);
+    res.set({ 'Cache-Control': 'no-store, private', Pragma: 'no-cache', Vary: 'Authorization' });
+    return res.json({ data: credentials });
+  } catch (error) {
     return next(error);
   }
 });

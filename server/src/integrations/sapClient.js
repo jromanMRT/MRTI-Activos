@@ -72,6 +72,42 @@ export async function fetchSapAssets() {
   });
 }
 
+export function pickSapAssetCredentials(row = {}) {
+  return {
+    win_password: row.win_password ?? null,
+    ms_password: row.ms_password ?? null,
+    password_mrt: row.password_mrt ?? null,
+    password_corporativo: row.password_corporativo ?? null,
+    db_password: row.db_password ?? null,
+  };
+}
+
+// Lectura puntual para una remisión interna. Los secretos nunca pasan por el
+// GET normal del activo ni se guardan en MySQL: se consultan en vivo, mediante
+// parámetro, y la ruta que llama esta función exige administrador y audita el
+// acceso. Si el código está duplicado es preferible no imprimir una contraseña
+// potencialmente ajena.
+export async function fetchSapAssetCredentials(centerCode) {
+  const pool = await getPool();
+  const { recordset } = await pool.request()
+    .input('center_code', sql.NVarChar(20), centerCode)
+    .query(`SELECT v.id, v.win_password, v.ms_password, v.password_mrt, v.password_corporativo,
+        (SELECT TOP (1) db.password FROM dbo.CuentaDropBox db
+          WHERE db.activo_id = v.id ORDER BY db.id DESC) AS db_password
+      FROM dbo.Vista_Activos_Completa v WHERE v.center_code = @center_code`);
+  if (!recordset.length) {
+    const error = new Error('El activo no existe en la fuente de credenciales');
+    error.status = 404;
+    throw error;
+  }
+  if (recordset.length > 1) {
+    const error = new Error('El código TI está duplicado en la fuente; no es seguro revelar sus credenciales');
+    error.status = 409;
+    throw error;
+  }
+  return pickSapAssetCredentials(recordset[0]);
+}
+
 // Cada tabla de credenciales de SAP guarda un subconjunto de columnas de
 // `activos` bajo otro nombre (ver server/src/meta.js para el lado MySQL).
 // Nunca se incluye una columna de password en ningún mapa: esas nunca se
