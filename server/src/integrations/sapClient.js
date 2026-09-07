@@ -51,14 +51,21 @@ const ASSET_EXCLUDED_FIELDS = new Set([
   'creado_en', 'actualizado_en',
 ]);
 
-// Columnas que solo existen en `activos` de MySQL (nunca en dbo.Activos de
-// SAP) -- se filtran al empujar un renglón de MySQL hacia SAP, así se le
-// puede pasar el row completo tal cual sale de `SELECT * FROM activos` sin
-// armar un objeto a mano en cada llamador.
-const MYSQL_ONLY_FIELDS = new Set([
-  'id', 'asset_uid', 'portal_user_id', 'tercero_id', 'physical_area_id',
-  'creado_en', 'actualizado_en', 'sap_synced_at', 'sap_sync_error',
+// Lista positiva tomada del esquema real de dbo.Activos. Las cuentas,
+// licencias y antivirus viven en sus tablas relacionadas y se escriben más
+// abajo mediante mapas explícitos; no deben colarse en el MERGE principal.
+const SAP_ASSET_WRITABLE_FIELDS = new Set([
+  'cod_activo_fijo', 'tipo', 'descripcion', 'software_incluido', 'version',
+  'marca', 'modelo', 'service_tag', 'numero_serie', 'empresa', 'id_empleado',
+  'usuario_asignado', 'unidad', 'area', 'cel_empleado', 'cuenta_contable',
+  'expediente', 'requisicion', 'orden_compra', 'factura', 'cuenta_microsoft',
+  'esp_tec', 'active', 'estado', 'bitlocker', 'baja_empleado', 'baja_equipo',
+  'revisada', 'ex_propietario', 'fecha_compra', 'valid_from', 'valid_to', 'notas',
 ]);
+
+export function pickSapAssetWritableFields(fields = {}) {
+  return Object.fromEntries(Object.entries(fields).filter(([key]) => SAP_ASSET_WRITABLE_FIELDS.has(key)));
+}
 
 export async function fetchSapAssets() {
   const pool = await getPool();
@@ -253,10 +260,11 @@ export async function pushAssetToSap(fields) {
   const transaction = new sql.Transaction(pool);
   await transaction.begin();
   try {
-    const columns = Object.keys(fields).filter((key) => !ASSET_EXCLUDED_FIELDS.has(key) && !MYSQL_ONLY_FIELDS.has(key) && key !== 'center_code');
+    const mainFields = pickSapAssetWritableFields(fields);
+    const columns = Object.keys(mainFields);
     const request = new sql.Request(transaction);
     request.input('center_code', sql.NVarChar, fields.center_code);
-    for (const column of columns) request.input(column, fields[column] ?? null);
+    for (const column of columns) request.input(column, mainFields[column] ?? null);
     const setClause = columns.map((column) => `${column} = @${column}`).join(', ');
     const insertColumns = ['center_code', ...columns];
     const insertParams = insertColumns.map((column) => `@${column}`);
