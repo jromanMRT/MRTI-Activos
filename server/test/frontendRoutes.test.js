@@ -40,6 +40,8 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
   assert.match(suite, /Crear registro/);
   assert.match(suite, /Creado en MRTI/);
   assert.match(suite, /Adjuntar desde un activo/);
+  assert.doesNotMatch(suite, /\['center_code', 'Centro'\]/);
+  assert.match(suite, /\['center_code', 'Código TI'\]/);
   assert.match(api, /rhAssetAssignmentProfilesFetch/);
   assert.match(api, /asset-assignment-profiles/);
   const selfRoute = await readFile(new URL('server/src/routes/activosSelf.js', projectRoot), 'utf8');

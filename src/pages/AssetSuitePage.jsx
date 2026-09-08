@@ -4,17 +4,17 @@ import { apiDownload, apiFetch } from '../api.js';
 import { AssetField, AssignmentPanel } from './AssetFormPage.jsx';
 
 export const CATALOGS = {
-  credenciales: { title: 'Credenciales de equipos', description: 'Cuentas y licencias asociadas. Las contraseñas de los activos no se copian.', columns: [['center_code', 'Centro'], ['usuario_asignado', 'Usuario'], ['win_usuario', 'Windows'], ['ms_usuario', 'Microsoft'], ['ms_licencia', 'Licencia'], ['correo_mrt', 'Correo MRT'], ['av_caducidad', 'Caducidad antivirus']] },
-  componentes: { title: 'Componentes', columns: [['center_code', 'Centro'], ['code', 'Código'], ['nombre', 'Nombre'], ['tipo', 'Tipo'], ['marca', 'Marca'], ['modelo', 'Modelo'], ['serial_service_tag', 'Serie'], ['usuario', 'Usuario']] },
+  credenciales: { title: 'Credenciales de equipos', description: 'Cuentas y licencias asociadas. Las contraseñas de los activos no se copian.', columns: [['center_code', 'Código TI'], ['usuario_asignado', 'Usuario'], ['win_usuario', 'Windows'], ['ms_usuario', 'Microsoft'], ['ms_licencia', 'Licencia'], ['correo_mrt', 'Correo MRT'], ['av_caducidad', 'Caducidad antivirus']] },
+  componentes: { title: 'Componentes', columns: [['center_code', 'Código TI'], ['code', 'Código'], ['nombre', 'Nombre'], ['tipo', 'Tipo'], ['marca', 'Marca'], ['modelo', 'Modelo'], ['serial_service_tag', 'Serie'], ['usuario', 'Usuario']] },
   impresoras: { title: 'Impresoras', columns: [['usuario', 'Usuario'], ['ubicacion', 'Ubicación'], ['ip_address', 'IP'], ['hostname', 'Host'], ['modelo', 'Modelo'], ['numero_serie', 'Serie'], ['conteo_paginas', 'Páginas']] },
   nvr: { title: 'NVR y CCTV', secret: true, columns: [['alias', 'Alias'], ['device_domain', 'Dominio'], ['device_serial', 'Serie'], ['ip_port', 'IP / puerto'], ['status', 'Estado'], ['usuario', 'Usuario'], ['localidad', 'Localidad'], ['ubicacion', 'Ubicación']] },
   passwords: { title: 'Contraseñas de red', secret: true, columns: [['categoria', 'Categoría'], ['subcategoria', 'Subcategoría'], ['ip', 'IP'], ['direccion', 'Dirección'], ['usuario', 'Usuario'], ['comentario', 'Comentario']] },
   starlink: { title: 'Starlink', columns: [['correo_cuenta', 'Cuenta'], ['ubicacion', 'Ubicación'], ['id_starlink', 'ID Starlink'], ['version_equipo', 'Versión'], ['importe_mes', 'Importe mensual'], ['dia_corte', 'Corte'], ['suscripcion', 'Suscripción'], ['cliente', 'Cliente']] },
   fortigate: { title: 'FortiGate', columns: [['software', 'Software'], ['numero_serie', 'Serie'], ['proyecto', 'Proyecto'], ['fecha_expira', 'Vencimiento'], ['comentario', 'Comentario']] },
   dominios: { title: 'Dominios', columns: [['dominio', 'Dominio'], ['servicios', 'Servicios'], ['fecha_expira', 'Vencimiento'], ['status', 'Estado'], ['comentario', 'Comentario']] },
-  mantenimientos: { title: 'Mantenimientos', columns: [['center_code', 'Centro'], ['fecha_servicio', 'Fecha'], ['tipo_servicio', 'Servicio'], ['descripcion', 'Descripción'], ['tecnico', 'Técnico'], ['proveedor', 'Proveedor'], ['estado', 'Estado'], ['costo', 'Costo']] },
+  mantenimientos: { title: 'Mantenimientos', columns: [['center_code', 'Código TI'], ['fecha_servicio', 'Fecha'], ['tipo_servicio', 'Servicio'], ['descripcion', 'Descripción'], ['tecnico', 'Técnico'], ['proveedor', 'Proveedor'], ['estado', 'Estado'], ['costo', 'Costo']] },
   unidades: { title: 'Unidades', columns: [['nombre', 'Nombre'], ['activa', 'Activa'], ['orden', 'Orden']] },
-  documentos: { title: 'Documentos', document: true, columns: [['center_code', 'Centro'], ['nombre', 'Nombre'], ['tipo', 'Tipo'], ['archivo', 'Archivo'], ['subido_por', 'Subido por'], ['sap_creado_en', 'Fecha']] },
+  documentos: { title: 'Documentos', document: true, columns: [['center_code', 'Código TI'], ['nombre', 'Nombre'], ['tipo', 'Tipo'], ['archivo', 'Archivo'], ['subido_por', 'Subido por'], ['sap_creado_en', 'Fecha']] },
   'config-alertas': { title: 'Configuración de alertas', archivable: false, columns: [['clave', 'Clave'], ['nombre', 'Nombre'], ['dias_aviso', 'Días de aviso'], ['activo', 'Activa'], ['synced_at', 'Sincronización']] },
 };
 

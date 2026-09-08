@@ -7,7 +7,7 @@ export const FIELD_GROUPS = [
     key: 'identificacion',
     label: 'Identificación',
     fields: [
-      { key: 'center_code', label: 'Código de centro', type: 'text', required: true },
+      { key: 'center_code', label: 'Código TI', type: 'text', required: true },
       { key: 'cod_activo_fijo', label: 'Código de activo fijo', type: 'text' },
       { key: 'tipo', label: 'Tipo', type: 'select', options: ['Laptop', 'PC', 'Servidor'] },
       { key: 'descripcion', label: 'Descripción', type: 'text' },
