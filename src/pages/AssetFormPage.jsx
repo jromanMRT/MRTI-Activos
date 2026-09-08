@@ -172,6 +172,7 @@ export function AssetFormPage({ mode }) {
             {activeTab === 'dropbox' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['db_password']} title="Contraseña de Dropbox para la remisión" showSaveButton={false} />}
             {activeTab === 'correo' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['password_mrt', 'password_corporativo']} title="Contraseñas de correo para la remisión" showSaveButton={false} />}
             {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
+            {activeTab === 'administracion' && mode === 'edit' && <div className="mt-2"><UnitHistoryPanel assetId={id} isAdministrator={isAdministrator} onReverted={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
             {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel assetId={id} documents={documents} error={documentsError} onError={setDocumentsError} onUploaded={(document) => setDocuments((current) => [document, ...current.filter((item) => item.id !== document.id)])} onDeleted={(documentId) => setDocuments((current) => current.filter((item) => item.id !== documentId))} />}
             {activeTab === 'monitor' && mode === 'edit' && <ObservabilityPanel assetUid={values.asset_uid} data={observability} error={observabilityError} onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))} />}
             {activeTab === 'tickets' && mode === 'edit' && <TicketsPanel assetUid={values.asset_uid} createTicketUrl={createTicketUrl} />}
@@ -619,6 +620,79 @@ export function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId
   );
 }
 
+// Historial de correcciones a la unidad de este activo (asset_unit_changes,
+// ver domain/unitReview.js). Sólo puede revertirse el cambio más reciente:
+// el servidor rechaza revertir uno anterior si hubo cambios posteriores
+// (misma protección que evita perder una corrección por una carrera).
+function UnitHistoryPanel({ assetId, isAdministrator, onReverted }) {
+  const [history, setHistory] = useState(null);
+  const [error, setError] = useState('');
+  const [revertingId, setRevertingId] = useState(null);
+
+  function refresh() {
+    apiFetch(`/activos-suite/unit-review/assets/${assetId}/history`)
+      .then((result) => setHistory(result.data || []))
+      .catch((err) => setError(err.message));
+  }
+
+  useEffect(() => { refresh(); }, [assetId]);
+
+  async function revert(change) {
+    const reason = window.prompt('Motivo para revertir esta corrección (mínimo 8 caracteres, con evidencia):');
+    if (reason === null) return;
+    setRevertingId(change.id);
+    setError('');
+    try {
+      await apiFetch(`/activos-suite/unit-review/assets/${assetId}/revert/${change.id}`, { method: 'POST', body: JSON.stringify({ reason }) });
+      refresh();
+      notifyAssetChanged({ assetId, action: 'unit-reverted' });
+      onReverted?.();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRevertingId(null);
+    }
+  }
+
+  return (
+    <fieldset className="border border-slate-800 rounded-xl p-4">
+      <legend className="text-sm font-semibold text-slate-300 px-1">Historial de unidad</legend>
+      {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
+      {history === null ? (
+        <p className="text-sm text-slate-500">Consultando historial…</p>
+      ) : history.length === 0 ? (
+        <p className="text-sm text-slate-500">Este activo no tiene correcciones registradas de unidad.</p>
+      ) : (
+        <div className="space-y-2">
+          {history.map((change, index) => {
+            const before = JSON.parse(change.before_json);
+            const after = JSON.parse(change.after_json);
+            return (
+              <div key={change.id} className="rounded-lg bg-slate-900 p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    <span className="text-slate-500">{before.unidad || 'Sin unidad'}</span>
+                    <span className="mx-2 text-slate-600">→</span>
+                    <span className="text-slate-100">{after.unidad || 'Sin unidad'}</span>
+                    {change.reverses_id && <span className="ml-2 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-300">Reversión</span>}
+                  </span>
+                  {isAdministrator && index === 0 && (
+                    <button type="button" disabled={revertingId === change.id} onClick={() => revert(change)} className="text-xs text-amber-400 hover:underline disabled:opacity-50">
+                      {revertingId === change.id ? 'Revirtiendo…' : 'Revertir'}
+                    </button>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-slate-500">{change.reason}</p>
+                <p className="mt-1 text-xs text-slate-600">{change.actor_name || 'Sistema'} · {new Date(change.created_at).toLocaleString('es-MX')}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
 function EmployeeAssignmentDetails({ profile, title = 'Datos vigentes en RH' }) {
   const details = [
     ['Empresa', profile.company_name],
@@ -789,6 +863,43 @@ function OperationalValue({ label, value }) {
   return <div><span className="block text-xs text-slate-500">{label}</span><span className="text-slate-200">{value}</span></div>;
 }
 
+// Catálogo de unidades vigentes para el selector guiado -- se carga una sola
+// vez por sesión de la app (varios formularios reutilizan AssetField) y se
+// filtra igual que el servidor (activa, no archivada, no legacy/obsolete;
+// ver domain/unitReview.js: captureUnit) para que lo que aquí se ofrece
+// siempre sea aceptado al guardar.
+let unitCatalogPromise = null;
+function loadUnitCatalogOptions() {
+  if (!unitCatalogPromise) {
+    unitCatalogPromise = apiFetch('/activos-suite/resources/unidades?limit=1000')
+      .then((result) => [...new Set((result.data || [])
+        .filter((row) => row.activa && !row.archived_at && !['legacy', 'obsolete'].includes(row.usage_kind))
+        .map((row) => (row.nombre || '').trim())
+        .filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es')))
+      .catch(() => []);
+  }
+  return unitCatalogPromise;
+}
+
+function UnitField({ value, onChange }) {
+  const [options, setOptions] = useState(null);
+  useEffect(() => { let current = true; loadUnitCatalogOptions().then((result) => { if (current) setOptions(result); }); return () => { current = false; }; }, []);
+  const commonClass = 'w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100';
+  const current = value || '';
+  if (!options) return <input className={commonClass} value={current} disabled placeholder="Cargando catálogo…" />;
+  const inCatalog = !current || options.includes(current);
+  return (
+    <div>
+      <select className={commonClass} value={inCatalog ? current : '__keep__'} onChange={(event) => onChange(event.target.value === '__keep__' ? current : event.target.value)}>
+        <option value="">— Sin unidad —</option>
+        {!inCatalog && <option value="__keep__">{current} (etiqueta histórica, se conserva)</option>}
+        {options.map((name) => <option key={name} value={name}>{name}</option>)}
+      </select>
+      {!inCatalog && <p className="mt-1 text-xs text-amber-400">Esta etiqueta no está en el catálogo vigente. Se conserva sin cambios hasta revisarla en “Por revisar”.</p>}
+    </div>
+  );
+}
+
 export function AssetField({ field, value, onChange }) {
   const commonClass = 'w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100';
   const isWide = ['descripcion', 'software_incluido', 'version', 'esp_tec', 'notas'].includes(field.key);
@@ -798,7 +909,9 @@ export function AssetField({ field, value, onChange }) {
       <span className="block text-xs text-slate-400 mb-1">
         {field.label}{field.required ? ' *' : ''}
       </span>
-      {field.type === 'select' ? (
+      {field.type === 'unit' ? (
+        <UnitField value={value} onChange={(next) => onChange(field.key, next)} />
+      ) : field.type === 'select' ? (
         <select className={commonClass} value={value ?? ''} onChange={(e) => onChange(field.key, e.target.value)}>
           <option value="">—</option>
           {field.options.map((opt) => (
