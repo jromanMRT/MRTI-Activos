@@ -42,6 +42,8 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
   assert.match(suite, /Adjuntar desde un activo/);
   assert.match(api, /rhAssetAssignmentProfilesFetch/);
   assert.match(api, /asset-assignment-profiles/);
+  const selfRoute = await readFile(new URL('server/src/routes/activosSelf.js', projectRoot), 'utf8');
+  assert.match(selfRoute, /mergeEquivalentSelfAssignments/);
   assert.match(list, /employeeProfile\?\.employee_number \|\| inheritedEmployeeId/);
   assert.match(list, /Imprimir remisión de/);
   assert.match(form, /Imprimir remisión/);
