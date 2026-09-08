@@ -17,7 +17,6 @@ const NAV_ITEMS = [
   { to: '/catalogos/dominios', label: 'Dominios', icon: 'catalog' },
   { to: '/catalogos/mantenimientos', label: 'Mantenimientos', icon: 'catalog' },
   { to: '/catalogos/documentos', label: 'Documentos', icon: 'catalog' },
-  { to: '/catalogos/unidades', label: 'Unidades', icon: 'catalog' },
   { to: '/catalogos/config-alertas', label: 'Configurar alertas', icon: 'catalog' },
 ];
 

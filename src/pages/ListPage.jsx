@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiFetch, rhAssetAssignmentProfilesFetch } from '../api.js';
 import { openAssetRemission } from '../remissionPrint.js';
 import { ASSET_CHANGED_EVENT } from '../assetEvents.js';
@@ -14,7 +14,17 @@ export function ListPage() {
   const [area, setArea] = useState('');
   const [tipo, setTipo] = useState('');
   const [estado, setEstado] = useState('');
-  const [unidad, setUnidad] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const unidad = searchParams.get('unidad_operativa') || '';
+  const sinUnidad = searchParams.get('sin_unidad') === '1';
+  function setUnidad(value) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete('sin_unidad'); next.delete('unidad_operativa');
+      if (value) next.set('unidad_operativa', value);
+      return next;
+    });
+  }
   const [empresa, setEmpresa] = useState('');
   const [sort, setSort] = useState('center_code');
   const [order, setOrder] = useState('desc');
@@ -42,7 +52,8 @@ export function ListPage() {
     if (area) params.set('area', area);
     if (tipo) params.set('tipo', tipo);
     if (estado) params.set('estado', estado);
-    if (unidad) params.set('unidad', unidad);
+    if (sinUnidad) params.set('sin_unidad', '1');
+    else if (unidad) params.set('unidad_operativa', unidad);
     if (empresa) params.set('empresa', empresa);
     params.set('sort', sort);
     params.set('order', order);
@@ -52,7 +63,7 @@ export function ListPage() {
       .then((result) => setItems(result.data))
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
-  }, [q, area, tipo, estado, unidad, empresa, sort, order, inventoryRevision]);
+  }, [q, area, tipo, estado, unidad, sinUnidad, empresa, sort, order, inventoryRevision]);
 
   useEffect(() => {
     let current = true;
@@ -97,16 +108,17 @@ export function ListPage() {
       <section>
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div><h1 className="text-xl font-bold sm:text-2xl">Inventario de equipos</h1><p className="mt-1 text-sm text-slate-500">{items.length} resultado{items.length === 1 ? '' : 's'} en la vista actual</p></div>
-          <Link to="/nuevo" className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-[#2a1c05] shadow-sm hover:bg-sky-400">+ Nuevo activo</Link>
+          <div className="flex flex-wrap gap-3"><Link to="/inventario/unidades" className="rounded-lg border border-slate-700 px-4 py-2 text-sm">Inventario por unidad</Link><Link to="/nuevo" className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-[#2a1c05] shadow-sm hover:bg-sky-400">+ Nuevo activo</Link></div>
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-900/35 p-3 sm:p-4">
+          {(unidad || sinUnidad) && <div className="mb-3 flex flex-wrap items-center gap-3 text-sm"><span>Unidad: <strong>{sinUnidad ? 'Sin unidad registrada' : unidad}</strong></span><button type="button" onClick={() => setUnidad('')} className="text-sky-400 hover:underline">Quitar filtro de unidad</button><Link to="/inventario/unidades" className="text-sky-400 hover:underline">Volver al resumen por unidad</Link></div>}
           <div className="mb-4 grid gap-2 md:grid-cols-2 xl:grid-cols-6">
             <input className="xl:col-span-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm" placeholder="Buscar código, usuario, marca, serie…" value={q} onChange={(event) => setQ(event.target.value)} />
             <input className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm" placeholder="Área / departamento…" value={area} onChange={(event) => setArea(event.target.value)} />
             <Select label="Todos los tipos" value={tipo} onChange={setTipo} options={filters.tipos} />
             <Select label="Todos los estados" value={estado} onChange={setEstado} options={filters.estados} />
-            <Select label="Todas las unidades" value={unidad} onChange={setUnidad} options={filters.unidades} />
+            <Select label={sinUnidad ? 'Sin unidad registrada' : 'Todas las unidades'} value={unidad} onChange={setUnidad} options={[...new Set([...(unidad ? [unidad] : []), ...filters.unidades.map((name) => name.trim()).filter(Boolean)])]} />
             <div className="md:col-span-2 xl:col-span-2"><Select label="Todas las empresas" value={empresa} onChange={setEmpresa} options={filters.empresas} /></div>
           </div>
 

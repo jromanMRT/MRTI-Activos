@@ -1,6 +1,7 @@
 import { Navigate, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout.jsx';
 import { ListPage } from './pages/ListPage.jsx';
+import { UnitInventoryPage } from './pages/UnitInventoryPage.jsx';
 import { AssetFormPage } from './pages/AssetFormPage.jsx';
 import { AssetAlertsPage, AssetCatalogPage, AssetSuiteOverviewPage } from './pages/AssetSuitePage.jsx';
 import { EmployeeOffboardingPage } from './pages/EmployeeOffboardingPage.jsx';
@@ -11,6 +12,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<AssetSuiteOverviewPage />} />
         <Route path="/inventario" element={<ListPage />} />
+        <Route path="/inventario/unidades" element={<UnitInventoryPage />} />
         <Route path="/terceros" element={<Navigate replace to="/inventario" />} />
         <Route path="/operacion" element={<Navigate replace to="/" />} />
         <Route path="/catalogos/:resource" element={<AssetCatalogPage />} />

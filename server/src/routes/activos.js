@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { unitInventoryFilter } from '../unitInventory.js';
 import { randomUUID } from 'node:crypto';
 import { pool } from '../db.js';
 import { ALL_FIELDS, DATE_FIELDS, FIELD_GROUPS, LIST_COLUMNS, normalizeAssetDates } from '../meta.js';
@@ -77,6 +78,9 @@ activosRouter.get('/', async (req, res, next) => {
     const { q, tipo, estado, unidad, empresa, area, limit, sort, order } = req.query;
     const where = [];
     const params = [];
+
+    const unitFilter = unitInventoryFilter(req.query);
+    if (unitFilter) { where.push(unitFilter.sql); params.push(...unitFilter.values); }
 
     if (q) {
       where.push('(descripcion LIKE ? OR usuario_asignado LIKE ? OR numero_serie LIKE ? OR service_tag LIKE ? OR modelo LIKE ? OR marca LIKE ? OR center_code LIKE ?)');

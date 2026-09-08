@@ -7,6 +7,7 @@ import { decryptSecret, encryptSecret } from '../integrations/credentialCrypto.j
 import { syncAllSap } from '../integrations/sapSync.js';
 import { safeDocumentPath } from '../documentStorage.js';
 import { normalizeAssetDates } from '../meta.js';
+import { readUnitInventory } from '../unitInventory.js';
 
 export { safeDocumentPath } from '../documentStorage.js';
 
@@ -122,6 +123,11 @@ assetSuiteRouter.get('/summary', async (_req, res, next) => {
     }));
     res.json({ data: Object.fromEntries(entries) });
   } catch (error) { next(error); }
+});
+
+assetSuiteRouter.get('/unit-inventory', async (_req, res, next) => {
+  try { res.json({ data: await readUnitInventory(pool) }); }
+  catch (error) { next(error); }
 });
 
 assetSuiteRouter.get('/dashboard', async (_req, res, next) => {
