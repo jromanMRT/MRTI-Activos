@@ -8,6 +8,8 @@ import { syncAllSap } from '../integrations/sapSync.js';
 import { safeDocumentPath } from '../documentStorage.js';
 import { normalizeAssetDates } from '../meta.js';
 import { readUnitInventory } from '../unitInventory.js';
+import { unitReviewRouter } from './unitReview.js';
+import { reviewReason, unitUsage } from '../domain/unitReview.js';
 
 export { safeDocumentPath } from '../documentStorage.js';
 
@@ -36,7 +38,7 @@ export const RESOURCE_CONFIG = Object.freeze({
   fortigate: { table: 'sap_fortigate', columns: ['id', 'sap_id', 'software', 'numero_serie', 'proyecto', 'fecha_expira', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['software', 'numero_serie', 'proyecto', 'comentario'], create: { fields: ['software', 'numero_serie', 'proyecto', 'fecha_expira', 'comentario'], required: ['numero_serie'], dates: ['fecha_expira'] } },
   dominios: { table: 'sap_dominios', columns: ['id', 'sap_id', 'dominio', 'servicios', 'fecha_expira', 'status', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['dominio', 'servicios', 'status', 'comentario'], create: { fields: ['dominio', 'servicios', 'fecha_expira', 'status', 'comentario'], required: ['dominio'], dates: ['fecha_expira'] } },
   mantenimientos: { table: 'sap_mantenimientos', columns: ['id', 'sap_id', 'center_code', 'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones', 'record_origin', 'synced_at', 'archived_at'], search: ['center_code', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'numero_ticket', 'estado'], create: { fields: ['center_code', 'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones'], required: ['center_code', 'fecha_servicio', 'tipo_servicio'], numbers: ['costo'], dates: ['fecha_servicio', 'fecha_fin', 'garantia_hasta'] } },
-  unidades: { table: 'sap_unidades', columns: ['id', 'sap_id', 'nombre', 'activa', 'orden', 'record_origin', 'synced_at', 'archived_at'], search: ['nombre'], create: { fields: ['nombre', 'activa', 'orden'], required: ['nombre'], numbers: ['orden'], booleans: ['activa'] } },
+  unidades: { table: 'sap_unidades', columns: ['id', 'sap_id', 'nombre', 'activa', 'orden', 'record_origin', 'synced_at', 'archived_at', 'usage_kind', 'reference_id', 'review_note', 'reviewed_by', 'reviewed_at', 'review_revision'], search: ['nombre'], create: { fields: ['nombre', 'activa', 'orden'], required: ['nombre'], numbers: ['orden'], booleans: ['activa'] } },
   documentos: { table: 'sap_documentos', columns: ['id', 'sap_id', 'asset_uid', 'center_code', 'nombre', 'tipo', 'archivo', 'tamano', 'subido_por', 'sap_creado_en', 'synced_at', 'archived_at', 'local_storage_path', 'mime_type', 'sha256', 'document_origin'], search: ['center_code', 'nombre', 'tipo', 'archivo', 'subido_por'] },
   'config-alertas': { table: 'sap_config_alertas', id: 'clave', archivable: false, columns: ['clave', 'nombre', 'dias_aviso', 'activo', 'sap_actualizado_en', 'synced_at'], search: ['clave', 'nombre'] },
 });
@@ -112,6 +114,8 @@ async function auditSecretRead(req) {
 }
 
 export const assetSuiteRouter = Router();
+
+assetSuiteRouter.use('/unit-review', unitReviewRouter);
 
 assetSuiteRouter.get('/summary', async (_req, res, next) => {
   try {
@@ -243,6 +247,19 @@ assetSuiteRouter.patch('/resources/:resource/:id/archive', administratorOnly, as
   try {
     const config = resourceOrThrow(req.params.resource);
     if (!config.archivable) return res.status(409).json({ error: 'Este catálogo no se archiva desde aquí' });
+    if (req.params.resource === 'unidades') {
+      // El archivo de una unidad exige evidencia de obsolescencia, no sólo
+      // ausencia de equipos, y nunca procede si activos o sap_componentes
+      // todavía la referencian (UNIT_REVIEW_PLAN.md, etapa 6).
+      const [[row]] = await pool.query('SELECT nombre FROM sap_unidades WHERE id = ?', [req.params.id]);
+      if (!row) return res.status(404).json({ error: 'Registro no encontrado' });
+      const usage = await unitUsage(pool, row.nombre);
+      if (usage.assets > 0 || usage.components > 0) {
+        return res.status(409).json({ error: `No se puede archivar: ${usage.assets} activo(s) y ${usage.components} componente(s) todavía usan "${row.nombre}".` });
+      }
+      const note = reviewReason(req.body?.review_note);
+      await pool.query('UPDATE sap_unidades SET review_note = ?, reviewed_by = ?, reviewed_at = NOW() WHERE id = ?', [note, req.portalUser.id, req.params.id]);
+    }
     const [result] = await pool.query(`UPDATE \`${config.table}\` SET archived_at = NOW(), archived_by = ? WHERE \`${config.id}\` = ?`, [req.portalUser.id, req.params.id]);
     if (!result.affectedRows) return res.status(404).json({ error: 'Registro no encontrado' });
     res.json({ data: { id: req.params.id, archived: true } });

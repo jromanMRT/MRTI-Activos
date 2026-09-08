@@ -7,6 +7,7 @@ import { fetchSapAssetCredentials, pushAssetToSap, updateSapAssetCredentials } f
 import { administratorOnly, fetchCurrentUser } from '../auth.js';
 import { assetDocumentUpload, cleanOriginalFilename, detectAssetDocument, removeStoredAssetDocument, storeAssetDocument } from '../documentStorage.js';
 import { canDeleteAssetDocument } from '../domain/documentPermissions.js';
+import { captureUnit, saveAssetFields } from '../domain/unitReview.js';
 
 // Empuja el renglón recién creado/editado hacia SAP (ver plan de la
 // integración SAP: copia local + escritura en ambos lados). Si SAP no está
@@ -533,6 +534,14 @@ activosRouter.post('/', async (req, res, next) => {
     if (!fields.center_code) {
       return res.status(400).json({ error: 'center_code es obligatorio' });
     }
+    // Una alta local no puede escribir una unidad fuera del catálogo vigente
+    // (mismo criterio que la corrección de un activo existente, ver
+    // domain/unitReview.js: captureUnit). Queda protegida de inmediato para
+    // que el primer ciclo de sincronización con SAP no la sobreescriba.
+    if (Object.hasOwn(fields, 'unidad') && fields.unidad !== null) {
+      fields.unidad = await captureUnit(pool, fields.unidad);
+      fields.unit_is_manual = 1;
+    }
     const columns = Object.keys(fields);
     const [result] = await pool.query(
       `INSERT INTO activos (asset_uid, ${columns.join(',')}) VALUES (?, ${columns.map(() => '?').join(',')})`,
@@ -551,6 +560,22 @@ activosRouter.patch('/:id', async (req, res, next) => {
     const fields = pickAllowedFields(req.body || {});
     const columns = Object.keys(fields);
     if (!columns.length) return res.status(400).json({ error: 'Nada que actualizar' });
+    // Un cambio de unidad -- venga de la ficha general o de un formulario
+    // anterior que todavía mande texto libre -- siempre pasa por
+    // saveAssetFields: valida contra el catálogo, registra antes/después y
+    // protege el valor de la próxima sincronización con SAP. Así el PATCH
+    // general no puede eludir la validación de la ruta dedicada
+    // (unit-review) ni escribir un nombre fuera del catálogo.
+    if (Object.hasOwn(fields, 'unidad')) {
+      const actor = await fetchCurrentUser(req.headers.authorization);
+      if (!actor) return res.status(401).json({ error: 'No autenticado' });
+      const result = await saveAssetFields(pool, req.params.id, fields, actor, {
+        reason: req.body?.unit_review_reason,
+        expectedRevision: req.body?.unit_revision !== undefined ? Number(req.body.unit_revision) : undefined,
+      });
+      syncToSapBestEffort(result.data.id);
+      return res.json({ data: normalizeAssetDates(result.data) });
+    }
     const [result] = await pool.query(
       `UPDATE activos SET ${columns.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`,
       [...columns.map((c) => fields[c]), req.params.id]
