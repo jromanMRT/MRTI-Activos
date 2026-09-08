@@ -28,6 +28,20 @@ export async function retrySapPushes() {
   return { fixed, stillFailing, attempted: rows.length };
 }
 
+// Un activo con unit_is_manual=1 tiene una corrección de unidad hecha a mano
+// (ver domain/unitReview.js: saveAssetFields la marca así en cuanto cambia
+// `unidad`). Mientras esté protegido, SAP no puede pisarla -- se omite esa
+// sola columna del UPDATE. Si SAP cambia la unidad de un activo *no*
+// protegido, se incrementa unit_revision para invalidar cualquier
+// expectedRevision que un administrador tuviera abierto en pantalla (evita
+// una corrección perdida por una condición de carrera con el sync).
+export function planUnitSync(existing, incomingRow) {
+  if (!Object.hasOwn(incomingRow, 'unidad')) return { skipUnit: false, bumpRevision: false };
+  if (existing.unit_is_manual) return { skipUnit: true, bumpRevision: false };
+  const changed = String(incomingRow.unidad ?? '') !== String(existing.unidad ?? '');
+  return { skipUnit: false, bumpRevision: changed };
+}
+
 // Trae Vista_Activos_Completa y hace upsert por center_code (llave natural
 // compartida). Preserva asset_uid y todo lo que ya tenga enlazado
 // (asignaciones, mantenimientos, physical_area_id) -- esas columnas nunca
@@ -38,18 +52,36 @@ export async function pullSapAssets() {
   let inserted = 0;
   let updated = 0;
   let skipped = 0;
+  let unitProtected = 0;
   for (const row of rows) {
-    const [[existing]] = await pool.query('SELECT id, sap_sync_error FROM activos WHERE center_code = ?', [row.center_code]);
-    const columns = Object.keys(row).filter((key) => key !== 'center_code' && key !== 'sap_source_id');
+    const [[existing]] = await pool.query(
+      'SELECT id, sap_sync_error, unit_is_manual, unidad FROM activos WHERE center_code = ?',
+      [row.center_code]
+    );
     if (existing) {
       if (existing.sap_sync_error) { skipped += 1; continue; }
-      const setClause = columns.map((column) => `${column} = ?`).join(', ');
+      const plan = planUnitSync(existing, row);
+      const columns = Object.keys(row)
+        .filter((key) => key !== 'center_code' && key !== 'sap_source_id')
+        .filter((key) => !(plan.skipUnit && key === 'unidad'));
+      const setClauses = columns.map((column) => `${column} = ?`);
+      if (plan.bumpRevision) setClauses.push('unit_revision = unit_revision + 1');
       await pool.query(
-        `UPDATE activos SET ${setClause}, sap_synced_at = NOW() WHERE id = ?`,
+        `UPDATE activos SET ${setClauses.join(', ')}, sap_synced_at = NOW() WHERE id = ?`,
         [...columns.map((column) => row[column]), existing.id]
       );
+      if (plan.skipUnit) unitProtected += 1;
+      if (plan.bumpRevision) {
+        await pool.query(`INSERT INTO audit_events
+          (event_uuid, module_code, actor_name, action, entity_type, entity_id, request_id, before_json, after_json, metadata_json, status_code)
+          VALUES (?, 'activos', 'sap-sync', 'asset-unit.sap-updated', 'asset-unit', ?, ?, ?, ?, ?, 200)`,
+          [randomUUID(), String(existing.id), randomUUID(),
+            JSON.stringify({ unidad: existing.unidad }), JSON.stringify({ unidad: row.unidad }),
+            JSON.stringify({ center_code: row.center_code })]);
+      }
       updated += 1;
     } else {
+      const columns = Object.keys(row).filter((key) => key !== 'center_code' && key !== 'sap_source_id');
       const insertColumns = ['asset_uid', 'center_code', ...columns];
       await pool.query(
         `INSERT INTO activos (${insertColumns.join(',')}, sap_synced_at) VALUES (${insertColumns.map(() => '?').join(',')}, NOW())`,
@@ -58,7 +90,7 @@ export async function pullSapAssets() {
       inserted += 1;
     }
   }
-  return { inserted, updated, skipped, total: rows.length };
+  return { inserted, updated, skipped, unitProtected, total: rows.length };
 }
 
 export async function preserveSapAssetDuplicates(rows) {
