@@ -30,6 +30,8 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
   assert.match(form, /document\.can_delete/);
   assert.match(form, /method: 'DELETE'/);
   assert.match(form, /se eliminó correctamente/);
+  assert.match(form, /Eliminar registro/);
+  assert.match(form, /No existe un archivo disponible/);
   assert.match(suite, /Dashboard de activos/);
   assert.match(suite, /Alertas principales/);
   assert.match(suite, /Ocultar claves/);

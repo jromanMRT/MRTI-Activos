@@ -374,7 +374,7 @@ activosRouter.get('/:id/documentos', async (req, res, next) => {
     const [rows] = await pool.query(
       `SELECT d.id, d.sap_id, d.asset_uid, d.center_code, d.nombre, d.tipo, d.archivo,
               d.tamano, d.subido_por, d.sap_creado_en, d.mime_type, d.sha256, d.document_origin,
-              d.uploaded_by_user_id,
+              d.uploaded_by_user_id, d.local_storage_path,
               CASE WHEN d.local_storage_path IS NULL THEN 0 ELSE 1 END AS archivo_disponible
          FROM activos a
          JOIN sap_documentos d ON d.asset_uid = a.asset_uid OR (d.asset_uid IS NULL AND d.center_code = a.center_code)
@@ -382,10 +382,10 @@ activosRouter.get('/:id/documentos', async (req, res, next) => {
         ORDER BY d.sap_creado_en DESC, d.id DESC`,
       [req.params.id]
     );
-    res.json({ data: rows.map(({ uploaded_by_user_id: uploadedByUserId, ...row }) => ({
+    res.json({ data: rows.map(({ uploaded_by_user_id: uploadedByUserId, local_storage_path: localStoragePath, ...row }) => ({
       ...row,
       archivo_disponible: Boolean(row.archivo_disponible),
-      can_delete: canDeleteAssetDocument({ ...row, uploaded_by_user_id: uploadedByUserId }, actor),
+      can_delete: canDeleteAssetDocument({ ...row, uploaded_by_user_id: uploadedByUserId, local_storage_path: localStoragePath }, actor),
     })) });
   } catch (error) {
     next(error);
@@ -435,7 +435,7 @@ activosRouter.delete('/:id/documentos/:documentId', async (req, res, next) => {
     const actor = await fetchCurrentUser(req.headers.authorization);
     if (!actor) return res.status(401).json({ error: 'No autenticado' });
     const [[document]] = await pool.query(
-      `SELECT d.id, d.document_origin, d.uploaded_by_user_id
+      `SELECT d.id, d.document_origin, d.uploaded_by_user_id, d.local_storage_path
          FROM activos a
          JOIN sap_documentos d ON d.asset_uid = a.asset_uid OR (d.asset_uid IS NULL AND d.center_code = a.center_code)
         WHERE a.id = ? AND d.id = ? AND d.archived_at IS NULL
@@ -443,10 +443,10 @@ activosRouter.delete('/:id/documentos/:documentId', async (req, res, next) => {
       [req.params.id, req.params.documentId]
     );
     if (!document) return res.status(404).json({ error: 'Documento no encontrado' });
-    if (document.document_origin !== 'local') {
-      return res.status(409).json({ error: 'Los documentos históricos importados no se eliminan desde MRTI Activos' });
-    }
     if (!canDeleteAssetDocument(document, actor)) {
+      if (document.document_origin !== 'local') {
+        return res.status(409).json({ error: 'Los documentos históricos que sí tienen archivo no se eliminan desde MRTI Activos' });
+      }
       return res.status(403).json({ error: 'Sólo puedes eliminar archivos que hayas subido' });
     }
     const [result] = await pool.query(
