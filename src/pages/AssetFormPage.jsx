@@ -166,7 +166,7 @@ export function AssetFormPage({ mode }) {
             {activeTab === 'dropbox' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['db_password']} title="Contraseña de Dropbox para la remisión" showSaveButton={false} />}
             {activeTab === 'correo' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['password_mrt', 'password_corporativo']} title="Contraseñas de correo para la remisión" showSaveButton={false} />}
             {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
-            {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel assetId={id} documents={documents} error={documentsError} onError={setDocumentsError} onUploaded={(document) => setDocuments((current) => [document, ...current.filter((item) => item.id !== document.id)])} />}
+            {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel assetId={id} documents={documents} error={documentsError} onError={setDocumentsError} onUploaded={(document) => setDocuments((current) => [document, ...current.filter((item) => item.id !== document.id)])} onDeleted={(documentId) => setDocuments((current) => current.filter((item) => item.id !== documentId))} />}
             {activeTab === 'monitor' && mode === 'edit' && <ObservabilityPanel assetUid={values.asset_uid} data={observability} error={observabilityError} onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))} />}
             {activeTab === 'tickets' && mode === 'edit' && <TicketsPanel assetUid={values.asset_uid} createTicketUrl={createTicketUrl} />}
           </>}
@@ -308,8 +308,9 @@ const RemissionCredentialsPanel = forwardRef(function RemissionCredentialsPanel(
   );
 });
 
-function DocumentsPanel({ assetId, documents, error, onError, onUploaded }) {
+function DocumentsPanel({ assetId, documents, error, onError, onUploaded, onDeleted }) {
   const [downloadingId, setDownloadingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [documentName, setDocumentName] = useState('');
   const [documentType, setDocumentType] = useState('Remision');
@@ -349,6 +350,23 @@ function DocumentsPanel({ assetId, documents, error, onError, onUploaded }) {
       onError(uploadError.message);
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function remove(document) {
+    const documentLabel = document.nombre || document.archivo || 'este archivo';
+    if (!window.confirm(`¿Eliminar “${documentLabel}”? Dejará de aparecer en el activo.`)) return;
+    setDeletingId(document.id);
+    setMessage('');
+    onError('');
+    try {
+      await apiFetch(`/activos/${assetId}/documentos/${document.id}`, { method: 'DELETE' });
+      onDeleted(document.id);
+      setMessage(`El archivo “${documentLabel}” se eliminó correctamente.`);
+    } catch (deleteError) {
+      onError(deleteError.message);
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -394,9 +412,12 @@ function DocumentsPanel({ assetId, documents, error, onError, onUploaded }) {
                 {document.subido_por && <p>Subido por {document.subido_por}</p>}
                 {document.document_origin === 'local' && <p className="text-emerald-400">Agregado en MRTI Activos</p>}
               </div>
-              <button type="button" onClick={() => download(document)} disabled={!document.archivo_disponible || downloadingId === document.id} className="mt-4 w-full rounded-lg border border-sky-500/40 px-3 py-2 text-sm font-medium text-sky-400 hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-50">
-                {!document.archivo_disponible ? 'Archivo no disponible' : downloadingId === document.id ? 'Descargando…' : 'Descargar archivo'}
-              </button>
+              <div className="mt-4 flex gap-2">
+                <button type="button" onClick={() => download(document)} disabled={!document.archivo_disponible || downloadingId === document.id} className="flex-1 rounded-lg border border-sky-500/40 px-3 py-2 text-sm font-medium text-sky-400 hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-50">
+                  {!document.archivo_disponible ? 'Archivo no disponible' : downloadingId === document.id ? 'Descargando…' : 'Descargar'}
+                </button>
+                {document.can_delete && <button type="button" onClick={() => remove(document)} disabled={deletingId === document.id} className="rounded-lg border border-red-500/40 px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 disabled:opacity-50">{deletingId === document.id ? 'Eliminando…' : 'Eliminar'}</button>}
+              </div>
             </article>
           ))}
         </div>

@@ -27,6 +27,9 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
   assert.match(form, /type="button" onClick={upload}/);
   assert.match(form, /se subió exitosamente/);
   assert.match(form, /onUploaded\(result\.data\)/);
+  assert.match(form, /document\.can_delete/);
+  assert.match(form, /method: 'DELETE'/);
+  assert.match(form, /se eliminó correctamente/);
   assert.match(suite, /Dashboard de activos/);
   assert.match(suite, /Alertas principales/);
   assert.match(suite, /Ocultar claves/);
