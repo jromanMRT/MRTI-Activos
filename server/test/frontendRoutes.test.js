@@ -23,6 +23,10 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
   assert.match(app, /path="\/operacion" element={<Navigate replace to="\/"/);
   assert.match(form, /Subir documento/);
   assert.match(form, /PDF, JPG o PNG/);
+  assert.doesNotMatch(form, /<form onSubmit={upload}/);
+  assert.match(form, /type="button" onClick={upload}/);
+  assert.match(form, /se subió exitosamente/);
+  assert.match(form, /onUploaded\(result\.data\)/);
   assert.match(suite, /Dashboard de activos/);
   assert.match(suite, /Alertas principales/);
   assert.match(suite, /Ocultar claves/);

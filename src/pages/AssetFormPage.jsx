@@ -166,7 +166,7 @@ export function AssetFormPage({ mode }) {
             {activeTab === 'dropbox' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['db_password']} title="Contraseña de Dropbox para la remisión" showSaveButton={false} />}
             {activeTab === 'correo' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['password_mrt', 'password_corporativo']} title="Contraseñas de correo para la remisión" showSaveButton={false} />}
             {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
-            {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel assetId={id} documents={documents} error={documentsError} onError={setDocumentsError} onChange={() => apiFetch(`/activos/${id}/documentos`).then((result) => setDocuments(result.data || []))} />}
+            {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel assetId={id} documents={documents} error={documentsError} onError={setDocumentsError} onUploaded={(document) => setDocuments((current) => [document, ...current.filter((item) => item.id !== document.id)])} />}
             {activeTab === 'monitor' && mode === 'edit' && <ObservabilityPanel assetUid={values.asset_uid} data={observability} error={observabilityError} onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))} />}
             {activeTab === 'tickets' && mode === 'edit' && <TicketsPanel assetUid={values.asset_uid} createTicketUrl={createTicketUrl} />}
           </>}
@@ -308,11 +308,12 @@ const RemissionCredentialsPanel = forwardRef(function RemissionCredentialsPanel(
   );
 });
 
-function DocumentsPanel({ assetId, documents, error, onError, onChange }) {
+function DocumentsPanel({ assetId, documents, error, onError, onUploaded }) {
   const [downloadingId, setDownloadingId] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [documentName, setDocumentName] = useState('');
   const [documentType, setDocumentType] = useState('Remision');
+  const [message, setMessage] = useState('');
   const fileRef = useRef(null);
 
   async function download(document) {
@@ -327,22 +328,23 @@ function DocumentsPanel({ assetId, documents, error, onError, onChange }) {
     }
   }
 
-  async function upload(event) {
-    event.preventDefault();
+  async function upload() {
     const file = fileRef.current?.files?.[0];
-    if (!file) { onError('Selecciona un archivo PDF, JPG o PNG'); return; }
+    if (!file) { setMessage(''); onError('Selecciona un archivo PDF, JPG o PNG'); return; }
     setUploading(true);
     onError('');
+    setMessage('');
     try {
       const formData = new FormData();
       formData.append('nombre', documentName);
       formData.append('tipo', documentType);
       formData.append('file', file);
-      await apiUpload(`/activos/${assetId}/documentos`, formData);
+      const result = await apiUpload(`/activos/${assetId}/documentos`, formData);
+      onUploaded(result.data);
       setDocumentName('');
       setDocumentType('Remision');
       if (fileRef.current) fileRef.current.value = '';
-      await onChange();
+      setMessage(`El archivo “${result.data.nombre || result.data.archivo}” se subió exitosamente.`);
     } catch (uploadError) {
       onError(uploadError.message);
     } finally {
@@ -354,7 +356,8 @@ function DocumentsPanel({ assetId, documents, error, onError, onChange }) {
     <fieldset className="border border-slate-800 rounded-xl p-4">
       <legend className="text-sm font-semibold text-slate-300 px-1">Facturas, remisiones y documentos</legend>
       {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
-      <form onSubmit={upload} className="mb-5 rounded-xl border border-dashed border-sky-500/30 bg-sky-500/5 p-4">
+      {message && <p className="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300" role="status" aria-live="polite">{message}</p>}
+      <section className="mb-5 rounded-xl border border-dashed border-sky-500/30 bg-sky-500/5 p-4" aria-label="Subir documento">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div><h3 className="font-medium text-slate-100">Subir documento</h3><p className="mt-1 text-xs text-slate-500">PDF, JPG o PNG · máximo 25 MB. El archivo queda privado dentro de MRTI Activos.</p></div>
           <span className="rounded-full bg-sky-500/15 px-2 py-1 text-xs text-sky-400">Nuevo</span>
@@ -368,10 +371,10 @@ function DocumentsPanel({ assetId, documents, error, onError, onChange }) {
               <option value="Remision">Remisión de resguardo</option><option value="Factura">Factura</option><option value="Garantia">Garantía</option><option value="Otro">Otro</option>
             </select>
           </label>
-          <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-300 file:mr-3 file:rounded file:border-0 file:bg-sky-500/15 file:px-3 file:py-1 file:text-sky-400" />
-          <button disabled={uploading} className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">{uploading ? 'Subiendo…' : 'Subir archivo'}</button>
+          <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required onChange={() => { setMessage(''); onError(''); }} className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-300 file:mr-3 file:rounded file:border-0 file:bg-sky-500/15 file:px-3 file:py-1 file:text-sky-400" />
+          <button type="button" onClick={upload} disabled={uploading} className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">{uploading ? 'Subiendo…' : 'Subir archivo'}</button>
         </div>
-      </form>
+      </section>
       {documents.length === 0 ? (
         <p className="text-sm text-slate-500">Este activo todavía no tiene documentos.</p>
       ) : (
