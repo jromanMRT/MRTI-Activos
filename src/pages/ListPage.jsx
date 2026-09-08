@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiFetch, rhAssetAssignmentProfilesFetch } from '../api.js';
 import { openAssetRemission } from '../remissionPrint.js';
+import { ASSET_CHANGED_EVENT } from '../assetEvents.js';
 
 const EMPTY_STATS = { total: 0, activos: 0, mantenimiento: 0, inactivos: 0, baja: 0 };
 
@@ -20,13 +21,20 @@ export function ListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [employeeProfiles, setEmployeeProfiles] = useState({ byEmployeeId: {}, byPortalUserId: {} });
+  const [inventoryRevision, setInventoryRevision] = useState(0);
+
+  useEffect(() => {
+    const refreshInventory = () => setInventoryRevision((current) => current + 1);
+    window.addEventListener(ASSET_CHANGED_EVENT, refreshInventory);
+    return () => window.removeEventListener(ASSET_CHANGED_EVENT, refreshInventory);
+  }, []);
 
   useEffect(() => {
     void Promise.all([
       apiFetch('/activos/filtros').then(setFilters),
       apiFetch('/activos/stats').then((body) => setStats(body.data)),
     ]).catch(() => {});
-  }, []);
+  }, [inventoryRevision]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -44,7 +52,7 @@ export function ListPage() {
       .then((result) => setItems(result.data))
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
-  }, [q, area, tipo, estado, unidad, empresa, sort, order]);
+  }, [q, area, tipo, estado, unidad, empresa, sort, order, inventoryRevision]);
 
   useEffect(() => {
     let current = true;

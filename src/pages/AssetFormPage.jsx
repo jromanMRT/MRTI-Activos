@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiDownload, apiFetch, apiUpload, obsFetch, obsLinkDevice, obsUnlinkedDevices, rhAssetAssignmentProfileFetch, rhDirectoryFetch, ticketsFetch } from '../api.js';
 import { openAssetRemission } from '../remissionPrint.js';
+import { notifyAssetChanged } from '../assetEvents.js';
 
 function currentProfile() {
   try { return JSON.parse(localStorage.getItem('auth_profile') || '{}'); } catch { return {}; }
@@ -77,9 +78,11 @@ export function AssetFormPage({ mode }) {
     try {
       if (mode === 'create') {
         const result = await apiFetch('/activos', { method: 'POST', body: JSON.stringify(values) });
+        notifyAssetChanged({ assetId: result.data.id, action: 'created' });
         navigate(`/${result.data.id}`);
       } else {
         await apiFetch(`/activos/${id}`, { method: 'PATCH', body: JSON.stringify(values) });
+        notifyAssetChanged({ assetId: id, action: 'updated' });
         navigate('/inventario');
       }
     } catch (err) {
@@ -93,6 +96,7 @@ export function AssetFormPage({ mode }) {
     if (!window.confirm('¿Retirar este activo? Se conservará su historial y dejará de estar asignado.')) return;
     try {
       await apiFetch(`/activos/${id}`, { method: 'DELETE' });
+      notifyAssetChanged({ assetId: id, action: 'retired' });
       navigate('/inventario');
     } catch (err) {
       setError(err.message);
@@ -342,6 +346,7 @@ function DocumentsPanel({ assetId, documents, error, onError, onUploaded, onDele
       formData.append('file', file);
       const result = await apiUpload(`/activos/${assetId}/documentos`, formData);
       onUploaded(result.data);
+      notifyAssetChanged({ assetId, action: 'document-uploaded' });
       setDocumentName('');
       setDocumentType('Remision');
       if (fileRef.current) fileRef.current.value = '';
@@ -366,6 +371,7 @@ function DocumentsPanel({ assetId, documents, error, onError, onUploaded, onDele
     try {
       await apiFetch(`/activos/${assetId}/documentos/${document.id}`, { method: 'DELETE' });
       onDeleted(document.id);
+      notifyAssetChanged({ assetId, action: 'document-deleted' });
       setMessage(`El archivo “${documentLabel}” se eliminó correctamente.`);
     } catch (deleteError) {
       onError(deleteError.message);
@@ -502,6 +508,7 @@ export function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId
         method: 'POST',
         body: JSON.stringify({ ...holder, user_name: employeeName }),
       });
+      notifyAssetChanged({ assetId, action: 'assigned' });
       setSelectedEmployeeId('');
       await onChange();
     } catch (err) {
@@ -517,6 +524,7 @@ export function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId
     setError('');
     try {
       await apiFetch(`/activos/${assetId}/asignacion`, { method: 'DELETE' });
+      notifyAssetChanged({ assetId, action: 'unassigned' });
       await onChange();
     } catch (err) {
       setError(err.message);

@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 const projectRoot = new URL('../../', import.meta.url);
 
 test('la interfaz concentra las asignaciones de personas en RH', async () => {
-  const [app, sidebar, form, suite, list, api, remission] = await Promise.all([
+  const [app, sidebar, form, suite, list, api, remission, assetEvents] = await Promise.all([
     readFile(new URL('src/App.jsx', projectRoot), 'utf8'),
     readFile(new URL('src/components/Sidebar.jsx', projectRoot), 'utf8'),
     readFile(new URL('src/pages/AssetFormPage.jsx', projectRoot), 'utf8'),
@@ -13,6 +13,7 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
     readFile(new URL('src/pages/ListPage.jsx', projectRoot), 'utf8'),
     readFile(new URL('src/api.js', projectRoot), 'utf8'),
     readFile(new URL('src/remissionPrint.js', projectRoot), 'utf8'),
+    readFile(new URL('src/assetEvents.js', projectRoot), 'utf8'),
   ]);
   assert.doesNotMatch(sidebar, /Terceros externos|to:\s*['"]\/terceros/);
   assert.doesNotMatch(form, /Asignar a un tercero|Tercero externo \(sin ficha en RH\)/);
@@ -32,6 +33,13 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
   assert.match(form, /se eliminó correctamente/);
   assert.match(form, /Eliminar registro/);
   assert.match(form, /No existe un archivo disponible/);
+  assert.match(assetEvents, /mrti:asset-changed/);
+  assert.match(list, /addEventListener\(ASSET_CHANGED_EVENT/);
+  assert.match(list, /inventoryRevision/);
+  assert.match(form, /notifyAssetChanged/);
+  assert.match(form, /document-uploaded/);
+  assert.match(form, /document-deleted/);
+  assert.match(form, /action: 'assigned'/);
   assert.match(suite, /Dashboard de activos/);
   assert.match(suite, /Alertas principales/);
   assert.match(suite, /Ocultar claves/);
