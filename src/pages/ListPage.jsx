@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiFetch, rhAssetAssignmentProfilesFetch } from '../api.js';
 import { openAssetRemission } from '../remissionPrint.js';
 import { ASSET_CHANGED_EVENT } from '../assetEvents.js';
+import { inventoryContext } from '../unitInventory.js';
 
 const EMPTY_STATS = { total: 0, activos: 0, mantenimiento: 0, inactivos: 0, baja: 0 };
 
@@ -47,6 +48,7 @@ export function ListPage() {
   }, [inventoryRevision]);
 
   useEffect(() => {
+    let current = true;
     const params = new URLSearchParams();
     if (q) params.set('q', q);
     if (area) params.set('area', area);
@@ -60,9 +62,10 @@ export function ListPage() {
     setLoading(true);
     setError('');
     void apiFetch(`/activos?${params.toString()}`)
-      .then((result) => setItems(result.data))
-      .catch((requestError) => setError(requestError.message))
-      .finally(() => setLoading(false));
+      .then((result) => { if (current) setItems(result.data); })
+      .catch((requestError) => { if (current) setError(requestError.message); })
+      .finally(() => { if (current) setLoading(false); });
+    return () => { current = false; };
   }, [q, area, tipo, estado, unidad, sinUnidad, empresa, sort, order, inventoryRevision]);
 
   useEffect(() => {
@@ -151,6 +154,8 @@ export function ListPage() {
 function AssetRow({ item, employeeProfile }) {
   const age = assetAge(item.fecha_compra);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const context = inventoryContext(searchParams);
   const linkedToRh = Boolean(item.portal_user_id || item.tercero_id || item.rh_employee_id);
   const inheritedEmployeeId = item.id_empleado && item.id_empleado !== '-' ? item.id_empleado : null;
   const employeeNumber = employeeProfile?.employee_number || inheritedEmployeeId;
@@ -165,7 +170,7 @@ function AssetRow({ item, employeeProfile }) {
   return (
     <tr
       className="cursor-pointer border-t border-slate-800 align-top transition hover:bg-slate-900/75"
-      onClick={() => navigate(`/${item.id}`)}
+      onClick={() => navigate(`/${item.id}${context ? `?${context}` : ''}`)}
     >
       <td className="px-3 py-3.5"><span className="font-bold text-sky-400">{item.center_code}</span></td>
       <td className="px-3 py-3.5"><span className="rounded bg-slate-800 px-2 py-1 text-[10px] font-medium text-slate-300">{item.tipo || '—'}</span></td>
@@ -188,9 +193,11 @@ function StatCard({ label, value, tone }) {
 }
 
 function DocumentBadge({ item }) {
+  const [searchParams] = useSearchParams();
+  const context = inventoryContext(searchParams);
   const count = Number(item.documents_count || 0);
   if (!count) return <span className="text-slate-600">—</span>;
-  return <Link to={`/${item.id}?tab=documentos`} onClick={(event) => event.stopPropagation()} className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-2 py-1 text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/25" title={`${count} documento${count === 1 ? '' : 's'} adjunto${count === 1 ? '' : 's'}`} aria-label={`Abrir ${count} documento${count === 1 ? '' : 's'} de ${item.center_code}`}><DocumentIcon />{count}</Link>;
+  return <Link to={`/${item.id}?tab=documentos${context ? `&${context}` : ''}`} onClick={(event) => event.stopPropagation()} className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-2 py-1 text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/25" title={`${count} documento${count === 1 ? '' : 's'} adjunto${count === 1 ? '' : 's'}`} aria-label={`Abrir ${count} documento${count === 1 ? '' : 's'} de ${item.center_code}`}><DocumentIcon />{count}</Link>;
 }
 
 function assetAge(value) {

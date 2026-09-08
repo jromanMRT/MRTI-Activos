@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readUnitInventory, unitInventoryFilter } from '../src/unitInventory.js';
-import { unitCatalogStatus, unitInventoryHref } from '../../src/unitInventory.js';
+import { unitCatalogStatus, unitInventoryHref, inventoryReturnHref } from '../../src/unitInventory.js';
+
+test('cerrar ficha conserva sólo el contexto permitido y nunca un destino externo', () => {
+  assert.equal(inventoryReturnHref('?unidad_operativa=Los+Olivos&tab=documentos'), '/inventario?unidad_operativa=Los+Olivos');
+  assert.equal(inventoryReturnHref('?sin_unidad=1&return=https://evil.example'), '/inventario?sin_unidad=1');
+  assert.equal(inventoryReturnHref('?tab=general'), '/inventario');
+});
 
 test('enlaces de unidad conservan nombres y separan ausencia de la etiqueta Sin Asignar', () => {
   for (const name of ['Sin Asignar', 'Villa Matamoros', 'A&B / #1 + Ñ', "O'Hara"]) {

@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiPreview, apiDownload, apiFetch, apiUpload, obsFetch, obsLinkDevice, obsUnlinkedDevices, rhAssetAssignmentProfileFetch, rhDirectoryFetch, ticketsFetch } from '../api.js';
 import { openAssetRemission } from '../remissionPrint.js';
 import { notifyAssetChanged } from '../assetEvents.js';
+import { inventoryReturnHref } from '../unitInventory.js';
 
 function currentProfile() {
   try { return JSON.parse(localStorage.getItem('auth_profile') || '{}'); } catch { return {}; }
@@ -12,6 +13,7 @@ export function AssetFormPage({ mode }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const returnHref = inventoryReturnHref(location.search);
   const [groups, setGroups] = useState([]);
   const [values, setValues] = useState({});
   const [loading, setLoading] = useState(true);
@@ -31,7 +33,7 @@ export function AssetFormPage({ mode }) {
 
   useEffect(() => {
     function closeOnEscape(event) {
-      if (event.key === 'Escape' && !saving) navigate('/inventario');
+      if (event.key === 'Escape' && !saving) navigate(returnHref);
     }
     document.addEventListener('keydown', closeOnEscape);
     const previousOverflow = document.body.style.overflow;
@@ -40,7 +42,7 @@ export function AssetFormPage({ mode }) {
       document.removeEventListener('keydown', closeOnEscape);
       document.body.style.overflow = previousOverflow;
     };
-  }, [navigate, saving]);
+  }, [navigate, saving, returnHref]);
 
   useEffect(() => {
     Promise.all([
@@ -83,7 +85,7 @@ export function AssetFormPage({ mode }) {
       } else {
         await apiFetch(`/activos/${id}`, { method: 'PATCH', body: JSON.stringify(values) });
         notifyAssetChanged({ assetId: id, action: 'updated' });
-        navigate('/inventario');
+        navigate(returnHref);
       }
     } catch (err) {
       setError(err.message);
@@ -97,7 +99,7 @@ export function AssetFormPage({ mode }) {
     try {
       await apiFetch(`/activos/${id}`, { method: 'DELETE' });
       notifyAssetChanged({ assetId: id, action: 'retired' });
-      navigate('/inventario');
+      navigate(returnHref);
     } catch (err) {
       setError(err.message);
     }
@@ -126,7 +128,7 @@ export function AssetFormPage({ mode }) {
     : null;
 
   function closeModal() {
-    if (!saving) navigate('/inventario');
+    if (!saving) navigate(returnHref);
   }
 
   async function printRemission() {
