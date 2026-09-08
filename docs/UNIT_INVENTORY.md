@@ -54,6 +54,23 @@ archivo y restauración, accesibles desde Administrar catálogo.
   por falta de `libatk-1.0.so.0` y otras bibliotecas del sistema. No se afirma
   validación visual ni de interacción de navegador.
 
+## Seguimiento de publicaciones
+
+- `026f850` (2026-09-08): conserva el filtro de unidad al abrir/cerrar una
+  ficha (usa `history.state`/URL en vez de depender de un `return` externo,
+  ver `inventoryReturnHref`) y evita que la respuesta de una consulta
+  anterior sobrescriba un resultado más nuevo cuando el usuario cambia de
+  filtro rápido (se descarta la respuesta si ya no corresponde al filtro
+  vigente). Mismas 50/50 pruebas y build aislado que la publicación
+  original; Playwright confirmó abrir/cerrar ficha conservando
+  `unidad_operativa` en la URL y recarga sin perder el filtro.
+- `d15e7ba`, `83cf075`, `7a196ce` (2026-09-08): mecanismo de gobierno de
+  unidades (clasificación del catálogo, corrección de activos con
+  historial/reversión, protección frente a SAP, captura guiada y bandeja
+  accionable). Detalle completo, decisiones pendientes y evidencia en
+  `UNIT_REVIEW_PLAN.md` — ese documento es ahora la fuente de verdad para
+  el trabajo posterior a la publicación inicial de este archivo.
+
 ## Rollback
 
 Revertir el commit de esta función, reconstruir el frontend y reiniciar únicamente
