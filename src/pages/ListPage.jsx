@@ -178,7 +178,7 @@ function StatCard({ label, value, tone }) {
 function DocumentBadge({ item }) {
   const count = Number(item.documents_count || 0);
   if (!count) return <span className="text-slate-600">—</span>;
-  return <Link to={`/${item.id}?tab=documentos`} className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-2 py-1 text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/25" title={`${count} documento${count === 1 ? '' : 's'} adjunto${count === 1 ? '' : 's'}`}><DocumentIcon />{count}</Link>;
+  return <Link to={`/${item.id}?tab=documentos`} onClick={(event) => event.stopPropagation()} className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-2 py-1 text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/25" title={`${count} documento${count === 1 ? '' : 's'} adjunto${count === 1 ? '' : 's'}`} aria-label={`Abrir ${count} documento${count === 1 ? '' : 's'} de ${item.center_code}`}><DocumentIcon />{count}</Link>;
 }
 
 function assetAge(value) {

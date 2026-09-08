@@ -360,9 +360,11 @@ function DocumentsPanel({ assetId, documents, error, onError, onUploaded, onDele
 
   async function remove(document) {
     const documentLabel = document.nombre || document.archivo || 'este archivo';
-    const unavailableImport = document.document_origin !== 'local' && !document.archivo_disponible;
-    const confirmation = unavailableImport
-      ? `¿Eliminar el registro “${documentLabel}”? No existe un archivo disponible y dejará de aparecer en el activo.`
+    const imported = document.document_origin !== 'local';
+    const confirmation = imported
+      ? document.archivo_disponible
+        ? `¿Retirar el archivo histórico “${documentLabel}”? Dejará de aparecer en el activo, pero se conservará internamente para recuperación.`
+        : `¿Eliminar el registro “${documentLabel}”? No existe un archivo disponible y dejará de aparecer en el activo.`
       : `¿Eliminar “${documentLabel}”? Dejará de aparecer en el activo.`;
     if (!window.confirm(confirmation)) return;
     setDeletingId(document.id);
@@ -426,7 +428,7 @@ function DocumentsPanel({ assetId, documents, error, onError, onUploaded, onDele
                 <button type="button" onClick={() => download(document)} disabled={!document.archivo_disponible || downloadingId === document.id} className="flex-1 rounded-lg border border-sky-500/40 px-3 py-2 text-sm font-medium text-sky-400 hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-50">
                   {!document.archivo_disponible ? 'Archivo no disponible' : downloadingId === document.id ? 'Descargando…' : 'Descargar'}
                 </button>
-                {document.can_delete && <button type="button" onClick={() => remove(document)} disabled={deletingId === document.id} className="rounded-lg border border-red-500/40 px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 disabled:opacity-50">{deletingId === document.id ? 'Eliminando…' : document.document_origin !== 'local' ? 'Eliminar registro' : 'Eliminar'}</button>}
+                {document.can_delete && <button type="button" onClick={() => remove(document)} disabled={deletingId === document.id} className="rounded-lg border border-red-500/40 px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 disabled:opacity-50">{deletingId === document.id ? 'Eliminando…' : document.document_origin !== 'local' ? document.archivo_disponible ? 'Retirar archivo' : 'Eliminar registro' : 'Eliminar'}</button>}
               </div>
             </article>
           ))}

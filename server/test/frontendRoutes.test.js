@@ -32,10 +32,13 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
   assert.match(form, /method: 'DELETE'/);
   assert.match(form, /se eliminó correctamente/);
   assert.match(form, /Eliminar registro/);
+  assert.match(form, /Retirar archivo/);
+  assert.match(form, /se conservará internamente para recuperación/);
   assert.match(form, /No existe un archivo disponible/);
   assert.match(assetEvents, /mrti:asset-changed/);
   assert.match(list, /addEventListener\(ASSET_CHANGED_EVENT/);
   assert.match(list, /inventoryRevision/);
+  assert.match(list, /tab=documentos.*stopPropagation/);
   assert.match(form, /notifyAssetChanged/);
   assert.match(form, /document-uploaded/);
   assert.match(form, /document-deleted/);

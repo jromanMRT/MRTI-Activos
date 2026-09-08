@@ -445,7 +445,7 @@ activosRouter.delete('/:id/documentos/:documentId', async (req, res, next) => {
     if (!document) return res.status(404).json({ error: 'Documento no encontrado' });
     if (!canDeleteAssetDocument(document, actor)) {
       if (document.document_origin !== 'local') {
-        return res.status(409).json({ error: 'Los documentos históricos que sí tienen archivo no se eliminan desde MRTI Activos' });
+        return res.status(403).json({ error: 'Sólo un administrador puede retirar documentos anteriores a la migración' });
       }
       return res.status(403).json({ error: 'Sólo puedes eliminar archivos que hayas subido' });
     }

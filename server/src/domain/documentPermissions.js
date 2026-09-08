@@ -4,8 +4,8 @@ export function canDeleteAssetDocument(document, actor) {
   if (document.document_origin === 'local') {
     return administrator || Boolean(document.uploaded_by_user_id && document.uploaded_by_user_id === actor.id);
   }
-  // Un registro importado sin binario local es sólo una referencia rota. Un
-  // administrador puede archivarlo, pero nunca borrar desde aquí un documento
-  // histórico que sí tenga archivo disponible.
-  return administrator && !document.local_storage_path;
+  // Los documentos anteriores a la migración sólo pueden retirarse por un
+  // administrador. El endpoint los archiva y conserva cualquier binario local
+  // para recuperación; nunca intenta eliminarlos o modificarlos en SAP.
+  return administrator;
 }
