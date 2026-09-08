@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { apiDownload, apiFetch, apiUpload, obsFetch, obsLinkDevice, obsUnlinkedDevices, rhAssetAssignmentProfileFetch, rhDirectoryFetch, ticketsFetch } from '../api.js';
+import { apiPreview, apiDownload, apiFetch, apiUpload, obsFetch, obsLinkDevice, obsUnlinkedDevices, rhAssetAssignmentProfileFetch, rhDirectoryFetch, ticketsFetch } from '../api.js';
 import { openAssetRemission } from '../remissionPrint.js';
 import { notifyAssetChanged } from '../assetEvents.js';
 
@@ -313,6 +313,7 @@ const RemissionCredentialsPanel = forwardRef(function RemissionCredentialsPanel(
 });
 
 function DocumentsPanel({ assetId, documents, error, onError, onUploaded, onDeleted }) {
+  const [previewingId, setPreviewingId] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -320,6 +321,18 @@ function DocumentsPanel({ assetId, documents, error, onError, onUploaded, onDele
   const [documentType, setDocumentType] = useState('Remision');
   const [message, setMessage] = useState('');
   const fileRef = useRef(null);
+
+  async function preview(document) {
+    setPreviewingId(document.id);
+    onError('');
+    try {
+      await apiPreview(`/activos-suite/documents/${document.id}/download`, document.nombre || document.archivo);
+    } catch (error) {
+      onError(error.message);
+    } finally {
+      setPreviewingId(null);
+    }
+  }
 
   async function download(document) {
     setDownloadingId(document.id);
@@ -425,6 +438,9 @@ function DocumentsPanel({ assetId, documents, error, onError, onUploaded, onDele
                 {document.document_origin === 'local' && <p className="text-emerald-400">Agregado en MRTI Activos</p>}
               </div>
               <div className="mt-4 flex gap-2">
+                <button type="button" onClick={() => preview(document)} disabled={!document.archivo_disponible || previewingId === document.id} title="Abrir documento en otra pestaña" className="flex-1 rounded-lg border border-sky-500/40 px-3 py-2 text-sm font-medium text-sky-400 hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-50">
+                  {previewingId === document.id ? 'Abriendo…' : 'Ver'}
+                </button>
                 <button type="button" onClick={() => download(document)} disabled={!document.archivo_disponible || downloadingId === document.id} className="flex-1 rounded-lg border border-sky-500/40 px-3 py-2 text-sm font-medium text-sky-400 hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-50">
                   {!document.archivo_disponible ? 'Archivo no disponible' : downloadingId === document.id ? 'Descargando…' : 'Descargar'}
                 </button>

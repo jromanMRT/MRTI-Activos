@@ -49,6 +49,44 @@ export async function apiDownload(path, fallbackName = 'documento.pdf') {
   URL.revokeObjectURL(url);
 }
 
+// Open synchronously so the browser associates the tab with the user's click.
+export async function apiPreview(path, title = 'Documento') {
+  const preview = window.open('', '_blank');
+  if (!preview) throw new Error('Permite las ventanas emergentes para ver el documento.');
+  preview.opener = null;
+  preview.document.title = title;
+  preview.document.body.textContent = 'Cargando documento…';
+  let url;
+  try {
+    const token = getToken();
+    const response = await fetch(`/activos-api/api${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      cache: 'no-store',
+    });
+    if (response.status === 401) { goToPortalLogin(); throw new Error('No autenticado'); }
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || `Error ${response.status}`);
+    }
+    const blob = await response.blob();
+    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(blob.type)) {
+      throw new Error('Este formato no admite vista previa. Usa Descargar para abrirlo.');
+    }
+    if (preview.closed) return;
+    url = URL.createObjectURL(blob);
+    const frame = preview.document.createElement('iframe');
+    frame.title = title;
+    frame.src = url;
+    frame.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:white';
+    preview.document.body.replaceChildren(frame);
+    preview.addEventListener('pagehide', () => URL.revokeObjectURL(url), { once: true });
+  } catch (error) {
+    if (url) URL.revokeObjectURL(url);
+    preview.close();
+    throw error;
+  }
+}
+
 export async function apiUpload(path, formData) {
   const token = getToken();
   const response = await fetch(`/activos-api/api${path}`, {
