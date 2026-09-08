@@ -10,6 +10,7 @@ const STATUS = {
 const CONDITIONS = { good: 'Buen estado', fair: 'Desgaste normal', damaged: 'Dañado', incomplete: 'Incompleto' };
 const DESTINATIONS = { available: 'Disponible para reasignar', maintenance: 'Enviar a mantenimiento', retired: 'Baja del equipo' };
 const ACCESSORIES = { charger: 'Cargador', bag: 'Mochila/estuche', monitor: 'Monitor', phone: 'Teléfono', keyboard_mouse: 'Teclado y mouse', other: 'Otro' };
+const ACCESS_TASKS = { core_account: 'Cuenta de Core', corporate_email: 'Correo corporativo', microsoft365: 'Microsoft 365', dropbox: 'Dropbox', antivirus: 'Antivirus', network_access: 'Accesos de red', phone_line: 'Línea telefónica', file_backup: 'Respaldo de archivos' };
 
 function today() { const date = new Date(); const pad = (value) => String(value).padStart(2, '0'); return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`; }
 function reference(row) { return row.rh_employee_id ? { employee_id: row.rh_employee_id } : row.portal_user_id ? { portal_user_id: row.portal_user_id } : null; }
@@ -19,9 +20,10 @@ function fullAssetName(row) { return [row.tipo, row.marca, row.modelo].filter(Bo
 
 async function loadData() {
   const result = await apiFetch('/activos/offboarding');
+  const caseReferences = (result.data.cases || []).map((item) => item.reference_type === 'rh_employee' ? { employee_id: Number(item.reference_value) } : { portal_user_id: item.reference_value });
   const allRows = [...result.data.open, ...result.data.history];
   const seen = new Set();
-  const references = allRows.map(reference).filter((item) => {
+  const references = [...allRows.map(reference), ...caseReferences].filter((item) => item).filter((item) => {
     const key = item.employee_id ? profileKey(item.employee_id, 'employee') : profileKey(item.portal_user_id, 'portal');
     if (seen.has(key)) return false;
     seen.add(key); return true;
@@ -33,14 +35,16 @@ async function loadData() {
     if (item.portal_user_id) map.set(profileKey(item.portal_user_id, 'portal'), item);
   }
   const enrich = (row) => ({ ...row, employee: map.get(rowKey(row)) || null });
-  return { open: result.data.open.map(enrich), history: result.data.history.map(enrich) };
+  const enrichCase = (item) => ({ ...item, employee: map.get(profileKey(item.reference_value, item.reference_type === 'rh_employee' ? 'employee' : 'portal')) || null });
+  return { open: result.data.open.map(enrich), history: result.data.history.map(enrich), cases: (result.data.cases || []).map(enrichCase) };
 }
 
 export function EmployeeOffboardingPage() {
-  const [data, setData] = useState({ open: [], history: [] });
+  const [data, setData] = useState({ open: [], history: [], cases: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState(null);
+  const [selectedChecklist, setSelectedChecklist] = useState(null);
   const [historyVisible, setHistoryVisible] = useState(false);
 
   async function refresh() {
@@ -58,8 +62,13 @@ export function EmployeeOffboardingPage() {
       if (!groups.has(key)) groups.set(key, { employee: row.employee, fallbackName: row.usuario_asignado, rows: [] });
       groups.get(key).rows.push(row);
     }
+    for (const item of data.cases.filter((entry) => entry.status === 'open')) {
+      const key = `${item.reference_type === 'rh_employee' ? 'employee' : 'portal'}:${item.reference_value}`;
+      if (!groups.has(key)) groups.set(key, { employee: item.employee, fallbackName: item.employee_name, rows: [], checklist: item });
+      else groups.get(key).checklist = item;
+    }
     return [...groups.values()];
-  }, [pending]);
+  }, [pending, data.cases]);
   const notReturned = pending.filter((row) => row.return_status === 'not_returned').length;
   const trackedPending = pending.filter((row) => !row.return_status || row.return_status === 'pending').length;
 
@@ -78,21 +87,34 @@ export function EmployeeOffboardingPage() {
       </section>
       {loading ? <p className="py-16 text-center text-slate-500">Consultando bajas y asignaciones vigentes…</p> : grouped.length === 0 ? (
         <section className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-10 text-center"><p className="text-lg font-semibold text-emerald-300">No hay equipos pendientes por bajas detectadas</p><p className="mt-2 text-sm text-slate-500">Cuando RH marque una ficha como baja y conserve activos asignados, aparecerá automáticamente aquí.</p></section>
-      ) : <section className="space-y-4">{grouped.map((group) => <EmployeeCase key={group.rows[0].assignment_id} group={group} onSelect={setSelected} />)}</section>}
+      ) : <section className="space-y-4">{grouped.map((group) => <EmployeeCase key={group.rows[0]?.assignment_id || group.checklist?.id} group={group} onSelect={setSelected} onChecklist={setSelectedChecklist} />)}</section>}
       <section className="rounded-2xl border border-slate-800 bg-slate-900/45">
         <button type="button" onClick={() => setHistoryVisible((value) => !value)} className="flex w-full items-center justify-between px-5 py-4 text-left"><span><strong>Historial de devoluciones</strong><small className="ml-2 text-slate-500">{data.history.length} registros</small></span><span aria-hidden="true">{historyVisible ? '−' : '+'}</span></button>
         {historyVisible && <div className="border-t border-slate-800 p-4">{data.history.length ? <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr><th className="p-3">Fecha</th><th className="p-3">Empleado</th><th className="p-3">Activo</th><th className="p-3">Condición</th><th className="p-3">Destino</th><th className="p-3"></th></tr></thead><tbody>{data.history.map((row) => <tr key={row.assignment_id} className="border-t border-slate-800"><td className="p-3">{formatDate(row.returned_at)}</td><td className="p-3">{row.employee?.full_name || row.usuario_asignado || 'Ficha no disponible'}</td><td className="p-3">{row.center_code} · {fullAssetName(row)}</td><td className="p-3">{CONDITIONS[row.condition_state] || '—'}</td><td className="p-3">{DESTINATIONS[row.destination] || '—'}</td><td className="p-3 text-right"><button type="button" onClick={() => printReceipt(row)} className="text-sky-400 hover:underline">Imprimir constancia</button></td></tr>)}</tbody></table></div> : <p className="p-4 text-center text-slate-500">Todavía no hay devoluciones cerradas.</p>}</div>}
       </section>
       {selected && <ReturnModal row={selected} onClose={() => setSelected(null)} onSaved={async () => { setSelected(null); await refresh(); }} />}
+      {selectedChecklist && <ChecklistModal group={selectedChecklist} onClose={() => setSelectedChecklist(null)} onSaved={async () => { setSelectedChecklist(null); await refresh(); }} />}
     </div>
   );
 }
 
 function Summary({ label, value, tone = 'text-slate-100' }) { return <div className="rounded-2xl border border-slate-800 bg-slate-900/55 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p><p className={`mt-2 text-3xl font-bold ${tone}`}>{value}</p></div>; }
 
-function EmployeeCase({ group, onSelect }) {
+function EmployeeCase({ group, onSelect, onChecklist }) {
   const employee = group.employee;
-  return <article className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/55"><header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-5 py-4"><div><h2 className="text-lg font-bold">{employee?.full_name || group.fallbackName || 'Empleado sin ficha disponible'}</h2><p className="text-xs text-slate-500">{[employee?.employee_number, employee?.company_name, employee?.area_name].filter(Boolean).join(' · ') || 'Referencia conservada en Activos'}</p></div><span className="rounded-full border border-red-500/25 bg-red-500/10 px-3 py-1 text-xs font-bold text-red-300">Baja detectada en RH</span></header><div className="divide-y divide-slate-800">{group.rows.map((row) => { const status = STATUS[row.return_status || 'pending']; return <div key={row.assignment_id} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><Link to={`/${row.asset_id}`} className="font-semibold text-sky-400 hover:underline">{row.center_code}</Link><span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${status.tone}`}>{status.label}</span></div><p className="mt-1 text-sm text-slate-300">{fullAssetName(row)}</p><p className="mt-1 text-xs text-slate-500">Asignado desde {formatDate(row.assigned_at)}{row.due_date ? ` · compromiso ${formatDate(row.due_date)}` : ''}</p></div><button type="button" onClick={() => onSelect(row)} className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-bold text-[#2a1c05] hover:bg-sky-400">Procesar devolución</button></div>; })}</div></article>;
+  const taskValues = group.checklist?.tasks || {};
+  const completedTasks = Object.values(taskValues).filter(Boolean).length;
+  return <article className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/55"><header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-5 py-4"><div><h2 className="text-lg font-bold">{employee?.full_name || group.fallbackName || 'Empleado sin ficha disponible'}</h2><p className="text-xs text-slate-500">{[employee?.employee_number, employee?.company_name, employee?.area_name].filter(Boolean).join(' · ') || 'Referencia conservada en Activos'}</p></div><span className="rounded-full border border-red-500/25 bg-red-500/10 px-3 py-1 text-xs font-bold text-red-300">Baja detectada en RH</span></header><div className="divide-y divide-slate-800">{group.rows.map((row) => { const status = STATUS[row.return_status || 'pending']; return <div key={row.assignment_id} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><Link to={`/${row.asset_id}`} className="font-semibold text-sky-400 hover:underline">{row.center_code}</Link><span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${status.tone}`}>{status.label}</span></div><p className="mt-1 text-sm text-slate-300">{fullAssetName(row)}</p><p className="mt-1 text-xs text-slate-500">Asignado desde {formatDate(row.assigned_at)}{row.due_date ? ` · compromiso ${formatDate(row.due_date)}` : ''}</p></div><button type="button" onClick={() => onSelect(row)} className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-bold text-[#2a1c05] hover:bg-sky-400">Procesar devolución</button></div>; })}</div><footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 bg-slate-950/25 px-5 py-3"><p className="text-xs text-slate-500">Controles de acceso y servicios: <strong className="text-slate-300">{completedTasks}/{Object.keys(ACCESS_TASKS).length}</strong></p><button type="button" onClick={() => onChecklist(group)} className="text-sm font-semibold text-violet-300 hover:underline">Revisar accesos y cierre</button></footer></article>;
+}
+
+function ChecklistModal({ group, onClose, onSaved }) {
+  const employee = group.employee; const referenceType = group.checklist?.reference_type || (group.rows[0]?.rh_employee_id ? 'rh_employee' : 'core_user');
+  const referenceValue = referenceType === 'rh_employee' ? employee?.id || group.checklist?.reference_value || group.rows[0]?.rh_employee_id : employee?.portal_user_id || group.checklist?.reference_value || group.rows[0]?.portal_user_id;
+  const initialTasks = Object.fromEntries(Object.keys(ACCESS_TASKS).map((key) => [key, group.checklist?.tasks?.[key] === true]));
+  const [tasks, setTasks] = useState(initialTasks); const [notes, setNotes] = useState(group.checklist?.notes || ''); const [saving, setSaving] = useState(false); const [error, setError] = useState('');
+  const allComplete = Object.values(tasks).every(Boolean); const hasAssets = group.rows.length > 0;
+  async function save(status) { setSaving(true); setError(''); try { await apiFetch(`/activos/offboarding/cases/${referenceType}/${referenceValue}`, { method: 'PUT', body: JSON.stringify({ status, tasks, notes, employee_name: employee?.full_name || group.fallbackName }) }); await onSaved(); } catch (saveError) { setError(saveError.message); } finally { setSaving(false); } }
+  return <div className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-black/70 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose(); }}><article className="my-4 w-full max-w-2xl rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl"><header className="border-b border-slate-800 px-6 py-4"><p className="text-xs font-bold uppercase tracking-wider text-violet-300">Cierre administrativo</p><h2 className="mt-1 text-xl font-bold">{employee?.full_name || group.fallbackName}</h2><p className="mt-1 text-xs text-slate-500">Estos controles documentan la revisión; cada baja se ejecuta en el sistema propietario correspondiente.</p></header><div className="space-y-4 px-6 py-5">{error && <p className="rounded-lg bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}<div className="grid gap-2 sm:grid-cols-2">{Object.entries(ACCESS_TASKS).map(([key, label]) => <label key={key} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm ${tasks[key] ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-slate-800 text-slate-300'}`}><input type="checkbox" checked={tasks[key]} onChange={(event) => setTasks({ ...tasks, [key]: event.target.checked })} /><span>{label}</span></label>)}</div><Field label="Notas del cierre"><textarea className="input-self min-h-24" maxLength={4000} value={notes} onChange={(event) => setNotes(event.target.value)} /></Field>{hasAssets && <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs text-amber-200">No podrás cerrar el proceso mientras existan {group.rows.length} activo(s) sin devolución confirmada.</p>}</div><footer className="flex flex-wrap justify-between gap-2 border-t border-slate-800 px-6 py-4"><button type="button" onClick={onClose} disabled={saving} className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300">Cancelar</button><div className="flex gap-2"><button type="button" onClick={() => save('open')} disabled={saving} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200">Guardar avance</button><button type="button" onClick={() => save('completed')} disabled={saving || hasAssets || !allComplete} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-40">Cerrar proceso</button></div></footer></article></div>;
 }
 
 function ReturnModal({ row, onClose, onSaved }) {

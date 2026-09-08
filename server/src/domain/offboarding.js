@@ -3,6 +3,7 @@ const CONDITIONS = new Set(['good', 'fair', 'damaged', 'incomplete']);
 const DESTINATIONS = new Set(['available', 'maintenance', 'retired']);
 const ACCESSORIES = new Set(['charger', 'bag', 'monitor', 'phone', 'keyboard_mouse', 'other']);
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+export const OFFBOARDING_TASK_KEYS = Object.freeze(['core_account', 'corporate_email', 'microsoft365', 'dropbox', 'antivirus', 'network_access', 'phone_line', 'file_backup']);
 
 function invalid(message) {
   const error = new Error(message);
@@ -49,4 +50,22 @@ export function parseAccessories(value) {
   if (!value) return [];
   if (Array.isArray(value)) return value;
   try { return JSON.parse(value); } catch { return []; }
+}
+
+export function normalizeOffboardingChecklist(body = {}) {
+  const status = body.status === 'completed' ? 'completed' : 'open';
+  const input = body.tasks && typeof body.tasks === 'object' && !Array.isArray(body.tasks) ? body.tasks : {};
+  const tasks = Object.fromEntries(OFFBOARDING_TASK_KEYS.map((key) => [key, input[key] === true]));
+  if (status === 'completed' && Object.values(tasks).some((value) => !value)) throw invalid('Completa todos los controles antes de cerrar la baja');
+  const notes = String(body.notes || '').trim();
+  const employeeName = String(body.employee_name || '').trim();
+  if (notes.length > 4000) throw invalid('Las notas de baja no pueden exceder 4000 caracteres');
+  if (employeeName.length > 160) throw invalid('El nombre del empleado no es válido');
+  return { status, tasks, notes: notes || null, employee_name: employeeName || null };
+}
+
+export function parseTasks(value) {
+  let input = value;
+  if (typeof value === 'string') { try { input = JSON.parse(value); } catch { input = {}; } }
+  return Object.fromEntries(OFFBOARDING_TASK_KEYS.map((key) => [key, input?.[key] === true]));
 }

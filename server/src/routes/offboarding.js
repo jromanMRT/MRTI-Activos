@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import { pool } from '../db.js';
 import { fetchCurrentUser } from '../auth.js';
-import { destinationAssetState, normalizeOffboardingItem, parseAccessories } from '../domain/offboarding.js';
+import { destinationAssetState, normalizeOffboardingChecklist, normalizeOffboardingItem, parseAccessories, parseTasks } from '../domain/offboarding.js';
 import { syncToSapBestEffort } from './activos.js';
 
 export const offboardingRouter = Router();
@@ -23,6 +23,13 @@ function normalizeRow(row) {
   return { ...row, accessories: parseAccessories(row.accessories_json), accessories_json: undefined };
 }
 
+function normalizeCase(row) { return { ...row, tasks: parseTasks(row.tasks_json), tasks_json: undefined }; }
+function referenceOf(assignment) {
+  return assignment.rh_employee_id
+    ? { type: 'rh_employee', value: String(assignment.rh_employee_id) }
+    : { type: 'core_user', value: assignment.portal_user_id };
+}
+
 offboardingRouter.get('/offboarding', async (_req, res, next) => {
   try {
     const [open] = await pool.query(`${OFFBOARDING_SELECT}
@@ -30,7 +37,10 @@ offboardingRouter.get('/offboarding', async (_req, res, next) => {
       ORDER BY COALESCE(oi.status,'pending')='not_returned' DESC, oi.due_date, aa.assigned_at`);
     const [history] = await pool.query(`${OFFBOARDING_SELECT}
       WHERE oi.status='returned' ORDER BY oi.returned_at DESC LIMIT 250`);
-    res.json({ data: { open: open.map(normalizeRow), history: history.map(normalizeRow) } });
+    const [cases] = await pool.query(`SELECT id,reference_type,reference_value,employee_name,status,tasks_json,notes,
+        DATE_FORMAT(completed_at,'%Y-%m-%dT%H:%i:%s') completed_at,completed_by_name,updated_at
+      FROM employee_offboarding_cases ORDER BY status='open' DESC,updated_at DESC LIMIT 500`);
+    res.json({ data: { open: open.map(normalizeRow), history: history.map(normalizeRow), cases: cases.map(normalizeCase) } });
   } catch (error) { next(error); }
 });
 
@@ -42,7 +52,7 @@ offboardingRouter.put('/offboarding/:assignmentId', async (req, res, next) => {
     if (!actor) return res.status(401).json({ error: 'No autenticado' });
     connection = await pool.getConnection();
     await connection.beginTransaction();
-    const [[assignment]] = await connection.query(`SELECT aa.id, aa.asset_uid, aa.unassigned_at,
+    const [[assignment]] = await connection.query(`SELECT aa.id, aa.asset_uid, aa.unassigned_at,aa.portal_user_id,aa.rh_employee_id,
         a.id AS asset_id, a.usuario_asignado
       FROM activo_asignaciones aa JOIN activos a ON a.asset_uid=aa.asset_uid
       WHERE aa.id=? FOR UPDATE`, [req.params.assignmentId]);
@@ -51,6 +61,12 @@ offboardingRouter.put('/offboarding/:assignmentId', async (req, res, next) => {
     if (existing?.status === 'returned') { await connection.rollback(); return res.status(409).json({ error: 'Esta devolución ya fue cerrada y forma parte del historial' }); }
     if (assignment.unassigned_at && item.status !== 'returned') { await connection.rollback(); return res.status(409).json({ error: 'La asignación ya fue cerrada' }); }
     const offboardingId = existing?.id || randomUUID();
+    const employeeReference = referenceOf(assignment);
+    const [[openCase]] = await connection.query(`SELECT id FROM employee_offboarding_cases
+      WHERE reference_type=? AND reference_value=? AND status='open' ORDER BY created_at DESC LIMIT 1 FOR UPDATE`, [employeeReference.type, employeeReference.value]);
+    if (!openCase) await connection.query(`INSERT INTO employee_offboarding_cases
+      (id,reference_type,reference_value,employee_name,status,tasks_json,updated_by_user_id,updated_by_name)
+      VALUES (?,?,?,?, 'open',JSON_OBJECT(),?,?)`, [randomUUID(), employeeReference.type, employeeReference.value, assignment.usuario_asignado, actor.id, actor.name]);
     const returnedAtSql = item.status === 'returned' ? (item.return_date ? `${item.return_date} 12:00:00` : new Date()) : null;
     await connection.query(`INSERT INTO asset_offboarding_items
         (id,assignment_id,asset_uid,status,due_date,returned_at,condition_state,destination,accessories_json,notes,
@@ -80,4 +96,36 @@ offboardingRouter.put('/offboarding/:assignmentId', async (req, res, next) => {
     await connection?.rollback().catch(() => {});
     next(error);
   } finally { connection?.release(); }
+});
+
+offboardingRouter.put('/offboarding/cases/:referenceType/:referenceValue', async (req, res, next) => {
+  let connection;
+  try {
+    const referenceType = String(req.params.referenceType);
+    const referenceValue = String(req.params.referenceValue);
+    if (!['rh_employee', 'core_user'].includes(referenceType)) return res.status(400).json({ error: 'Referencia de empleado no válida' });
+    if (referenceType === 'rh_employee' && !/^\d+$/.test(referenceValue)) return res.status(400).json({ error: 'Referencia RH no válida' });
+    if (referenceType === 'core_user' && !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(referenceValue)) return res.status(400).json({ error: 'Referencia Core no válida' });
+    const checklist = normalizeOffboardingChecklist(req.body);
+    const actor = await fetchCurrentUser(req.headers.authorization);
+    if (!actor) return res.status(401).json({ error: 'No autenticado' });
+    connection = await pool.getConnection(); await connection.beginTransaction();
+    const holderColumn = referenceType === 'rh_employee' ? 'rh_employee_id' : 'portal_user_id';
+    const [[pending]] = await connection.query(`SELECT COUNT(*) total FROM activo_asignaciones WHERE ${holderColumn}=? AND unassigned_at IS NULL`, [referenceValue]);
+    if (checklist.status === 'completed' && Number(pending.total)) { await connection.rollback(); return res.status(409).json({ error: `Todavía hay ${pending.total} activo(s) sin devolución confirmada` }); }
+    const [[existing]] = await connection.query(`SELECT id FROM employee_offboarding_cases WHERE reference_type=? AND reference_value=? AND status='open' ORDER BY created_at DESC LIMIT 1 FOR UPDATE`, [referenceType, referenceValue]);
+    const id = existing?.id || randomUUID();
+    if (existing) await connection.query(`UPDATE employee_offboarding_cases SET employee_name=COALESCE(?,employee_name),status=?,tasks_json=?,notes=?,
+      completed_at=IF(?='completed',NOW(),NULL),completed_by_user_id=IF(?='completed',?,NULL),completed_by_name=IF(?='completed',?,NULL),
+      updated_by_user_id=?,updated_by_name=? WHERE id=?`, [checklist.employee_name, checklist.status, JSON.stringify(checklist.tasks), checklist.notes,
+      checklist.status, checklist.status, actor.id, checklist.status, actor.name, actor.id, actor.name, id]);
+    else await connection.query(`INSERT INTO employee_offboarding_cases
+      (id,reference_type,reference_value,employee_name,status,tasks_json,notes,completed_at,completed_by_user_id,completed_by_name,updated_by_user_id,updated_by_name)
+      VALUES (?,?,?,?,?,?,?,IF(?='completed',NOW(),NULL),IF(?='completed',?,NULL),IF(?='completed',?,NULL),?,?)`, [id, referenceType, referenceValue,
+      checklist.employee_name, checklist.status, JSON.stringify(checklist.tasks), checklist.notes, checklist.status, checklist.status, actor.id, checklist.status, actor.name, actor.id, actor.name]);
+    await connection.commit();
+    const [[row]] = await pool.query('SELECT * FROM employee_offboarding_cases WHERE id=?', [id]);
+    res.json({ data: normalizeCase(row) });
+  } catch (error) { await connection?.rollback().catch(() => {}); next(error); }
+  finally { connection?.release(); }
 });

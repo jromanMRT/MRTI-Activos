@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { destinationAssetState, normalizeOffboardingItem, parseAccessories } from '../src/domain/offboarding.js';
+import { destinationAssetState, normalizeOffboardingChecklist, normalizeOffboardingItem, parseAccessories, parseTasks } from '../src/domain/offboarding.js';
 
 test('mantiene abierta una devolución pendiente con fecha compromiso', () => {
   assert.deepEqual(normalizeOffboardingItem({ status: 'pending', due_date: '2026-09-12', accessories: ['charger', 'charger', 'invalid'], notes: 'Por entregar' }), {
@@ -24,4 +24,11 @@ test('traduce el destino a los valores canónicos del activo y tolera JSON hist�
   assert.deepEqual(destinationAssetState('retired'), { estado: 'Baja', active: 'tNO' });
   assert.deepEqual(parseAccessories('["charger","bag"]'), ['charger', 'bag']);
   assert.deepEqual(parseAccessories('incorrecto'), []);
+});
+
+test('el cierre administrativo exige todos los controles', () => {
+  assert.throws(() => normalizeOffboardingChecklist({ status: 'completed', tasks: { core_account: true } }), /Completa todos/);
+  const tasks = { core_account: true, corporate_email: true, microsoft365: true, dropbox: true, antivirus: true, network_access: true, phone_line: true, file_backup: true };
+  assert.deepEqual(normalizeOffboardingChecklist({ status: 'completed', tasks, employee_name: 'Empleado' }).tasks, tasks);
+  assert.equal(Object.values(parseTasks('{}')).filter(Boolean).length, 0);
 });

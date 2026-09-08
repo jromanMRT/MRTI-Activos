@@ -19,8 +19,12 @@ test('expone la bandeja de bajas, devolución documentada e historial imprimible
   assert.match(page, /Confirmar recepción/);
   assert.match(page, /Imprimir constancia/);
   assert.match(page, /Evidencia opcional/);
+  assert.match(page, /Revisar accesos y cierre/);
+  assert.match(page, /Cuenta de Core/);
+  assert.match(page, /Cerrar proceso/);
   assert.match(page, /rhAssetAssignmentProfilesFetch/);
   assert.match(route, /unassigned_at IS NULL/);
   assert.match(route, /asset_offboarding_items/);
   assert.match(route, /syncToSapBestEffort/);
+  assert.match(route, /employee_offboarding_cases/);
 });
