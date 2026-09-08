@@ -11,7 +11,7 @@ import { assetDocumentUpload, cleanOriginalFilename, detectAssetDocument, remove
 // configurado o no responde, la petición ya respondió con éxito -- solo se
 // deja constancia en sap_sync_error para que el job periódico reintente
 // (ver server/src/integrations/sapSync.js). Nunca bloquea al usuario.
-async function syncToSapBestEffort(id) {
+export async function syncToSapBestEffort(id) {
   try {
     const [[row]] = await pool.query('SELECT * FROM activos WHERE id = ?', [id]);
     await pushAssetToSap(row);

@@ -3,6 +3,7 @@ import { Layout } from './components/Layout.jsx';
 import { ListPage } from './pages/ListPage.jsx';
 import { AssetFormPage } from './pages/AssetFormPage.jsx';
 import { AssetAlertsPage, AssetCatalogPage, AssetSuiteOverviewPage } from './pages/AssetSuitePage.jsx';
+import { EmployeeOffboardingPage } from './pages/EmployeeOffboardingPage.jsx';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/operacion" element={<Navigate replace to="/" />} />
         <Route path="/catalogos/:resource" element={<AssetCatalogPage />} />
         <Route path="/alertas" element={<AssetAlertsPage />} />
+        <Route path="/bajas-personal" element={<EmployeeOffboardingPage />} />
         <Route path="/nuevo" element={<><ListPage /><AssetFormPage mode="create" /></>} />
         <Route path="/:id" element={<><ListPage /><AssetFormPage mode="edit" /></>} />
       </Routes>

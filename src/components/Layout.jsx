@@ -9,6 +9,7 @@ function currentRouteLabel(pathname) {
   if (pathname === '/' || pathname === '/operacion') return 'Dashboard de activos';
   if (pathname === '/inventario') return 'Inventario';
   if (pathname === '/alertas') return 'Alertas';
+  if (pathname === '/bajas-personal') return 'Bajas de personal';
   if (pathname.startsWith('/catalogos/')) return 'Catálogos de activos';
   return 'Detalle del activo';
 }

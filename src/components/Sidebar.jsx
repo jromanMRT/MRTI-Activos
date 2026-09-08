@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: 'dashboard' },
   { to: '/inventario', label: 'Inventario', icon: 'inventory' },
   { to: '/alertas', label: 'Alertas', icon: 'alert' },
+  { to: '/bajas-personal', label: 'Bajas de personal', icon: 'offboarding' },
   { to: '/catalogos/credenciales', label: 'Credenciales', icon: 'catalog' },
   { to: '/catalogos/componentes', label: 'Componentes', icon: 'catalog' },
   { to: '/catalogos/impresoras', label: 'Impresoras', icon: 'catalog' },
@@ -118,6 +119,7 @@ function NavIcon({ name }) {
     dashboard: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
     alert: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></>,
     catalog: <><path d="M4 5h16M4 12h16M4 19h16" /><circle cx="7" cy="5" r="1" /><circle cx="7" cy="12" r="1" /><circle cx="7" cy="19" r="1" /></>,
+    offboarding: <><path d="M15 3h5v18h-5M10 17l5-5-5-5M15 12H3" /><circle cx="6" cy="5" r="2" /></>,
   };
   return <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name] || paths.catalog}</svg>;
 }

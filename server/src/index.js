@@ -11,6 +11,7 @@ import { auditMutations, auditRouter } from './audit.js';
 import { isSapConfigured } from './integrations/sapClient.js';
 import { syncAllSap } from './integrations/sapSync.js';
 import { assetSuiteRouter } from './routes/assetSuite.js';
+import { offboardingRouter } from './routes/offboarding.js';
 
 const app = express();
 
@@ -21,7 +22,7 @@ app.use(auditMutations());
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
-app.use('/api/activos', moduleAccessRequired, auditRouter, activosRouter);
+app.use('/api/activos', moduleAccessRequired, auditRouter, offboardingRouter, activosRouter);
 app.use('/api/activos-suite', moduleAccessRequired, assetSuiteRouter);
 // Cada ruta de activosSelfRouter define su propio middleware de sesión --
 // /uid/:assetUid acepta también llave de servicio (ver activosSelf.js).
