@@ -42,3 +42,11 @@ test('las contraseñas locales se separan de los valores públicos y se exigen',
   assert.deepEqual(result.secretValues, { password_encrypted: 'secreto' });
   assert.throws(() => normalizeResourceCreateInput(RESOURCE_CONFIG.passwords, { categoria: 'Red' }), /password/);
 });
+
+test('fortigate es el único catálogo marcado como editable, y su alta/edición acepta la IP', () => {
+  const editableResources = Object.entries(RESOURCE_CONFIG).filter(([, config]) => config.editable);
+  assert.deepEqual(editableResources.map(([name]) => name), ['fortigate']);
+  const { values } = normalizeResourceCreateInput(RESOURCE_CONFIG.fortigate, { numero_serie: 'FGT60ETK19060496', ip_address: '192.168.10.1', sap_id: 999 });
+  assert.deepEqual(values, { numero_serie: 'FGT60ETK19060496', ip_address: '192.168.10.1' });
+  assert.equal(Object.prototype.hasOwnProperty.call(values, 'sap_id'), false);
+});

@@ -718,7 +718,7 @@ function EmployeeAssignmentDetails({ profile, title = 'Datos vigentes en RH' }) 
   );
 }
 
-function ObservabilityPanel({ assetUid, data, error, onChange }) {
+export function ObservabilityPanel({ assetUid, data, error, onChange }) {
   const [available, setAvailable] = useState([]);
   const [selected, setSelected] = useState('');
   const [linking, setLinking] = useState(false);
@@ -859,7 +859,7 @@ function TicketGroup({ title, tickets, empty, className = '' }) {
   );
 }
 
-function OperationalValue({ label, value }) {
+export function OperationalValue({ label, value }) {
   return <div><span className="block text-xs text-slate-500">{label}</span><span className="text-slate-200">{value}</span></div>;
 }
 

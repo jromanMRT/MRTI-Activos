@@ -35,7 +35,12 @@ export const RESOURCE_CONFIG = Object.freeze({
   nvr: { table: 'sap_nvr', columns: ['id', 'sap_id', 'alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'acceso_local', 'localidad', 'ubicacion', 'record_origin', 'synced_at', 'archived_at'], search: ['alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'localidad', 'ubicacion'], secretColumns: ['password_encrypted', 'clave_cifrado_encrypted', 'codigo_verificacion_encrypted'], create: { fields: ['alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'acceso_local', 'localidad', 'ubicacion'], required: ['alias'], secrets: { password: 'password_encrypted', clave_cifrado: 'clave_cifrado_encrypted', codigo_verificacion: 'codigo_verificacion_encrypted' } } },
   passwords: { table: 'sap_passwords', columns: ['id', 'sap_id', 'categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario'], secretColumns: ['password_encrypted'], create: { fields: ['categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario'], required: ['categoria', 'password'], secrets: { password: 'password_encrypted' } } },
   starlink: { table: 'sap_starlink', columns: ['id', 'sap_id', 'correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'importe_mes', 'dia_corte', 'suscripcion', 'cliente', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'suscripcion', 'cliente'], create: { fields: ['correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'importe_mes', 'dia_corte', 'suscripcion', 'cliente', 'comentario'], required: ['id_starlink'], numbers: ['importe_mes'] } },
-  fortigate: { table: 'sap_fortigate', columns: ['id', 'sap_id', 'software', 'numero_serie', 'proyecto', 'fecha_expira', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['software', 'numero_serie', 'proyecto', 'comentario'], create: { fields: ['software', 'numero_serie', 'proyecto', 'fecha_expira', 'comentario'], required: ['numero_serie'], dates: ['fecha_expira'] } },
+  fortigate: {
+    table: 'sap_fortigate', editable: true,
+    columns: ['id', 'sap_id', 'asset_uid', 'software', 'numero_serie', 'proyecto', 'fecha_expira', 'ip_address', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at'],
+    search: ['software', 'numero_serie', 'proyecto', 'comentario'],
+    create: { fields: ['software', 'numero_serie', 'proyecto', 'fecha_expira', 'ip_address', 'comentario'], required: ['numero_serie'], dates: ['fecha_expira'] },
+  },
   dominios: { table: 'sap_dominios', columns: ['id', 'sap_id', 'dominio', 'servicios', 'fecha_expira', 'status', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['dominio', 'servicios', 'status', 'comentario'], create: { fields: ['dominio', 'servicios', 'fecha_expira', 'status', 'comentario'], required: ['dominio'], dates: ['fecha_expira'] } },
   mantenimientos: { table: 'sap_mantenimientos', columns: ['id', 'sap_id', 'center_code', 'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones', 'record_origin', 'synced_at', 'archived_at'], search: ['center_code', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'numero_ticket', 'estado'], create: { fields: ['center_code', 'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones'], required: ['center_code', 'fecha_servicio', 'tipo_servicio'], numbers: ['costo'], dates: ['fecha_servicio', 'fecha_fin', 'garantia_hasta'] } },
   unidades: { table: 'sap_unidades', columns: ['id', 'sap_id', 'nombre', 'activa', 'orden', 'record_origin', 'synced_at', 'archived_at', 'usage_kind', 'reference_id', 'review_note', 'reviewed_by', 'reviewed_at', 'review_revision'], search: ['nombre'], create: { fields: ['nombre', 'activa', 'orden'], required: ['nombre'], numbers: ['orden'], booleans: ['activa'] } },
@@ -219,6 +224,7 @@ assetSuiteRouter.post('/resources/:resource', administratorOnly, async (req, res
     const { values, secretValues } = normalizeResourceCreateInput(config, req.body || {});
     const storedSecrets = Object.fromEntries(Object.entries(secretValues).map(([column, value]) => [column, encryptSecret(value)]));
     const record = { ...values, ...storedSecrets, record_origin: 'local', created_by_user_id: req.portalUser.id };
+    if (config.table === 'sap_fortigate') record.asset_uid = randomUUID();
     const columns = Object.keys(record);
     const [result] = await pool.query(
       `INSERT INTO \`${config.table}\` (${columns.map((column) => `\`${column}\``).join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
@@ -273,6 +279,31 @@ assetSuiteRouter.patch('/resources/:resource/:id/restore', administratorOnly, as
     const [result] = await pool.query(`UPDATE \`${config.table}\` SET archived_at = NULL, archived_by = NULL WHERE \`${config.id}\` = ?`, [req.params.id]);
     if (!result.affectedRows) return res.status(404).json({ error: 'Registro no encontrado' });
     res.json({ data: { id: req.params.id, archived: false } });
+  } catch (error) { next(error); }
+});
+
+// Edición manual, incluidos los campos que vienen de SAP. Sólo catálogos con
+// `config.editable` la admiten (hoy: sólo fortigate). Marca
+// locally_edited_at/_by para que mirrorRows() (sapSync.js) deje de pisar
+// este renglón en la siguiente sincronización, y asegura que tenga
+// asset_uid (siempre lo tiene desde la migración 014, esto es defensivo).
+assetSuiteRouter.patch('/resources/:resource/:id', administratorOnly, async (req, res, next) => {
+  try {
+    const config = resourceOrThrow(req.params.resource);
+    if (!config.editable) return res.status(405).json({ error: 'Este catálogo no admite edición manual' });
+    const { values } = normalizeResourceCreateInput(config, req.body || {});
+    if (!Object.keys(values).length) return res.status(400).json({ error: 'No se recibió ningún campo para actualizar' });
+    const [[existing]] = await pool.query(`SELECT \`${config.id}\` AS id, asset_uid FROM \`${config.table}\` WHERE \`${config.id}\` = ?`, [req.params.id]);
+    if (!existing) return res.status(404).json({ error: 'Registro no encontrado' });
+    const assetUid = existing.asset_uid || randomUUID();
+    const columns = Object.keys(values);
+    const setClauses = [...columns.map((column) => `\`${column}\` = ?`), 'locally_edited_at = NOW()', 'locally_edited_by = ?', 'asset_uid = ?'];
+    await pool.query(
+      `UPDATE \`${config.table}\` SET ${setClauses.join(', ')} WHERE \`${config.id}\` = ?`,
+      [...columns.map((column) => values[column]), req.portalUser.id, assetUid, req.params.id]
+    );
+    const [rows] = await pool.query(`SELECT ${config.columns.map((column) => `\`${column}\``).join(', ')} FROM \`${config.table}\` WHERE \`${config.id}\` = ? LIMIT 1`, [req.params.id]);
+    res.json({ data: rows[0] });
   } catch (error) { next(error); }
 });
 

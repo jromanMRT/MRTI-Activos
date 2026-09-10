@@ -126,15 +126,21 @@ export async function preserveSapAssetDuplicates(rows) {
 // indique) en una tabla `sap_*`. Las altas propias de MRTI usan sap_id NULL,
 // por lo que nunca coinciden ni son reemplazadas por este proceso.
 // `renameMap` cubre las pocas columnas que no se llaman igual en MySQL.
-async function mirrorRows(table, rows, columns, { idColumn = 'sap_id', idSource = 'id', renameMap = {} } = {}) {
+async function mirrorRows(table, rows, columns, { idColumn = 'sap_id', idSource = 'id', renameMap = {}, generateUid = null, protectColumn = null } = {}) {
   for (const row of rows) {
     const values = { [idColumn]: row[idSource] };
     for (const column of columns) {
       const sourceKey = renameMap[column] || column;
       values[column] = row[sourceKey] === undefined ? null : row[sourceKey];
     }
+    // Sólo se usa en la alta -- en un UPDATE nunca entra a `updates`, así se
+    // conserva el UUID ya asignado la primera vez.
+    if (generateUid) values[generateUid] = randomUUID();
     const allColumns = Object.keys(values);
-    const updates = allColumns.filter((c) => c !== idColumn).map((c) => `${c} = VALUES(${c})`).join(', ');
+    const updates = allColumns
+      .filter((c) => c !== idColumn && c !== generateUid)
+      .map((c) => (protectColumn ? `${c} = IF(${protectColumn} IS NULL, VALUES(${c}), ${c})` : `${c} = VALUES(${c})`))
+      .join(', ');
     await pool.query(
       `INSERT INTO ${table} (${allColumns.join(',')}) VALUES (${allColumns.map(() => '?').join(',')})
        ON DUPLICATE KEY UPDATE ${updates}`,
@@ -173,7 +179,7 @@ export async function syncSapMirrors() {
     ], { renameMap: TIMESTAMP_RENAME }],
     ['sap_fortigate', fetchSapFortiGate, [
       'software', 'numero_serie', 'proyecto', 'fecha_expira', 'comentario', 'sap_creado_en', 'sap_actualizado_en',
-    ], { renameMap: TIMESTAMP_RENAME }],
+    ], { renameMap: TIMESTAMP_RENAME, generateUid: 'asset_uid', protectColumn: 'locally_edited_at' }],
     ['sap_dominios', fetchSapDominios, [
       'dominio', 'servicios', 'fecha_expira', 'status', 'comentario', 'sap_creado_en', 'sap_actualizado_en',
     ], { renameMap: TIMESTAMP_RENAME }],

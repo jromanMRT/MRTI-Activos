@@ -229,8 +229,15 @@ activosRouter.post('/primary-assignment', async (req, res, next) => {
 activosRouter.get('/uid/:assetUid', async (req, res, next) => {
   try {
     const [[row]] = await pool.query('SELECT * FROM activos WHERE asset_uid = ?', [req.params.assetUid]);
-    if (!row) return res.status(404).json({ error: 'Activo no encontrado' });
-    res.json({ data: normalizeAssetDates(row) });
+    if (row) return res.json({ data: normalizeAssetDates(row) });
+    // El mismo tipo de UUID también puede pertenecer a un renglón de
+    // sap_fortigate vinculado a MRTI Monitor (ver migración 014).
+    const [[fortigateRow]] = await pool.query(
+      'SELECT id, asset_uid, software, numero_serie, proyecto FROM sap_fortigate WHERE asset_uid = ? AND archived_at IS NULL',
+      [req.params.assetUid]
+    );
+    if (fortigateRow) return res.json({ data: { ...fortigateRow, source: 'sap_fortigate' } });
+    return res.status(404).json({ error: 'Activo no encontrado' });
   } catch (error) {
     next(error);
   }
