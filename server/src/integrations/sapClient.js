@@ -379,7 +379,85 @@ export function pushStarlinkToSap(fields) {
   return pushCatalogRowToSap('dbo.Starlink', STARLINK_WRITABLE_FIELDS, fields);
 }
 
-// ── Los otros 6 dominios: solo lectura, para el espejo sap_* ───────────
+// ── Componentes y Mantenimientos: como pushCatalogRowToSap, pero
+// dbo.Componentes/dbo.Mantenimientos referencian `activo_id` (la llave
+// interna de dbo.Activos en SAP), no `center_code`. Se resuelve
+// center_code -> activo_id en cada llamada -- nunca se guarda ese id en
+// MySQL, porque activo_id es de SAP y podría cambiar si el activo se
+// recrea allá. `activo_id` es NOT NULL en dbo.Mantenimientos (nuestro
+// alta local ya exige center_code) pero nullable en dbo.Componentes
+// (nuestra alta local no lo exige) -- por eso sólo se agrega cuando
+// `fields.center_code` viene presente.
+async function resolveActivoIdBySapCenterCode(pool, centerCode) {
+  const request = pool.request();
+  request.input('center_code', sql.NVarChar, centerCode);
+  const { recordset } = await request.query('SELECT id FROM dbo.Activos WHERE center_code = @center_code');
+  if (!recordset[0]) throw new Error(`No existe el activo ${centerCode} en SAP`);
+  return recordset[0].id;
+}
+
+async function pushLinkedCatalogRowToSap(sapTable, writableColumns, fields) {
+  const pool = await getPool();
+  const writable = Object.fromEntries(Object.entries(fields).filter(([key]) => writableColumns.has(key)));
+  const columns = Object.keys(writable);
+  const activoId = fields.center_code ? await resolveActivoIdBySapCenterCode(pool, fields.center_code) : undefined;
+  if (fields.sap_id) {
+    if (!columns.length && activoId === undefined) return { sapId: fields.sap_id };
+    const request = pool.request();
+    request.input('id', sql.Int, fields.sap_id);
+    for (const column of columns) request.input(column, writable[column] ?? null);
+    const setParts = columns.map((column) => `${column} = @${column}`);
+    if (activoId !== undefined) {
+      request.input('activo_id', sql.Int, activoId);
+      setParts.push('activo_id = @activo_id');
+    }
+    await request.query(`UPDATE ${sapTable} SET ${setParts.join(', ')} WHERE id = @id`);
+    return { sapId: fields.sap_id };
+  }
+  const request = pool.request();
+  for (const column of columns) request.input(column, writable[column] ?? null);
+  const insertColumns = [...columns];
+  if (activoId !== undefined) {
+    request.input('activo_id', sql.Int, activoId);
+    insertColumns.push('activo_id');
+  }
+  if (!insertColumns.length) throw new Error('Nada que enviar a SAP: la alta no trae campos escribibles');
+  const { recordset } = await request.query(
+    `INSERT INTO ${sapTable} (${insertColumns.join(',')}) OUTPUT inserted.id VALUES (${insertColumns.map((column) => `@${column}`).join(',')})`
+  );
+  return { sapId: recordset[0].id };
+}
+
+const COMPONENTES_WRITABLE_FIELDS = new Set([
+  'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'firmware', 'ip_address',
+  'mac_address', 'hostname', 'unidad', 'departamento', 'usuario', 'contabilidad', 'orden_compra', 'comentario',
+]);
+export function pickComponentesWritableFields(fields = {}) {
+  return Object.fromEntries(Object.entries(fields).filter(([key]) => COMPONENTES_WRITABLE_FIELDS.has(key)));
+}
+export function pushComponentesToSap(fields) {
+  return pushLinkedCatalogRowToSap('dbo.Componentes', COMPONENTES_WRITABLE_FIELDS, fields);
+}
+
+const MANTENIMIENTOS_WRITABLE_FIELDS = new Set([
+  'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor',
+  'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones',
+]);
+export function pickMantenimientosWritableFields(fields = {}) {
+  return Object.fromEntries(Object.entries(fields).filter(([key]) => MANTENIMIENTOS_WRITABLE_FIELDS.has(key)));
+}
+// dbo.Mantenimientos.estado es NOT NULL en SAP, pero nuestra alta local no
+// lo exige (ver RESOURCE_CONFIG.mantenimientos.create.required). Sólo se
+// completa con un valor neutro en la ALTA (sin sap_id) cuando falta -- una
+// edición nunca lo toca si el llamador no lo trae, para no pisar el estado
+// real que ya tenga esa fila en SAP.
+export function pushMantenimientosToSap(fields) {
+  const prepared = { ...fields };
+  if (!prepared.sap_id && !prepared.estado) prepared.estado = 'Pendiente';
+  return pushLinkedCatalogRowToSap('dbo.Mantenimientos', MANTENIMIENTOS_WRITABLE_FIELDS, prepared);
+}
+
+// ── Los otros 4 dominios: solo lectura, para el espejo sap_* ───────────
 // Sin escritura de vuelta todavía -- estas funciones solo alimentan
 // sapSync.js. Componentes/Mantenimientos/Documentos resuelven center_code
 // en la misma consulta para no tener que cargar los ids internos de SAP en

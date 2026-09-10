@@ -4,7 +4,10 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { administratorOnly } from '../auth.js';
 import { decryptSecret, encryptSecret } from '../integrations/credentialCrypto.js';
-import { pushFortiGateToSap, pushDominiosToSap, pushUnidadesToSap, pushImpresorasToSap, pushStarlinkToSap } from '../integrations/sapClient.js';
+import {
+  pushFortiGateToSap, pushDominiosToSap, pushUnidadesToSap, pushImpresorasToSap, pushStarlinkToSap,
+  pushComponentesToSap, pushMantenimientosToSap,
+} from '../integrations/sapClient.js';
 import { syncAllSap } from '../integrations/sapSync.js';
 import { safeDocumentPath } from '../documentStorage.js';
 import { normalizeAssetDates } from '../meta.js';
@@ -31,7 +34,7 @@ export const RESOURCE_CONFIG = Object.freeze({
     columns: ['id', 'center_code', 'usuario_asignado', 'win_cuenta', 'win_usuario', 'ms_cuenta', 'ms_usuario', 'ms_licencia', 'ms_suscripcion', 'db_cuenta', 'db_usuario', 'db_licencia', 'correo_mrt', 'correo_corporativo', 'av_licencia', 'av_caducidad'],
     search: ['center_code', 'usuario_asignado', 'win_usuario', 'ms_usuario', 'correo_mrt', 'correo_corporativo'],
   },
-  componentes: { table: 'sap_componentes', columns: ['id', 'sap_id', 'center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'ip_address', 'hostname', 'unidad', 'departamento', 'usuario', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'usuario'], create: { fields: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'firmware', 'ip_address', 'mac_address', 'hostname', 'unidad', 'departamento', 'usuario', 'contabilidad', 'orden_compra', 'comentario'], required: ['nombre'] } },
+  componentes: { table: 'sap_componentes', editable: true, columns: ['id', 'sap_id', 'center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'ip_address', 'hostname', 'unidad', 'departamento', 'usuario', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'], search: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'usuario'], create: { fields: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'firmware', 'ip_address', 'mac_address', 'hostname', 'unidad', 'departamento', 'usuario', 'contabilidad', 'orden_compra', 'comentario'], required: ['nombre'] } },
   impresoras: { table: 'sap_impresoras', editable: true, columns: ['id', 'sap_id', 'usuario', 'ubicacion', 'ip_address', 'mac_address', 'hostname', 'modelo', 'numero_serie', 'conteo_paginas', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'], search: ['usuario', 'ubicacion', 'ip_address', 'hostname', 'modelo', 'numero_serie'], create: { fields: ['usuario', 'ubicacion', 'ip_address', 'mac_address', 'hostname', 'modelo', 'numero_serie', 'conteo_paginas', 'comentario'], required: ['modelo'], numbers: ['conteo_paginas'] } },
   nvr: { table: 'sap_nvr', columns: ['id', 'sap_id', 'alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'acceso_local', 'localidad', 'ubicacion', 'record_origin', 'synced_at', 'archived_at'], search: ['alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'localidad', 'ubicacion'], secretColumns: ['password_encrypted', 'clave_cifrado_encrypted', 'codigo_verificacion_encrypted'], create: { fields: ['alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'acceso_local', 'localidad', 'ubicacion'], required: ['alias'], secrets: { password: 'password_encrypted', clave_cifrado: 'clave_cifrado_encrypted', codigo_verificacion: 'codigo_verificacion_encrypted' } } },
   passwords: { table: 'sap_passwords', columns: ['id', 'sap_id', 'categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario'], secretColumns: ['password_encrypted'], create: { fields: ['categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario'], required: ['categoria', 'password'], secrets: { password: 'password_encrypted' } } },
@@ -43,7 +46,7 @@ export const RESOURCE_CONFIG = Object.freeze({
     create: { fields: ['software', 'numero_serie', 'proyecto', 'fecha_expira', 'ip_address', 'comentario'], required: ['numero_serie'], dates: ['fecha_expira'] },
   },
   dominios: { table: 'sap_dominios', editable: true, columns: ['id', 'sap_id', 'dominio', 'servicios', 'fecha_expira', 'status', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'], search: ['dominio', 'servicios', 'status', 'comentario'], create: { fields: ['dominio', 'servicios', 'fecha_expira', 'status', 'comentario'], required: ['dominio'], dates: ['fecha_expira'] } },
-  mantenimientos: { table: 'sap_mantenimientos', columns: ['id', 'sap_id', 'center_code', 'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones', 'record_origin', 'synced_at', 'archived_at'], search: ['center_code', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'numero_ticket', 'estado'], create: { fields: ['center_code', 'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones'], required: ['center_code', 'fecha_servicio', 'tipo_servicio'], numbers: ['costo'], dates: ['fecha_servicio', 'fecha_fin', 'garantia_hasta'] } },
+  mantenimientos: { table: 'sap_mantenimientos', editable: true, columns: ['id', 'sap_id', 'center_code', 'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'], search: ['center_code', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'numero_ticket', 'estado'], create: { fields: ['center_code', 'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones'], required: ['center_code', 'fecha_servicio', 'tipo_servicio'], numbers: ['costo'], dates: ['fecha_servicio', 'fecha_fin', 'garantia_hasta'] } },
   // Nota: sin `editable` a propósito -- `nombre` es la llave natural que
   // `activos.unidad`/`sap_componentes.unidad` copian como texto libre
   // (sin FK). Permitir renombrar por PATCH rompería esas referencias
@@ -69,6 +72,8 @@ const CATALOG_PUSH_FUNCTIONS = {
   sap_unidades: pushUnidadesToSap,
   sap_impresoras: pushImpresorasToSap,
   sap_starlink: pushStarlinkToSap,
+  sap_componentes: pushComponentesToSap,
+  sap_mantenimientos: pushMantenimientosToSap,
 };
 
 async function pushCatalogBestEffort(table, id) {

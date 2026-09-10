@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   pickDominiosWritableFields, pickUnidadesWritableFields,
   pickImpresorasWritableFields, pickStarlinkWritableFields,
+  pickComponentesWritableFields, pickMantenimientosWritableFields,
 } from '../src/integrations/sapClient.js';
 
 const BOOKKEEPING = {
@@ -45,5 +46,37 @@ test('starlink sólo envía los 9 campos que existen en dbo.Starlink', () => {
   }), {
     correo_cuenta: 'a@b.com', ubicacion: 'Sitio 1', id_starlink: 'ST-1', version_equipo: 'v3',
     importe_mes: 1500, dia_corte: '5', suscripcion: 'Business', cliente: 'MRT', comentario: 'ok',
+  });
+});
+
+test('componentes nunca envía center_code como columna directa (se resuelve aparte a activo_id)', () => {
+  const picked = pickComponentesWritableFields({
+    center_code: 'TI-00001', code: 'C-1', nombre: 'RAM', tipo: 'Memoria', marca: 'Kingston',
+    modelo: '8GB', serial_service_tag: 'SN-1', firmware: '1.0', ip_address: '10.0.0.1',
+    mac_address: 'AA:BB', hostname: 'PC-1', unidad: 'TI', departamento: 'Sistemas', usuario: 'ana',
+    contabilidad: 'X', orden_compra: 'OC-1', comentario: 'ok', ...BOOKKEEPING,
+  });
+  assert.equal(Object.prototype.hasOwnProperty.call(picked, 'center_code'), false);
+  assert.deepEqual(picked, {
+    code: 'C-1', nombre: 'RAM', tipo: 'Memoria', marca: 'Kingston', modelo: '8GB',
+    serial_service_tag: 'SN-1', firmware: '1.0', ip_address: '10.0.0.1', mac_address: 'AA:BB',
+    hostname: 'PC-1', unidad: 'TI', departamento: 'Sistemas', usuario: 'ana',
+    contabilidad: 'X', orden_compra: 'OC-1', comentario: 'ok',
+  });
+});
+
+test('mantenimientos nunca envía center_code como columna directa (se resuelve aparte a activo_id)', () => {
+  const picked = pickMantenimientosWritableFields({
+    center_code: 'TI-00001', fecha_servicio: '2026-01-01', fecha_fin: '2026-01-02',
+    tipo_servicio: 'Preventivo', descripcion: 'Limpieza', tecnico: 'Juan', proveedor: 'ACME',
+    costo: 500, numero_ticket: 'T-1', estado: 'Completado', garantia_hasta: '2027-01-01',
+    observaciones: 'ok', creado_por: 'ana', ...BOOKKEEPING,
+  });
+  assert.equal(Object.prototype.hasOwnProperty.call(picked, 'center_code'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(picked, 'creado_por'), false);
+  assert.deepEqual(picked, {
+    fecha_servicio: '2026-01-01', fecha_fin: '2026-01-02', tipo_servicio: 'Preventivo',
+    descripcion: 'Limpieza', tecnico: 'Juan', proveedor: 'ACME', costo: 500, numero_ticket: 'T-1',
+    estado: 'Completado', garantia_hasta: '2027-01-01', observaciones: 'ok',
   });
 });

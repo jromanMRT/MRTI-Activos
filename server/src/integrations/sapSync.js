@@ -3,6 +3,7 @@ import { pool } from '../db.js';
 import {
   isSapConfigured, fetchSapAssets, pushAssetToSap,
   pushFortiGateToSap, pushDominiosToSap, pushUnidadesToSap, pushImpresorasToSap, pushStarlinkToSap,
+  pushComponentesToSap, pushMantenimientosToSap,
   fetchSapComponentes, fetchSapImpresoras, fetchSapNvr, fetchSapPasswords,
   fetchSapStarlink, fetchSapFortiGate, fetchSapDominios, fetchSapMantenimientos,
   fetchSapMantenimientoComponentes, fetchSapUnidades, fetchSapConfigAlertas, fetchSapDocumentos,
@@ -56,6 +57,8 @@ const CATALOG_PUSH_JOBS = [
   ['sap_unidades', pushUnidadesToSap],
   ['sap_impresoras', pushImpresorasToSap],
   ['sap_starlink', pushStarlinkToSap],
+  ['sap_componentes', pushComponentesToSap],
+  ['sap_mantenimientos', pushMantenimientosToSap],
 ];
 
 export async function retryCatalogSapPushes() {
@@ -198,7 +201,7 @@ export async function syncSapMirrors() {
       'center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'firmware',
       'ip_address', 'mac_address', 'hostname', 'unidad', 'departamento', 'usuario', 'contabilidad',
       'orden_compra', 'comentario', 'sap_creado_en', 'sap_actualizado_en',
-    ], { renameMap: TIMESTAMP_RENAME }],
+    ], { renameMap: TIMESTAMP_RENAME, protectColumn: 'locally_edited_at' }],
     ['sap_impresoras', fetchSapImpresoras, [
       'usuario', 'ubicacion', 'ip_address', 'mac_address', 'hostname', 'modelo', 'numero_serie',
       'conteo_paginas', 'comentario', 'sap_creado_en', 'sap_actualizado_en',
@@ -224,7 +227,7 @@ export async function syncSapMirrors() {
     ['sap_mantenimientos', fetchSapMantenimientos, [
       'center_code', 'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor',
       'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones', 'creado_por',
-    ], {}],
+    ], { protectColumn: 'locally_edited_at' }],
     ['sap_mantenimiento_componentes', fetchSapMantenimientoComponentes, [
       'sap_mantenimiento_id', 'tipo_componente', 'descripcion', 'marca', 'modelo', 'numero_serie', 'accion', 'costo',
     ], { renameMap: { sap_mantenimiento_id: 'mantenimiento_id' } }],

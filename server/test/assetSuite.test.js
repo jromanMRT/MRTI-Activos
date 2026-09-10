@@ -43,9 +43,9 @@ test('las contraseñas locales se separan de los valores públicos y se exigen',
   assert.throws(() => normalizeResourceCreateInput(RESOURCE_CONFIG.passwords, { categoria: 'Red' }), /password/);
 });
 
-test('fortigate, impresoras, starlink y dominios admiten edición manual; unidades no (nombre es llave natural en otras tablas)', () => {
+test('fortigate, impresoras, starlink, dominios, componentes y mantenimientos admiten edición manual; unidades no (nombre es llave natural en otras tablas)', () => {
   const editableResources = Object.entries(RESOURCE_CONFIG).filter(([, config]) => config.editable).map(([name]) => name);
-  assert.deepEqual(new Set(editableResources), new Set(['impresoras', 'starlink', 'fortigate', 'dominios']));
+  assert.deepEqual(new Set(editableResources), new Set(['impresoras', 'starlink', 'fortigate', 'dominios', 'componentes', 'mantenimientos']));
   assert.equal(RESOURCE_CONFIG.unidades.editable, undefined);
   const { values } = normalizeResourceCreateInput(RESOURCE_CONFIG.fortigate, { numero_serie: 'FGT60ETK19060496', ip_address: '192.168.10.1', sap_id: 999 });
   assert.deepEqual(values, { numero_serie: 'FGT60ETK19060496', ip_address: '192.168.10.1' });
