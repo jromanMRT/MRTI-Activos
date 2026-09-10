@@ -3,7 +3,7 @@ import { pool } from '../db.js';
 import {
   isSapConfigured, fetchSapAssets, pushAssetToSap,
   pushFortiGateToSap, pushDominiosToSap, pushUnidadesToSap, pushImpresorasToSap, pushStarlinkToSap,
-  pushComponentesToSap, pushMantenimientosToSap,
+  pushComponentesToSap, pushMantenimientosToSap, pushNvrToSap, pushPasswordsToSap,
   fetchSapComponentes, fetchSapImpresoras, fetchSapNvr, fetchSapPasswords,
   fetchSapStarlink, fetchSapFortiGate, fetchSapDominios, fetchSapMantenimientos,
   fetchSapMantenimientoComponentes, fetchSapUnidades, fetchSapConfigAlertas, fetchSapDocumentos,
@@ -59,6 +59,8 @@ const CATALOG_PUSH_JOBS = [
   ['sap_starlink', pushStarlinkToSap],
   ['sap_componentes', pushComponentesToSap],
   ['sap_mantenimientos', pushMantenimientosToSap],
+  ['sap_nvr', pushNvrToSap],
+  ['sap_passwords', pushPasswordsToSap],
 ];
 
 export async function retryCatalogSapPushes() {
@@ -209,7 +211,7 @@ export async function syncSapMirrors() {
     ['sap_nvr', fetchSapNvr, [
       'alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'clave_cifrado_encrypted', 'codigo_verificacion_encrypted',
       'usuario', 'password_encrypted', 'acceso_local', 'localidad', 'ubicacion', 'sap_creado_en', 'sap_actualizado_en',
-    ], { renameMap: TIMESTAMP_RENAME }],
+    ], { renameMap: TIMESTAMP_RENAME, protectColumn: 'locally_edited_at' }],
     ['sap_passwords', fetchSapPasswords, [
       'categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'password_encrypted', 'comentario',
       'sap_creado_en', 'sap_actualizado_en',

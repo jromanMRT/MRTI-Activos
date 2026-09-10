@@ -6,7 +6,7 @@ import { administratorOnly } from '../auth.js';
 import { decryptSecret, encryptSecret } from '../integrations/credentialCrypto.js';
 import {
   pushFortiGateToSap, pushDominiosToSap, pushUnidadesToSap, pushImpresorasToSap, pushStarlinkToSap,
-  pushComponentesToSap, pushMantenimientosToSap,
+  pushComponentesToSap, pushMantenimientosToSap, pushNvrToSap, pushPasswordsToSap,
 } from '../integrations/sapClient.js';
 import { syncAllSap } from '../integrations/sapSync.js';
 import { safeDocumentPath } from '../documentStorage.js';
@@ -36,8 +36,18 @@ export const RESOURCE_CONFIG = Object.freeze({
   },
   componentes: { table: 'sap_componentes', editable: true, columns: ['id', 'sap_id', 'center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'ip_address', 'hostname', 'unidad', 'departamento', 'usuario', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'], search: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'usuario'], create: { fields: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'firmware', 'ip_address', 'mac_address', 'hostname', 'unidad', 'departamento', 'usuario', 'contabilidad', 'orden_compra', 'comentario'], required: ['nombre'] } },
   impresoras: { table: 'sap_impresoras', editable: true, columns: ['id', 'sap_id', 'usuario', 'ubicacion', 'ip_address', 'mac_address', 'hostname', 'modelo', 'numero_serie', 'conteo_paginas', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'], search: ['usuario', 'ubicacion', 'ip_address', 'hostname', 'modelo', 'numero_serie'], create: { fields: ['usuario', 'ubicacion', 'ip_address', 'mac_address', 'hostname', 'modelo', 'numero_serie', 'conteo_paginas', 'comentario'], required: ['modelo'], numbers: ['conteo_paginas'] } },
-  nvr: { table: 'sap_nvr', columns: ['id', 'sap_id', 'alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'acceso_local', 'localidad', 'ubicacion', 'record_origin', 'synced_at', 'archived_at'], search: ['alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'localidad', 'ubicacion'], secretColumns: ['password_encrypted', 'clave_cifrado_encrypted', 'codigo_verificacion_encrypted'], create: { fields: ['alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'acceso_local', 'localidad', 'ubicacion'], required: ['alias'], secrets: { password: 'password_encrypted', clave_cifrado: 'clave_cifrado_encrypted', codigo_verificacion: 'codigo_verificacion_encrypted' } } },
-  passwords: { table: 'sap_passwords', columns: ['id', 'sap_id', 'categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario'], secretColumns: ['password_encrypted'], create: { fields: ['categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario'], required: ['categoria', 'password'], secrets: { password: 'password_encrypted' } } },
+  // editable:true sólo afecta a normalizeResourceCreateInput's `values`
+  // (los campos no secretos de `create.fields`) -- el PATCH genérico nunca
+  // lee `secretValues`, así que estructuralmente no puede tocar las
+  // contraseñas cifradas, ni al editar ni al empujar hacia SAP (ver
+  // pickNvrWritableFields/pickPasswordsWritableFields en sapClient.js).
+  nvr: { table: 'sap_nvr', editable: true, columns: ['id', 'sap_id', 'alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'acceso_local', 'localidad', 'ubicacion', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'], search: ['alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'localidad', 'ubicacion'], secretColumns: ['password_encrypted', 'clave_cifrado_encrypted', 'codigo_verificacion_encrypted'], create: { fields: ['alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'acceso_local', 'localidad', 'ubicacion'], required: ['alias'], secrets: { password: 'password_encrypted', clave_cifrado: 'clave_cifrado_encrypted', codigo_verificacion: 'codigo_verificacion_encrypted' } } },
+  // Nota: sin `editable` a propósito -- `create.required` exige la
+  // contraseña, y esa misma validación correría en cada PATCH aunque el
+  // edit genérico nunca guarda `secretValues` (ver test en
+  // assetSuite.test.js): el usuario creería que actualizó la contraseña y
+  // en realidad no pasaría nada. Sólo se empuja hacia SAP en la alta (POST).
+  passwords: { table: 'sap_passwords', columns: ['id', 'sap_id', 'categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'sap_synced_at', 'sap_sync_error'], search: ['categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario'], secretColumns: ['password_encrypted'], create: { fields: ['categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario'], required: ['categoria', 'password'], secrets: { password: 'password_encrypted' } } },
   starlink: { table: 'sap_starlink', editable: true, columns: ['id', 'sap_id', 'correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'importe_mes', 'dia_corte', 'suscripcion', 'cliente', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'], search: ['correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'suscripcion', 'cliente'], create: { fields: ['correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'importe_mes', 'dia_corte', 'suscripcion', 'cliente', 'comentario'], required: ['id_starlink'], numbers: ['importe_mes'] } },
   fortigate: {
     table: 'sap_fortigate', editable: true, linksMonitor: true,
@@ -74,6 +84,8 @@ const CATALOG_PUSH_FUNCTIONS = {
   sap_starlink: pushStarlinkToSap,
   sap_componentes: pushComponentesToSap,
   sap_mantenimientos: pushMantenimientosToSap,
+  sap_nvr: pushNvrToSap,
+  sap_passwords: pushPasswordsToSap,
 };
 
 async function pushCatalogBestEffort(table, id) {

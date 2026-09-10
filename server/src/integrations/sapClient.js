@@ -457,7 +457,35 @@ export function pushMantenimientosToSap(fields) {
   return pushLinkedCatalogRowToSap('dbo.Mantenimientos', MANTENIMIENTOS_WRITABLE_FIELDS, prepared);
 }
 
-// ── Los otros 4 dominios: solo lectura, para el espejo sap_* ───────────
+// ── NVR y Passwords: última tanda del rollout, con revisión extra por
+// tratarse de credenciales reales de infraestructura. Mismo criterio que ya
+// usa este proyecto para la tabla principal (upsertCredentialTable, más
+// abajo): **las columnas de contraseña NUNCA se incluyen aquí**. Sólo se
+// empujan los campos no secretos (alias, ubicación, IP, etc.); las
+// contraseñas siguen fluyendo sólo de SAP hacia la copia local cifrada
+// (sapSync.js), nunca de vuelta por esta vía. Si en el futuro se necesita
+// escribir contraseñas hacia SAP, debe ser una ruta dedicada y auditada como
+// PATCH /:id/remission-credentials en routes/activos.js -- no este flujo
+// genérico de alta/edición.
+const NVR_WRITABLE_FIELDS = new Set([
+  'alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'acceso_local', 'localidad', 'ubicacion',
+]);
+export function pickNvrWritableFields(fields = {}) {
+  return Object.fromEntries(Object.entries(fields).filter(([key]) => NVR_WRITABLE_FIELDS.has(key)));
+}
+export function pushNvrToSap(fields) {
+  return pushCatalogRowToSap('dbo.NVR', NVR_WRITABLE_FIELDS, fields);
+}
+
+const PASSWORDS_WRITABLE_FIELDS = new Set(['categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario']);
+export function pickPasswordsWritableFields(fields = {}) {
+  return Object.fromEntries(Object.entries(fields).filter(([key]) => PASSWORDS_WRITABLE_FIELDS.has(key)));
+}
+export function pushPasswordsToSap(fields) {
+  return pushCatalogRowToSap('dbo.Passwords', PASSWORDS_WRITABLE_FIELDS, fields);
+}
+
+// ── Los otros 2 dominios: solo lectura, para el espejo sap_* ───────────
 // Sin escritura de vuelta todavía -- estas funciones solo alimentan
 // sapSync.js. Componentes/Mantenimientos/Documentos resuelven center_code
 // en la misma consulta para no tener que cargar los ids internos de SAP en

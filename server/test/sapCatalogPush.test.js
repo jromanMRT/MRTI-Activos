@@ -4,6 +4,7 @@ import {
   pickDominiosWritableFields, pickUnidadesWritableFields,
   pickImpresorasWritableFields, pickStarlinkWritableFields,
   pickComponentesWritableFields, pickMantenimientosWritableFields,
+  pickNvrWritableFields, pickPasswordsWritableFields,
 } from '../src/integrations/sapClient.js';
 
 const BOOKKEEPING = {
@@ -79,4 +80,31 @@ test('mantenimientos nunca envía center_code como columna directa (se resuelve 
     descripcion: 'Limpieza', tecnico: 'Juan', proveedor: 'ACME', costo: 500, numero_ticket: 'T-1',
     estado: 'Completado', garantia_hasta: '2027-01-01', observaciones: 'ok',
   });
+});
+
+test('nvr NUNCA incluye password_encrypted/clave_cifrado_encrypted/codigo_verificacion_encrypted, aunque vengan en el objeto', () => {
+  const picked = pickNvrWritableFields({
+    alias: 'Cámara entrada', device_domain: 'dvr.local', device_serial: 'SN-1', ip_port: '10.0.0.1:554',
+    status: 'activo', usuario: 'admin', acceso_local: 'si', localidad: 'Matriz', ubicacion: 'Entrada',
+    password_encrypted: 'CIFRADO-NO-DEBE-SALIR', clave_cifrado_encrypted: 'CIFRADO-NO-DEBE-SALIR',
+    codigo_verificacion_encrypted: 'CIFRADO-NO-DEBE-SALIR', ...BOOKKEEPING,
+  });
+  assert.deepEqual(picked, {
+    alias: 'Cámara entrada', device_domain: 'dvr.local', device_serial: 'SN-1', ip_port: '10.0.0.1:554',
+    status: 'activo', usuario: 'admin', acceso_local: 'si', localidad: 'Matriz', ubicacion: 'Entrada',
+  });
+  for (const secretColumn of ['password_encrypted', 'clave_cifrado_encrypted', 'codigo_verificacion_encrypted']) {
+    assert.equal(Object.prototype.hasOwnProperty.call(picked, secretColumn), false);
+  }
+});
+
+test('passwords NUNCA incluye password_encrypted, aunque venga en el objeto', () => {
+  const picked = pickPasswordsWritableFields({
+    categoria: 'Red', subcategoria: 'Router', ip: '10.0.0.1', direccion: 'Matriz',
+    usuario: 'admin', comentario: 'ok', password_encrypted: 'CIFRADO-NO-DEBE-SALIR', ...BOOKKEEPING,
+  });
+  assert.deepEqual(picked, {
+    categoria: 'Red', subcategoria: 'Router', ip: '10.0.0.1', direccion: 'Matriz', usuario: 'admin', comentario: 'ok',
+  });
+  assert.equal(Object.prototype.hasOwnProperty.call(picked, 'password_encrypted'), false);
 });

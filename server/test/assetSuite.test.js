@@ -43,13 +43,24 @@ test('las contraseñas locales se separan de los valores públicos y se exigen',
   assert.throws(() => normalizeResourceCreateInput(RESOURCE_CONFIG.passwords, { categoria: 'Red' }), /password/);
 });
 
-test('fortigate, impresoras, starlink, dominios, componentes y mantenimientos admiten edición manual; unidades no (nombre es llave natural en otras tablas)', () => {
+test('fortigate, impresoras, starlink, dominios, componentes, mantenimientos y nvr admiten edición manual; unidades y passwords no', () => {
   const editableResources = Object.entries(RESOURCE_CONFIG).filter(([, config]) => config.editable).map(([name]) => name);
-  assert.deepEqual(new Set(editableResources), new Set(['impresoras', 'starlink', 'fortigate', 'dominios', 'componentes', 'mantenimientos']));
+  assert.deepEqual(new Set(editableResources), new Set(['impresoras', 'starlink', 'fortigate', 'dominios', 'componentes', 'mantenimientos', 'nvr']));
   assert.equal(RESOURCE_CONFIG.unidades.editable, undefined);
+  // passwords exige la contraseña como campo obligatorio en create.required;
+  // permitir `editable` forzaría re-enviarla en cada PATCH aunque el edit
+  // genérico nunca la guarda (ver siguiente test) -- confusión de seguridad,
+  // no sólo de UX. Se queda sin edición manual a propósito.
+  assert.equal(RESOURCE_CONFIG.passwords.editable, undefined);
   const { values } = normalizeResourceCreateInput(RESOURCE_CONFIG.fortigate, { numero_serie: 'FGT60ETK19060496', ip_address: '192.168.10.1', sap_id: 999 });
   assert.deepEqual(values, { numero_serie: 'FGT60ETK19060496', ip_address: '192.168.10.1' });
   assert.equal(Object.prototype.hasOwnProperty.call(values, 'sap_id'), false);
+});
+
+test('el PATCH genérico de nvr nunca puede tocar las contraseñas (normalizeResourceCreateInput sólo expone `values`, no `secretValues`)', () => {
+  const nvrEdit = normalizeResourceCreateInput(RESOURCE_CONFIG.nvr, { alias: 'Cámara entrada', password: 'intento-de-fuga' });
+  assert.deepEqual(nvrEdit.values, { alias: 'Cámara entrada' });
+  assert.equal(Object.prototype.hasOwnProperty.call(nvrEdit.values, 'password'), false);
 });
 
 test('sólo fortigate está marcado con linksMonitor (asset_uid es exclusivo del enlace con Monitor)', () => {
