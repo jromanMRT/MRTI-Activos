@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { pool } from '../db.js';
 import {
-  isSapConfigured, fetchSapAssets, pushAssetToSap, pushFortiGateToSap,
+  isSapConfigured, fetchSapAssets, pushAssetToSap,
+  pushFortiGateToSap, pushDominiosToSap, pushUnidadesToSap, pushImpresorasToSap, pushStarlinkToSap,
   fetchSapComponentes, fetchSapImpresoras, fetchSapNvr, fetchSapPasswords,
   fetchSapStarlink, fetchSapFortiGate, fetchSapDominios, fetchSapMantenimientos,
   fetchSapMantenimientoComponentes, fetchSapUnidades, fetchSapConfigAlertas, fetchSapDocumentos,
@@ -28,24 +29,41 @@ export async function retrySapPushes() {
   return { fixed, stillFailing, attempted: rows.length };
 }
 
-// Mismo patrón que retrySapPushes(), para el primer catálogo sap_* con
-// escritura de vuelta (fortigate). Guarda el sap_id que devuelva SAP la
-// primera vez que una alta local logra empujarse.
-export async function retryFortiGatePushes() {
-  const [rows] = await pool.query('SELECT * FROM sap_fortigate WHERE sap_sync_error IS NOT NULL');
+// Mismo patrón que retrySapPushes(), generalizado para los catálogos sap_*
+// de una sola tabla con escritura de vuelta (ver pushCatalogRowToSap en
+// sapClient.js). Guarda el sap_id que devuelva SAP la primera vez que una
+// alta local logra empujarse.
+async function retryCatalogPushes(table, pushFn) {
+  const [rows] = await pool.query(`SELECT * FROM \`${table}\` WHERE sap_sync_error IS NOT NULL`);
   let fixed = 0;
   let stillFailing = 0;
   for (const row of rows) {
     try {
-      const { sapId } = await pushFortiGateToSap(row);
-      await pool.query('UPDATE sap_fortigate SET sap_id = COALESCE(sap_id, ?), sap_synced_at = NOW(), sap_sync_error = NULL WHERE id = ?', [sapId, row.id]);
+      const { sapId } = await pushFn(row);
+      await pool.query(`UPDATE \`${table}\` SET sap_id = COALESCE(sap_id, ?), sap_synced_at = NOW(), sap_sync_error = NULL WHERE id = ?`, [sapId, row.id]);
       fixed += 1;
     } catch (error) {
-      await pool.query('UPDATE sap_fortigate SET sap_sync_error = ? WHERE id = ?', [String(error.message).slice(0, 255), row.id]);
+      await pool.query(`UPDATE \`${table}\` SET sap_sync_error = ? WHERE id = ?`, [String(error.message).slice(0, 255), row.id]);
       stillFailing += 1;
     }
   }
   return { fixed, stillFailing, attempted: rows.length };
+}
+
+const CATALOG_PUSH_JOBS = [
+  ['sap_fortigate', pushFortiGateToSap],
+  ['sap_dominios', pushDominiosToSap],
+  ['sap_unidades', pushUnidadesToSap],
+  ['sap_impresoras', pushImpresorasToSap],
+  ['sap_starlink', pushStarlinkToSap],
+];
+
+export async function retryCatalogSapPushes() {
+  const results = {};
+  for (const [table, pushFn] of CATALOG_PUSH_JOBS) {
+    results[table] = await retryCatalogPushes(table, pushFn);
+  }
+  return results;
 }
 
 // Un activo con unit_is_manual=1 tiene una corrección de unidad hecha a mano
@@ -184,7 +202,7 @@ export async function syncSapMirrors() {
     ['sap_impresoras', fetchSapImpresoras, [
       'usuario', 'ubicacion', 'ip_address', 'mac_address', 'hostname', 'modelo', 'numero_serie',
       'conteo_paginas', 'comentario', 'sap_creado_en', 'sap_actualizado_en',
-    ], { renameMap: TIMESTAMP_RENAME }],
+    ], { renameMap: TIMESTAMP_RENAME, protectColumn: 'locally_edited_at' }],
     ['sap_nvr', fetchSapNvr, [
       'alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'clave_cifrado_encrypted', 'codigo_verificacion_encrypted',
       'usuario', 'password_encrypted', 'acceso_local', 'localidad', 'ubicacion', 'sap_creado_en', 'sap_actualizado_en',
@@ -196,13 +214,13 @@ export async function syncSapMirrors() {
     ['sap_starlink', fetchSapStarlink, [
       'correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'importe_mes', 'dia_corte',
       'suscripcion', 'cliente', 'comentario', 'sap_creado_en', 'sap_actualizado_en',
-    ], { renameMap: TIMESTAMP_RENAME }],
+    ], { renameMap: TIMESTAMP_RENAME, protectColumn: 'locally_edited_at' }],
     ['sap_fortigate', fetchSapFortiGate, [
       'software', 'numero_serie', 'proyecto', 'fecha_expira', 'comentario', 'sap_creado_en', 'sap_actualizado_en',
     ], { renameMap: TIMESTAMP_RENAME, generateUid: 'asset_uid', protectColumn: 'locally_edited_at' }],
     ['sap_dominios', fetchSapDominios, [
       'dominio', 'servicios', 'fecha_expira', 'status', 'comentario', 'sap_creado_en', 'sap_actualizado_en',
-    ], { renameMap: TIMESTAMP_RENAME }],
+    ], { renameMap: TIMESTAMP_RENAME, protectColumn: 'locally_edited_at' }],
     ['sap_mantenimientos', fetchSapMantenimientos, [
       'center_code', 'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor',
       'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones', 'creado_por',
@@ -210,7 +228,7 @@ export async function syncSapMirrors() {
     ['sap_mantenimiento_componentes', fetchSapMantenimientoComponentes, [
       'sap_mantenimiento_id', 'tipo_componente', 'descripcion', 'marca', 'modelo', 'numero_serie', 'accion', 'costo',
     ], { renameMap: { sap_mantenimiento_id: 'mantenimiento_id' } }],
-    ['sap_unidades', fetchSapUnidades, ['nombre', 'activa', 'orden'], {}],
+    ['sap_unidades', fetchSapUnidades, ['nombre', 'activa', 'orden'], { protectColumn: 'locally_edited_at' }],
     ['sap_documentos', fetchSapDocumentos, [
       'center_code', 'nombre', 'tipo', 'archivo', 'tamano', 'subido_por', 'sap_creado_en',
     ], { renameMap: { sap_creado_en: 'creado_en' } }],
@@ -268,10 +286,10 @@ export function syncAllSap() {
   if (!isSapConfigured()) return Promise.resolve({ skipped: true, reason: 'SAP_DB_* no configurado' });
   runningSync = (async () => {
     const retry = await retrySapPushes();
-    const retryFortiGate = await retryFortiGatePushes();
+    const retryCatalogs = await retryCatalogSapPushes();
     const assets = await pullSapAssets();
     const mirrors = await syncSapMirrors();
-    return { retry, retryFortiGate, assets, mirrors };
+    return { retry, retryCatalogs, assets, mirrors };
   })().finally(() => { runningSync = null; });
   return runningSync;
 }

@@ -4,7 +4,7 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { administratorOnly } from '../auth.js';
 import { decryptSecret, encryptSecret } from '../integrations/credentialCrypto.js';
-import { pushFortiGateToSap } from '../integrations/sapClient.js';
+import { pushFortiGateToSap, pushDominiosToSap, pushUnidadesToSap, pushImpresorasToSap, pushStarlinkToSap } from '../integrations/sapClient.js';
 import { syncAllSap } from '../integrations/sapSync.js';
 import { safeDocumentPath } from '../documentStorage.js';
 import { normalizeAssetDates } from '../meta.js';
@@ -32,36 +32,55 @@ export const RESOURCE_CONFIG = Object.freeze({
     search: ['center_code', 'usuario_asignado', 'win_usuario', 'ms_usuario', 'correo_mrt', 'correo_corporativo'],
   },
   componentes: { table: 'sap_componentes', columns: ['id', 'sap_id', 'center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'ip_address', 'hostname', 'unidad', 'departamento', 'usuario', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'usuario'], create: { fields: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'firmware', 'ip_address', 'mac_address', 'hostname', 'unidad', 'departamento', 'usuario', 'contabilidad', 'orden_compra', 'comentario'], required: ['nombre'] } },
-  impresoras: { table: 'sap_impresoras', columns: ['id', 'sap_id', 'usuario', 'ubicacion', 'ip_address', 'mac_address', 'hostname', 'modelo', 'numero_serie', 'conteo_paginas', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['usuario', 'ubicacion', 'ip_address', 'hostname', 'modelo', 'numero_serie'], create: { fields: ['usuario', 'ubicacion', 'ip_address', 'mac_address', 'hostname', 'modelo', 'numero_serie', 'conteo_paginas', 'comentario'], required: ['modelo'], numbers: ['conteo_paginas'] } },
+  impresoras: { table: 'sap_impresoras', editable: true, columns: ['id', 'sap_id', 'usuario', 'ubicacion', 'ip_address', 'mac_address', 'hostname', 'modelo', 'numero_serie', 'conteo_paginas', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'], search: ['usuario', 'ubicacion', 'ip_address', 'hostname', 'modelo', 'numero_serie'], create: { fields: ['usuario', 'ubicacion', 'ip_address', 'mac_address', 'hostname', 'modelo', 'numero_serie', 'conteo_paginas', 'comentario'], required: ['modelo'], numbers: ['conteo_paginas'] } },
   nvr: { table: 'sap_nvr', columns: ['id', 'sap_id', 'alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'acceso_local', 'localidad', 'ubicacion', 'record_origin', 'synced_at', 'archived_at'], search: ['alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'localidad', 'ubicacion'], secretColumns: ['password_encrypted', 'clave_cifrado_encrypted', 'codigo_verificacion_encrypted'], create: { fields: ['alias', 'device_domain', 'device_serial', 'ip_port', 'status', 'usuario', 'acceso_local', 'localidad', 'ubicacion'], required: ['alias'], secrets: { password: 'password_encrypted', clave_cifrado: 'clave_cifrado_encrypted', codigo_verificacion: 'codigo_verificacion_encrypted' } } },
   passwords: { table: 'sap_passwords', columns: ['id', 'sap_id', 'categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario'], secretColumns: ['password_encrypted'], create: { fields: ['categoria', 'subcategoria', 'ip', 'direccion', 'usuario', 'comentario'], required: ['categoria', 'password'], secrets: { password: 'password_encrypted' } } },
-  starlink: { table: 'sap_starlink', columns: ['id', 'sap_id', 'correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'importe_mes', 'dia_corte', 'suscripcion', 'cliente', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'suscripcion', 'cliente'], create: { fields: ['correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'importe_mes', 'dia_corte', 'suscripcion', 'cliente', 'comentario'], required: ['id_starlink'], numbers: ['importe_mes'] } },
+  starlink: { table: 'sap_starlink', editable: true, columns: ['id', 'sap_id', 'correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'importe_mes', 'dia_corte', 'suscripcion', 'cliente', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'], search: ['correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'suscripcion', 'cliente'], create: { fields: ['correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'importe_mes', 'dia_corte', 'suscripcion', 'cliente', 'comentario'], required: ['id_starlink'], numbers: ['importe_mes'] } },
   fortigate: {
-    table: 'sap_fortigate', editable: true,
+    table: 'sap_fortigate', editable: true, linksMonitor: true,
     columns: ['id', 'sap_id', 'asset_uid', 'software', 'numero_serie', 'proyecto', 'fecha_expira', 'ip_address', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'],
     search: ['software', 'numero_serie', 'proyecto', 'comentario'],
     create: { fields: ['software', 'numero_serie', 'proyecto', 'fecha_expira', 'ip_address', 'comentario'], required: ['numero_serie'], dates: ['fecha_expira'] },
   },
-  dominios: { table: 'sap_dominios', columns: ['id', 'sap_id', 'dominio', 'servicios', 'fecha_expira', 'status', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['dominio', 'servicios', 'status', 'comentario'], create: { fields: ['dominio', 'servicios', 'fecha_expira', 'status', 'comentario'], required: ['dominio'], dates: ['fecha_expira'] } },
+  dominios: { table: 'sap_dominios', editable: true, columns: ['id', 'sap_id', 'dominio', 'servicios', 'fecha_expira', 'status', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'], search: ['dominio', 'servicios', 'status', 'comentario'], create: { fields: ['dominio', 'servicios', 'fecha_expira', 'status', 'comentario'], required: ['dominio'], dates: ['fecha_expira'] } },
   mantenimientos: { table: 'sap_mantenimientos', columns: ['id', 'sap_id', 'center_code', 'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones', 'record_origin', 'synced_at', 'archived_at'], search: ['center_code', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'numero_ticket', 'estado'], create: { fields: ['center_code', 'fecha_servicio', 'fecha_fin', 'tipo_servicio', 'descripcion', 'tecnico', 'proveedor', 'costo', 'numero_ticket', 'estado', 'garantia_hasta', 'observaciones'], required: ['center_code', 'fecha_servicio', 'tipo_servicio'], numbers: ['costo'], dates: ['fecha_servicio', 'fecha_fin', 'garantia_hasta'] } },
-  unidades: { table: 'sap_unidades', columns: ['id', 'sap_id', 'nombre', 'activa', 'orden', 'record_origin', 'synced_at', 'archived_at', 'usage_kind', 'reference_id', 'review_note', 'reviewed_by', 'reviewed_at', 'review_revision'], search: ['nombre'], create: { fields: ['nombre', 'activa', 'orden'], required: ['nombre'], numbers: ['orden'], booleans: ['activa'] } },
+  // Nota: sin `editable` a propósito -- `nombre` es la llave natural que
+  // `activos.unidad`/`sap_componentes.unidad` copian como texto libre
+  // (sin FK). Permitir renombrar por PATCH rompería esas referencias
+  // silenciosamente. Sólo empuja hacia SAP en la alta (POST), nunca en
+  // edición, hasta que exista esa protección.
+  unidades: { table: 'sap_unidades', columns: ['id', 'sap_id', 'nombre', 'activa', 'orden', 'record_origin', 'synced_at', 'archived_at', 'usage_kind', 'reference_id', 'review_note', 'reviewed_by', 'reviewed_at', 'review_revision', 'sap_synced_at', 'sap_sync_error'], search: ['nombre'], create: { fields: ['nombre', 'activa', 'orden'], required: ['nombre'], numbers: ['orden'], booleans: ['activa'] } },
   documentos: { table: 'sap_documentos', columns: ['id', 'sap_id', 'asset_uid', 'center_code', 'nombre', 'tipo', 'archivo', 'tamano', 'subido_por', 'sap_creado_en', 'synced_at', 'archived_at', 'local_storage_path', 'mime_type', 'sha256', 'document_origin'], search: ['center_code', 'nombre', 'tipo', 'archivo', 'subido_por'] },
   'config-alertas': { table: 'sap_config_alertas', id: 'clave', archivable: false, columns: ['clave', 'nombre', 'dias_aviso', 'activo', 'sap_actualizado_en', 'synced_at'], search: ['clave', 'nombre'] },
 });
 
-// Empuja fortigate hacia SAP en segundo plano -- mismo patrón "best-effort"
-// que syncToSapBestEffort() en routes/activos.js: si SAP no responde no
-// bloquea al usuario, sólo deja constancia en sap_sync_error para que
-// retryFortiGatePushes() (sapSync.js, cada SAP_SYNC_CRON) lo reintente.
-// Primer catálogo sap_* con escritura de vuelta -- ver rollout en README.
-async function pushFortiGateBestEffort(id) {
+// Empuja un catálogo sap_* hacia SAP en segundo plano -- mismo patrón
+// "best-effort" que syncToSapBestEffort() en routes/activos.js: si SAP no
+// responde no bloquea al usuario, sólo deja constancia en sap_sync_error
+// para que retryCatalogSapPushes() (sapSync.js, cada SAP_SYNC_CRON) lo
+// reintente. Ver rollout (uno a la vez) en README.
+// sap_unidades sólo se empuja en la alta (POST) -- nunca en edición, `nombre`
+// es una llave natural copiada como texto libre en otras tablas (ver nota en
+// RESOURCE_CONFIG.unidades) y no admite `editable`, así que el PATCH nunca
+// llega a este mapa para esa tabla.
+const CATALOG_PUSH_FUNCTIONS = {
+  sap_fortigate: pushFortiGateToSap,
+  sap_dominios: pushDominiosToSap,
+  sap_unidades: pushUnidadesToSap,
+  sap_impresoras: pushImpresorasToSap,
+  sap_starlink: pushStarlinkToSap,
+};
+
+async function pushCatalogBestEffort(table, id) {
+  const pushFn = CATALOG_PUSH_FUNCTIONS[table];
+  if (!pushFn) return;
   try {
-    const [[row]] = await pool.query('SELECT * FROM sap_fortigate WHERE id = ?', [id]);
+    const [[row]] = await pool.query(`SELECT * FROM \`${table}\` WHERE id = ?`, [id]);
     if (!row) return;
-    const { sapId } = await pushFortiGateToSap(row);
-    await pool.query('UPDATE sap_fortigate SET sap_id = COALESCE(sap_id, ?), sap_synced_at = NOW(), sap_sync_error = NULL WHERE id = ?', [sapId, id]);
+    const { sapId } = await pushFn(row);
+    await pool.query(`UPDATE \`${table}\` SET sap_id = COALESCE(sap_id, ?), sap_synced_at = NOW(), sap_sync_error = NULL WHERE id = ?`, [sapId, id]);
   } catch (error) {
-    await pool.query('UPDATE sap_fortigate SET sap_sync_error = ? WHERE id = ?', [String(error.message).slice(0, 255), id]);
+    await pool.query(`UPDATE \`${table}\` SET sap_sync_error = ? WHERE id = ?`, [String(error.message).slice(0, 255), id]);
   }
 }
 
@@ -241,14 +260,14 @@ assetSuiteRouter.post('/resources/:resource', administratorOnly, async (req, res
     const { values, secretValues } = normalizeResourceCreateInput(config, req.body || {});
     const storedSecrets = Object.fromEntries(Object.entries(secretValues).map(([column, value]) => [column, encryptSecret(value)]));
     const record = { ...values, ...storedSecrets, record_origin: 'local', created_by_user_id: req.portalUser.id };
-    if (config.table === 'sap_fortigate') record.asset_uid = randomUUID();
+    if (config.linksMonitor) record.asset_uid = randomUUID();
     const columns = Object.keys(record);
     const [result] = await pool.query(
       `INSERT INTO \`${config.table}\` (${columns.map((column) => `\`${column}\``).join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
       columns.map((column) => record[column])
     );
     const [rows] = await pool.query(`SELECT ${config.columns.map((column) => `\`${column}\``).join(', ')} FROM \`${config.table}\` WHERE \`${config.id}\` = ? LIMIT 1`, [result.insertId]);
-    if (config.table === 'sap_fortigate') pushFortiGateBestEffort(result.insertId);
+    pushCatalogBestEffort(config.table, result.insertId);
     res.status(201).json({ data: rows[0] });
   } catch (error) { next(error); }
 });
@@ -301,27 +320,29 @@ assetSuiteRouter.patch('/resources/:resource/:id/restore', administratorOnly, as
 });
 
 // Edición manual, incluidos los campos que vienen de SAP. Sólo catálogos con
-// `config.editable` la admiten (hoy: sólo fortigate). Marca
-// locally_edited_at/_by para que mirrorRows() (sapSync.js) deje de pisar
-// este renglón en la siguiente sincronización, y asegura que tenga
-// asset_uid (siempre lo tiene desde la migración 014, esto es defensivo).
+// `config.editable` la admiten. Marca locally_edited_at/_by para que
+// mirrorRows() (sapSync.js) deje de pisar este renglón en la siguiente
+// sincronización. `asset_uid` sólo aplica a catálogos con
+// `config.linksMonitor` (hoy: sólo fortigate, para el enlace con Monitor).
 assetSuiteRouter.patch('/resources/:resource/:id', administratorOnly, async (req, res, next) => {
   try {
     const config = resourceOrThrow(req.params.resource);
     if (!config.editable) return res.status(405).json({ error: 'Este catálogo no admite edición manual' });
     const { values } = normalizeResourceCreateInput(config, req.body || {});
     if (!Object.keys(values).length) return res.status(400).json({ error: 'No se recibió ningún campo para actualizar' });
-    const [[existing]] = await pool.query(`SELECT \`${config.id}\` AS id, asset_uid FROM \`${config.table}\` WHERE \`${config.id}\` = ?`, [req.params.id]);
+    const extraSelect = config.linksMonitor ? ', asset_uid' : '';
+    const [[existing]] = await pool.query(`SELECT \`${config.id}\` AS id${extraSelect} FROM \`${config.table}\` WHERE \`${config.id}\` = ?`, [req.params.id]);
     if (!existing) return res.status(404).json({ error: 'Registro no encontrado' });
-    const assetUid = existing.asset_uid || randomUUID();
     const columns = Object.keys(values);
-    const setClauses = [...columns.map((column) => `\`${column}\` = ?`), 'locally_edited_at = NOW()', 'locally_edited_by = ?', 'asset_uid = ?'];
-    await pool.query(
-      `UPDATE \`${config.table}\` SET ${setClauses.join(', ')} WHERE \`${config.id}\` = ?`,
-      [...columns.map((column) => values[column]), req.portalUser.id, assetUid, req.params.id]
-    );
+    const setClauses = [...columns.map((column) => `\`${column}\` = ?`), 'locally_edited_at = NOW()', 'locally_edited_by = ?'];
+    const params = [...columns.map((column) => values[column]), req.portalUser.id];
+    if (config.linksMonitor) {
+      setClauses.push('asset_uid = ?');
+      params.push(existing.asset_uid || randomUUID());
+    }
+    await pool.query(`UPDATE \`${config.table}\` SET ${setClauses.join(', ')} WHERE \`${config.id}\` = ?`, [...params, req.params.id]);
     const [rows] = await pool.query(`SELECT ${config.columns.map((column) => `\`${column}\``).join(', ')} FROM \`${config.table}\` WHERE \`${config.id}\` = ? LIMIT 1`, [req.params.id]);
-    if (config.table === 'sap_fortigate') pushFortiGateBestEffort(req.params.id);
+    pushCatalogBestEffort(config.table, req.params.id);
     res.json({ data: rows[0] });
   } catch (error) { next(error); }
 });

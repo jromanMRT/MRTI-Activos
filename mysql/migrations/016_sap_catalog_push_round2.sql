@@ -1,0 +1,26 @@
+-- Segunda tanda del rollout de escritura hacia SAP (después de fortigate):
+-- dominios, unidades, impresoras, starlink. Mismas columnas que 014/015
+-- introdujeron para fortigate -- locally_edited_at/_by protege la fila del
+-- siguiente pull (mirrorRows en sapSync.js), sap_synced_at/sap_sync_error
+-- llevan la cuenta de la escritura hacia SAP. Ninguna de estas 4 necesita
+-- asset_uid (eso es sólo para el enlace con Monitor, exclusivo de fortigate).
+
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_dominios' AND column_name='locally_edited_at'),'SELECT 1','ALTER TABLE sap_dominios ADD COLUMN locally_edited_at DATETIME NULL'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_dominios' AND column_name='locally_edited_by'),'SELECT 1','ALTER TABLE sap_dominios ADD COLUMN locally_edited_by CHAR(36) NULL'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_dominios' AND column_name='sap_synced_at'),'SELECT 1','ALTER TABLE sap_dominios ADD COLUMN sap_synced_at DATETIME NULL'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_dominios' AND column_name='sap_sync_error'),'SELECT 1','ALTER TABLE sap_dominios ADD COLUMN sap_sync_error VARCHAR(255) NULL'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_unidades' AND column_name='locally_edited_at'),'SELECT 1','ALTER TABLE sap_unidades ADD COLUMN locally_edited_at DATETIME NULL'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_unidades' AND column_name='locally_edited_by'),'SELECT 1','ALTER TABLE sap_unidades ADD COLUMN locally_edited_by CHAR(36) NULL'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_unidades' AND column_name='sap_synced_at'),'SELECT 1','ALTER TABLE sap_unidades ADD COLUMN sap_synced_at DATETIME NULL'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_unidades' AND column_name='sap_sync_error'),'SELECT 1','ALTER TABLE sap_unidades ADD COLUMN sap_sync_error VARCHAR(255) NULL'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_impresoras' AND column_name='locally_edited_at'),'SELECT 1','ALTER TABLE sap_impresoras ADD COLUMN locally_edited_at DATETIME NULL'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_impresoras' AND column_name='locally_edited_by'),'SELECT 1','ALTER TABLE sap_impresoras ADD COLUMN locally_edited_by CHAR(36) NULL'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_impresoras' AND column_name='sap_synced_at'),'SELECT 1','ALTER TABLE sap_impresoras ADD COLUMN sap_synced_at DATETIME NULL'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_impresoras' AND column_name='sap_sync_error'),'SELECT 1','ALTER TABLE sap_impresoras ADD COLUMN sap_sync_error VARCHAR(255) NULL'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_starlink' AND column_name='locally_edited_at'),'SELECT 1','ALTER TABLE sap_starlink ADD COLUMN locally_edited_at DATETIME NULL'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_starlink' AND column_name='locally_edited_by'),'SELECT 1','ALTER TABLE sap_starlink ADD COLUMN locally_edited_by CHAR(36) NULL'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_starlink' AND column_name='sap_synced_at'),'SELECT 1','ALTER TABLE sap_starlink ADD COLUMN sap_synced_at DATETIME NULL'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl = IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sap_starlink' AND column_name='sap_sync_error'),'SELECT 1','ALTER TABLE sap_starlink ADD COLUMN sap_sync_error VARCHAR(255) NULL'); PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;

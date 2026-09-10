@@ -300,21 +300,20 @@ export async function pushAssetToSap(fields) {
   }
 }
 
-// ── FortiGate: primer catálogo sap_* con escritura de vuelta (rollout de
-// menor a mayor riesgo). dbo.FortiGate NO tiene columna ip_address -- ese
-// campo es local (enlace con Monitor) y nunca debe cruzar hacia SAP.
-const FORTIGATE_WRITABLE_FIELDS = new Set(['software', 'numero_serie', 'proyecto', 'fecha_expira', 'comentario']);
-
-export function pickFortiGateWritableFields(fields = {}) {
-  return Object.fromEntries(Object.entries(fields).filter(([key]) => FORTIGATE_WRITABLE_FIELDS.has(key)));
-}
-
-// Sin `sap_id` (alta hecha solo en la plataforma): inserta en dbo.FortiGate
-// y devuelve el id que SAP asigna, para que el llamador lo guarde como
+// ── Escritura de vuelta hacia SAP para catálogos sap_* de una sola tabla,
+// llave `id` autoincremental en ambos lados (guardada localmente como
+// `sap_id`) -- fortigate, dominios, unidades, impresoras, starlink.
+// Rollout de menor a mayor riesgo (ver guía en README); componentes y
+// mantenimientos necesitan resolver `activo_id` y quedan para después,
+// passwords/nvr llevan revisión extra por ser credenciales reales, y
+// documentos no tiene archivo real que reconciliar del lado de SAP.
+//
+// Sin `sap_id` (alta hecha solo en la plataforma): inserta en la tabla de
+// SAP y devuelve el id que SAP asigna, para que el llamador lo guarde como
 // sap_id local. Con `sap_id`: actualiza esa fila por su id real en SAP.
-export async function pushFortiGateToSap(fields) {
+async function pushCatalogRowToSap(sapTable, writableColumns, fields) {
   const pool = await getPool();
-  const writable = pickFortiGateWritableFields(fields);
+  const writable = Object.fromEntries(Object.entries(fields).filter(([key]) => writableColumns.has(key)));
   const columns = Object.keys(writable);
   if (fields.sap_id) {
     if (!columns.length) return { sapId: fields.sap_id };
@@ -322,22 +321,70 @@ export async function pushFortiGateToSap(fields) {
     request.input('id', sql.Int, fields.sap_id);
     for (const column of columns) request.input(column, writable[column] ?? null);
     const setClause = columns.map((column) => `${column} = @${column}`).join(', ');
-    await request.query(`UPDATE dbo.FortiGate SET ${setClause} WHERE id = @id`);
+    await request.query(`UPDATE ${sapTable} SET ${setClause} WHERE id = @id`);
     return { sapId: fields.sap_id };
   }
   if (!columns.length) throw new Error('Nada que enviar a SAP: la alta no trae campos escribibles');
   const request = pool.request();
   for (const column of columns) request.input(column, writable[column] ?? null);
   const { recordset } = await request.query(
-    `INSERT INTO dbo.FortiGate (${columns.join(',')}) OUTPUT inserted.id VALUES (${columns.map((column) => `@${column}`).join(',')})`
+    `INSERT INTO ${sapTable} (${columns.join(',')}) OUTPUT inserted.id VALUES (${columns.map((column) => `@${column}`).join(',')})`
   );
   return { sapId: recordset[0].id };
 }
 
-// ── Los otros 10 dominios: solo lectura, para el espejo sap_* ──────────
-// Sin UI todavía (ver plan) -- estas funciones solo alimentan sapSync.js.
-// Componentes/Mantenimientos/Documentos resuelven center_code en la misma
-// consulta para no tener que cargar los ids internos de SAP en MySQL.
+// dbo.FortiGate NO tiene columna ip_address -- ese campo es local (enlace
+// con Monitor) y nunca debe cruzar hacia SAP.
+const FORTIGATE_WRITABLE_FIELDS = new Set(['software', 'numero_serie', 'proyecto', 'fecha_expira', 'comentario']);
+export function pickFortiGateWritableFields(fields = {}) {
+  return Object.fromEntries(Object.entries(fields).filter(([key]) => FORTIGATE_WRITABLE_FIELDS.has(key)));
+}
+export function pushFortiGateToSap(fields) {
+  return pushCatalogRowToSap('dbo.FortiGate', FORTIGATE_WRITABLE_FIELDS, fields);
+}
+
+const DOMINIOS_WRITABLE_FIELDS = new Set(['dominio', 'servicios', 'fecha_expira', 'status', 'comentario']);
+export function pickDominiosWritableFields(fields = {}) {
+  return Object.fromEntries(Object.entries(fields).filter(([key]) => DOMINIOS_WRITABLE_FIELDS.has(key)));
+}
+export function pushDominiosToSap(fields) {
+  return pushCatalogRowToSap('dbo.Dominios', DOMINIOS_WRITABLE_FIELDS, fields);
+}
+
+const UNIDADES_WRITABLE_FIELDS = new Set(['nombre', 'activa', 'orden']);
+export function pickUnidadesWritableFields(fields = {}) {
+  return Object.fromEntries(Object.entries(fields).filter(([key]) => UNIDADES_WRITABLE_FIELDS.has(key)));
+}
+export function pushUnidadesToSap(fields) {
+  return pushCatalogRowToSap('dbo.Unidades', UNIDADES_WRITABLE_FIELDS, fields);
+}
+
+const IMPRESORAS_WRITABLE_FIELDS = new Set([
+  'usuario', 'ubicacion', 'ip_address', 'mac_address', 'hostname', 'modelo', 'numero_serie', 'conteo_paginas', 'comentario',
+]);
+export function pickImpresorasWritableFields(fields = {}) {
+  return Object.fromEntries(Object.entries(fields).filter(([key]) => IMPRESORAS_WRITABLE_FIELDS.has(key)));
+}
+export function pushImpresorasToSap(fields) {
+  return pushCatalogRowToSap('dbo.Impresoras', IMPRESORAS_WRITABLE_FIELDS, fields);
+}
+
+const STARLINK_WRITABLE_FIELDS = new Set([
+  'correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'importe_mes', 'dia_corte', 'suscripcion', 'cliente', 'comentario',
+]);
+export function pickStarlinkWritableFields(fields = {}) {
+  return Object.fromEntries(Object.entries(fields).filter(([key]) => STARLINK_WRITABLE_FIELDS.has(key)));
+}
+export function pushStarlinkToSap(fields) {
+  return pushCatalogRowToSap('dbo.Starlink', STARLINK_WRITABLE_FIELDS, fields);
+}
+
+// ── Los otros 6 dominios: solo lectura, para el espejo sap_* ───────────
+// Sin escritura de vuelta todavía -- estas funciones solo alimentan
+// sapSync.js. Componentes/Mantenimientos/Documentos resuelven center_code
+// en la misma consulta para no tener que cargar los ids internos de SAP en
+// MySQL (necesario para poder empujar de vuelta más adelante, resolviendo
+// center_code -> activo_id).
 
 export async function fetchSapComponentes() {
   const pool = await getPool();
