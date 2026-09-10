@@ -4,7 +4,7 @@ import {
   pickDominiosWritableFields, pickUnidadesWritableFields,
   pickImpresorasWritableFields, pickStarlinkWritableFields,
   pickComponentesWritableFields, pickMantenimientosWritableFields,
-  pickNvrWritableFields, pickPasswordsWritableFields,
+  pickNvrWritableFields, pickPasswordsWritableFields, pickConfigAlertasWritableFields,
 } from '../src/integrations/sapClient.js';
 
 const BOOKKEEPING = {
@@ -107,4 +107,12 @@ test('passwords NUNCA incluye password_encrypted, aunque venga en el objeto', ()
     categoria: 'Red', subcategoria: 'Router', ip: '10.0.0.1', direccion: 'Matriz', usuario: 'admin', comentario: 'ok',
   });
   assert.equal(Object.prototype.hasOwnProperty.call(picked, 'password_encrypted'), false);
+});
+
+test('config-alertas sólo envía nombre/dias_aviso/activo (nunca la llave clave como columna, ni las marcas locales)', () => {
+  const picked = pickConfigAlertasWritableFields({
+    clave: 'antivirus', nombre: 'Antivirus', dias_aviso: 45, activo: 1, ...BOOKKEEPING,
+  });
+  assert.equal(Object.prototype.hasOwnProperty.call(picked, 'clave'), false);
+  assert.deepEqual(picked, { nombre: 'Antivirus', dias_aviso: 45, activo: 1 });
 });

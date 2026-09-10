@@ -6,7 +6,7 @@ import { administratorOnly } from '../auth.js';
 import { decryptSecret, encryptSecret } from '../integrations/credentialCrypto.js';
 import {
   pushFortiGateToSap, pushDominiosToSap, pushUnidadesToSap, pushImpresorasToSap, pushStarlinkToSap,
-  pushComponentesToSap, pushMantenimientosToSap, pushNvrToSap, pushPasswordsToSap,
+  pushComponentesToSap, pushMantenimientosToSap, pushNvrToSap, pushPasswordsToSap, pushConfigAlertasToSap,
 } from '../integrations/sapClient.js';
 import { syncAllSap } from '../integrations/sapSync.js';
 import { safeDocumentPath } from '../documentStorage.js';
@@ -64,7 +64,16 @@ export const RESOURCE_CONFIG = Object.freeze({
   // edición, hasta que exista esa protección.
   unidades: { table: 'sap_unidades', columns: ['id', 'sap_id', 'nombre', 'activa', 'orden', 'record_origin', 'synced_at', 'archived_at', 'usage_kind', 'reference_id', 'review_note', 'reviewed_by', 'reviewed_at', 'review_revision', 'sap_synced_at', 'sap_sync_error'], search: ['nombre'], create: { fields: ['nombre', 'activa', 'orden'], required: ['nombre'], numbers: ['orden'], booleans: ['activa'] } },
   documentos: { table: 'sap_documentos', columns: ['id', 'sap_id', 'asset_uid', 'center_code', 'nombre', 'tipo', 'archivo', 'tamano', 'subido_por', 'sap_creado_en', 'synced_at', 'archived_at', 'local_storage_path', 'mime_type', 'sha256', 'document_origin'], search: ['center_code', 'nombre', 'tipo', 'archivo', 'subido_por'] },
-  'config-alertas': { table: 'sap_config_alertas', id: 'clave', archivable: false, columns: ['clave', 'nombre', 'dias_aviso', 'activo', 'sap_actualizado_en', 'synced_at'], search: ['clave', 'nombre'] },
+  // Sin altas (creatable:false): las claves (antivirus/fortigate/o365 hoy)
+  // las define la lógica de alertas de SAP, no tiene sentido inventar una
+  // nueva desde la plataforma. editable:true sólo permite ajustar el
+  // umbral (dias_aviso/activo/nombre) de una clave ya existente.
+  'config-alertas': {
+    table: 'sap_config_alertas', id: 'clave', archivable: false, editable: true, creatable: false,
+    columns: ['clave', 'nombre', 'dias_aviso', 'activo', 'sap_actualizado_en', 'synced_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'],
+    search: ['clave', 'nombre'],
+    create: { fields: ['nombre', 'dias_aviso', 'activo'], required: [], numbers: ['dias_aviso'], booleans: ['activo'] },
+  },
 });
 
 // Empuja un catálogo sap_* hacia SAP en segundo plano -- mismo patrón
@@ -98,6 +107,19 @@ async function pushCatalogBestEffort(table, id) {
     await pool.query(`UPDATE \`${table}\` SET sap_id = COALESCE(sap_id, ?), sap_synced_at = NOW(), sap_sync_error = NULL WHERE id = ?`, [sapId, id]);
   } catch (error) {
     await pool.query(`UPDATE \`${table}\` SET sap_sync_error = ? WHERE id = ?`, [String(error.message).slice(0, 255), id]);
+  }
+}
+
+// sap_config_alertas no tiene id/sap_id -- su llave es `clave`, así que no
+// encaja en pushCatalogBestEffort() (asume `id`).
+async function pushConfigAlertasBestEffort(clave) {
+  try {
+    const [[row]] = await pool.query('SELECT * FROM sap_config_alertas WHERE clave = ?', [clave]);
+    if (!row) return;
+    await pushConfigAlertasToSap(row);
+    await pool.query('UPDATE sap_config_alertas SET sap_synced_at = NOW(), sap_sync_error = NULL WHERE clave = ?', [clave]);
+  } catch (error) {
+    await pool.query('UPDATE sap_config_alertas SET sap_sync_error = ? WHERE clave = ?', [String(error.message).slice(0, 255), clave]);
   }
 }
 
@@ -274,6 +296,7 @@ assetSuiteRouter.get('/resources/:resource', async (req, res, next) => {
 assetSuiteRouter.post('/resources/:resource', administratorOnly, async (req, res, next) => {
   try {
     const config = resourceOrThrow(req.params.resource);
+    if (config.creatable === false) return res.status(405).json({ error: 'Este catálogo no admite altas' });
     const { values, secretValues } = normalizeResourceCreateInput(config, req.body || {});
     const storedSecrets = Object.fromEntries(Object.entries(secretValues).map(([column, value]) => [column, encryptSecret(value)]));
     const record = { ...values, ...storedSecrets, record_origin: 'local', created_by_user_id: req.portalUser.id };
@@ -359,7 +382,8 @@ assetSuiteRouter.patch('/resources/:resource/:id', administratorOnly, async (req
     }
     await pool.query(`UPDATE \`${config.table}\` SET ${setClauses.join(', ')} WHERE \`${config.id}\` = ?`, [...params, req.params.id]);
     const [rows] = await pool.query(`SELECT ${config.columns.map((column) => `\`${column}\``).join(', ')} FROM \`${config.table}\` WHERE \`${config.id}\` = ? LIMIT 1`, [req.params.id]);
-    pushCatalogBestEffort(config.table, req.params.id);
+    if (config.table === 'sap_config_alertas') pushConfigAlertasBestEffort(req.params.id);
+    else pushCatalogBestEffort(config.table, req.params.id);
     res.json({ data: rows[0] });
   } catch (error) { next(error); }
 });

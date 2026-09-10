@@ -3,7 +3,7 @@ import { pool } from '../db.js';
 import {
   isSapConfigured, fetchSapAssets, pushAssetToSap,
   pushFortiGateToSap, pushDominiosToSap, pushUnidadesToSap, pushImpresorasToSap, pushStarlinkToSap,
-  pushComponentesToSap, pushMantenimientosToSap, pushNvrToSap, pushPasswordsToSap,
+  pushComponentesToSap, pushMantenimientosToSap, pushNvrToSap, pushPasswordsToSap, pushConfigAlertasToSap,
   fetchSapComponentes, fetchSapImpresoras, fetchSapNvr, fetchSapPasswords,
   fetchSapStarlink, fetchSapFortiGate, fetchSapDominios, fetchSapMantenimientos,
   fetchSapMantenimientoComponentes, fetchSapUnidades, fetchSapConfigAlertas, fetchSapDocumentos,
@@ -69,6 +69,25 @@ export async function retryCatalogSapPushes() {
     results[table] = await retryCatalogPushes(table, pushFn);
   }
   return results;
+}
+
+// sap_config_alertas no tiene id/sap_id -- su llave es `clave`, así que no
+// encaja en retryCatalogPushes()/CATALOG_PUSH_JOBS (ambos asumen `id`).
+export async function retryConfigAlertasPushes() {
+  const [rows] = await pool.query('SELECT * FROM sap_config_alertas WHERE sap_sync_error IS NOT NULL');
+  let fixed = 0;
+  let stillFailing = 0;
+  for (const row of rows) {
+    try {
+      await pushConfigAlertasToSap(row);
+      await pool.query('UPDATE sap_config_alertas SET sap_synced_at = NOW(), sap_sync_error = NULL WHERE clave = ?', [row.clave]);
+      fixed += 1;
+    } catch (error) {
+      await pool.query('UPDATE sap_config_alertas SET sap_sync_error = ? WHERE clave = ?', [String(error.message).slice(0, 255), row.clave]);
+      stillFailing += 1;
+    }
+  }
+  return { fixed, stillFailing, attempted: rows.length };
 }
 
 // Un activo con unit_is_manual=1 tiene una corrección de unidad hecha a mano
@@ -265,14 +284,20 @@ export async function syncSapMirrors() {
   }
 
   // ConfigAlertas no tiene id propio en SAP -- su llave natural es `clave`.
+  // IF(locally_edited_at IS NULL, ...) protege una fila recién editada
+  // aquí, mismo patrón que protectColumn en mirrorRows() (esta función
+  // escribe a mano porque su llave/upsert no encaja en mirrorRows()).
   try {
     const rows = await fetchSapConfigAlertas();
     for (const row of rows) {
       await pool.query(
         `INSERT INTO sap_config_alertas (clave, nombre, dias_aviso, activo, sap_actualizado_en)
          VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), dias_aviso = VALUES(dias_aviso),
-           activo = VALUES(activo), sap_actualizado_en = VALUES(sap_actualizado_en)`,
+         ON DUPLICATE KEY UPDATE
+           nombre = IF(locally_edited_at IS NULL, VALUES(nombre), nombre),
+           dias_aviso = IF(locally_edited_at IS NULL, VALUES(dias_aviso), dias_aviso),
+           activo = IF(locally_edited_at IS NULL, VALUES(activo), activo),
+           sap_actualizado_en = IF(locally_edited_at IS NULL, VALUES(sap_actualizado_en), sap_actualizado_en)`,
         [row.clave, row.nombre, row.dias_aviso, row.activo ? 1 : 0, row.actualizado_en]
       );
     }
@@ -292,9 +317,10 @@ export function syncAllSap() {
   runningSync = (async () => {
     const retry = await retrySapPushes();
     const retryCatalogs = await retryCatalogSapPushes();
+    const retryConfigAlertas = await retryConfigAlertasPushes();
     const assets = await pullSapAssets();
     const mirrors = await syncSapMirrors();
-    return { retry, retryCatalogs, assets, mirrors };
+    return { retry, retryCatalogs, retryConfigAlertas, assets, mirrors };
   })().finally(() => { runningSync = null; });
   return runningSync;
 }

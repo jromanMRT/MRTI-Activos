@@ -43,9 +43,9 @@ test('las contraseñas locales se separan de los valores públicos y se exigen',
   assert.throws(() => normalizeResourceCreateInput(RESOURCE_CONFIG.passwords, { categoria: 'Red' }), /password/);
 });
 
-test('fortigate, impresoras, starlink, dominios, componentes, mantenimientos y nvr admiten edición manual; unidades y passwords no', () => {
+test('fortigate, impresoras, starlink, dominios, componentes, mantenimientos, nvr y config-alertas admiten edición manual; unidades y passwords no', () => {
   const editableResources = Object.entries(RESOURCE_CONFIG).filter(([, config]) => config.editable).map(([name]) => name);
-  assert.deepEqual(new Set(editableResources), new Set(['impresoras', 'starlink', 'fortigate', 'dominios', 'componentes', 'mantenimientos', 'nvr']));
+  assert.deepEqual(new Set(editableResources), new Set(['impresoras', 'starlink', 'fortigate', 'dominios', 'componentes', 'mantenimientos', 'nvr', 'config-alertas']));
   assert.equal(RESOURCE_CONFIG.unidades.editable, undefined);
   // passwords exige la contraseña como campo obligatorio en create.required;
   // permitir `editable` forzaría re-enviarla en cada PATCH aunque el edit
@@ -55,6 +55,13 @@ test('fortigate, impresoras, starlink, dominios, componentes, mantenimientos y n
   const { values } = normalizeResourceCreateInput(RESOURCE_CONFIG.fortigate, { numero_serie: 'FGT60ETK19060496', ip_address: '192.168.10.1', sap_id: 999 });
   assert.deepEqual(values, { numero_serie: 'FGT60ETK19060496', ip_address: '192.168.10.1' });
   assert.equal(Object.prototype.hasOwnProperty.call(values, 'sap_id'), false);
+});
+
+test('config-alertas no admite altas (creatable:false): las claves las define la lógica de alertas de SAP', () => {
+  const noCreate = Object.entries(RESOURCE_CONFIG).filter(([, config]) => config.creatable === false).map(([name]) => name);
+  assert.deepEqual(noCreate, ['config-alertas']);
+  const { values } = normalizeResourceCreateInput(RESOURCE_CONFIG['config-alertas'], { dias_aviso: '30', activo: '1' });
+  assert.deepEqual(values, { dias_aviso: 30, activo: 1 });
 });
 
 test('el PATCH genérico de nvr nunca puede tocar las contraseñas (normalizeResourceCreateInput sólo expone `values`, no `secretValues`)', () => {

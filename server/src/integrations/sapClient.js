@@ -485,6 +485,38 @@ export function pushPasswordsToSap(fields) {
   return pushCatalogRowToSap('dbo.Passwords', PASSWORDS_WRITABLE_FIELDS, fields);
 }
 
+// ── ConfigAlertas: llave natural `clave` compartida con SAP (sin id/sap_id
+// separado, a diferencia de los demás catálogos). Sólo edición -- las
+// claves (antivirus/fortigate/o365 hoy) las define la lógica de alertas de
+// SAP, no se crean desde la plataforma (ver RESOURCE_CONFIG en
+// assetSuite.js, creatable:false). MERGE por `clave`, mismo patrón que
+// pushAssetToSap con center_code.
+const CONFIG_ALERTAS_WRITABLE_FIELDS = new Set(['nombre', 'dias_aviso', 'activo']);
+export function pickConfigAlertasWritableFields(fields = {}) {
+  return Object.fromEntries(Object.entries(fields).filter(([key]) => CONFIG_ALERTAS_WRITABLE_FIELDS.has(key)));
+}
+export async function pushConfigAlertasToSap(fields) {
+  if (!fields.clave) throw new Error('clave es obligatoria para sincronizar con SAP');
+  const pool = await getPool();
+  const writable = pickConfigAlertasWritableFields(fields);
+  const columns = Object.keys(writable);
+  if (!columns.length) return { sapId: fields.clave };
+  const request = pool.request();
+  request.input('clave', sql.NVarChar, fields.clave);
+  for (const column of columns) request.input(column, writable[column] ?? null);
+  const setClause = columns.map((column) => `${column} = @${column}`).join(', ');
+  const insertColumns = ['clave', ...columns];
+  const insertParams = insertColumns.map((column) => `@${column}`);
+  await request.query(`
+    MERGE dbo.ConfigAlertas AS target
+    USING (SELECT @clave AS clave) AS src
+      ON target.clave = src.clave
+    WHEN MATCHED THEN UPDATE SET ${setClause}
+    WHEN NOT MATCHED THEN INSERT (${insertColumns.join(',')}) VALUES (${insertParams.join(',')});
+  `);
+  return { sapId: fields.clave };
+}
+
 // ── Los otros 2 dominios: solo lectura, para el espejo sap_* ───────────
 // Sin escritura de vuelta todavía -- estas funciones solo alimentan
 // sapSync.js. Componentes/Mantenimientos/Documentos resuelven center_code
