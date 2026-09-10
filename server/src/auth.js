@@ -36,16 +36,32 @@ export async function moduleAccessRequired(req, res, next) {
 
 // Autoservicio (Fase 7): sólo requiere una sesión válida, no acceso al
 // módulo Activos completo — mismo patrón que MRTI-RH/server/src/auth.js.
+async function resolveCurrentUser(authorization) {
+  if (!authorization) return null;
+  const response = await fetch(`${AUTH_BASE_URL}/api/auth/me`, {
+    headers: { Authorization: authorization },
+    signal: AbortSignal.timeout(5000),
+  });
+  if (response.status === 401 || response.status === 403) return null;
+  if (!response.ok) throw new Error('Core no disponible');
+  const body = await response.json();
+  if (!body.profile?.id) throw new Error('Respuesta de identidad inválida');
+  return { id: body.profile.id, name: body.profile.full_name, email: body.profile.email, role: body.profile.role };
+}
+
+// Las lecturas auxiliares conservan su contrato best-effort.
 export async function fetchCurrentUser(authorization) {
+  try { return await resolveCurrentUser(authorization); } catch { return null; }
+}
+
+// Una caída de Core no significa que la sesión haya expirado.
+async function requireCurrentUser(req, res) {
   try {
-    const response = await fetch(`${AUTH_BASE_URL}/api/auth/me`, {
-      headers: { Authorization: authorization },
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!response.ok) return null;
-    const body = await response.json();
-    return body.profile ? { id: body.profile.id, name: body.profile.full_name, email: body.profile.email, role: body.profile.role } : null;
+    const user = await resolveCurrentUser(req.headers.authorization);
+    if (!user) res.status(401).json({ error: 'Sesión inválida o expirada' });
+    return user;
   } catch {
+    res.status(503).json({ error: 'No se pudo validar la sesión con MRTI Core' });
     return null;
   }
 }
@@ -53,8 +69,8 @@ export async function fetchCurrentUser(authorization) {
 export async function portalSessionRequired(req, res, next) {
   const authorization = req.headers.authorization;
   if (!authorization) return res.status(401).json({ error: 'No autenticado' });
-  const user = await fetchCurrentUser(authorization);
-  if (!user) return res.status(401).json({ error: 'Sesión inválida o expirada' });
+  const user = await requireCurrentUser(req, res);
+  if (!user) return;
   req.portalUser = user;
   return next();
 }
@@ -80,8 +96,8 @@ export async function portalSessionOrServiceKey(req, res, next) {
 }
 
 export async function administratorOnly(req, res, next) {
-  const actor = req.portalUser || await fetchCurrentUser(req.headers.authorization);
-  if (!actor) return res.status(401).json({ error: 'No autenticado' });
+  const actor = req.portalUser || await requireCurrentUser(req, res);
+  if (!actor) return;
   if (String(actor.role || '').toLowerCase() !== 'administrator') {
     return res.status(403).json({ error: 'Esta acción está reservada para administradores' });
   }
