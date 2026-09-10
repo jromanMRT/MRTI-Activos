@@ -300,7 +300,41 @@ export async function pushAssetToSap(fields) {
   }
 }
 
-// ── Los otros 11 dominios: solo lectura, para el espejo sap_* ──────────
+// ── FortiGate: primer catálogo sap_* con escritura de vuelta (rollout de
+// menor a mayor riesgo). dbo.FortiGate NO tiene columna ip_address -- ese
+// campo es local (enlace con Monitor) y nunca debe cruzar hacia SAP.
+const FORTIGATE_WRITABLE_FIELDS = new Set(['software', 'numero_serie', 'proyecto', 'fecha_expira', 'comentario']);
+
+export function pickFortiGateWritableFields(fields = {}) {
+  return Object.fromEntries(Object.entries(fields).filter(([key]) => FORTIGATE_WRITABLE_FIELDS.has(key)));
+}
+
+// Sin `sap_id` (alta hecha solo en la plataforma): inserta en dbo.FortiGate
+// y devuelve el id que SAP asigna, para que el llamador lo guarde como
+// sap_id local. Con `sap_id`: actualiza esa fila por su id real en SAP.
+export async function pushFortiGateToSap(fields) {
+  const pool = await getPool();
+  const writable = pickFortiGateWritableFields(fields);
+  const columns = Object.keys(writable);
+  if (fields.sap_id) {
+    if (!columns.length) return { sapId: fields.sap_id };
+    const request = pool.request();
+    request.input('id', sql.Int, fields.sap_id);
+    for (const column of columns) request.input(column, writable[column] ?? null);
+    const setClause = columns.map((column) => `${column} = @${column}`).join(', ');
+    await request.query(`UPDATE dbo.FortiGate SET ${setClause} WHERE id = @id`);
+    return { sapId: fields.sap_id };
+  }
+  if (!columns.length) throw new Error('Nada que enviar a SAP: la alta no trae campos escribibles');
+  const request = pool.request();
+  for (const column of columns) request.input(column, writable[column] ?? null);
+  const { recordset } = await request.query(
+    `INSERT INTO dbo.FortiGate (${columns.join(',')}) OUTPUT inserted.id VALUES (${columns.map((column) => `@${column}`).join(',')})`
+  );
+  return { sapId: recordset[0].id };
+}
+
+// ── Los otros 10 dominios: solo lectura, para el espejo sap_* ──────────
 // Sin UI todavía (ver plan) -- estas funciones solo alimentan sapSync.js.
 // Componentes/Mantenimientos/Documentos resuelven center_code en la misma
 // consulta para no tener que cargar los ids internos de SAP en MySQL.

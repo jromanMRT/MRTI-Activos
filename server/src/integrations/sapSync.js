@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { pool } from '../db.js';
 import {
-  isSapConfigured, fetchSapAssets, pushAssetToSap,
+  isSapConfigured, fetchSapAssets, pushAssetToSap, pushFortiGateToSap,
   fetchSapComponentes, fetchSapImpresoras, fetchSapNvr, fetchSapPasswords,
   fetchSapStarlink, fetchSapFortiGate, fetchSapDominios, fetchSapMantenimientos,
   fetchSapMantenimientoComponentes, fetchSapUnidades, fetchSapConfigAlertas, fetchSapDocumentos,
@@ -22,6 +22,26 @@ export async function retrySapPushes() {
       fixed += 1;
     } catch (error) {
       await pool.query('UPDATE activos SET sap_sync_error = ? WHERE id = ?', [String(error.message).slice(0, 255), row.id]);
+      stillFailing += 1;
+    }
+  }
+  return { fixed, stillFailing, attempted: rows.length };
+}
+
+// Mismo patrón que retrySapPushes(), para el primer catálogo sap_* con
+// escritura de vuelta (fortigate). Guarda el sap_id que devuelva SAP la
+// primera vez que una alta local logra empujarse.
+export async function retryFortiGatePushes() {
+  const [rows] = await pool.query('SELECT * FROM sap_fortigate WHERE sap_sync_error IS NOT NULL');
+  let fixed = 0;
+  let stillFailing = 0;
+  for (const row of rows) {
+    try {
+      const { sapId } = await pushFortiGateToSap(row);
+      await pool.query('UPDATE sap_fortigate SET sap_id = COALESCE(sap_id, ?), sap_synced_at = NOW(), sap_sync_error = NULL WHERE id = ?', [sapId, row.id]);
+      fixed += 1;
+    } catch (error) {
+      await pool.query('UPDATE sap_fortigate SET sap_sync_error = ? WHERE id = ?', [String(error.message).slice(0, 255), row.id]);
       stillFailing += 1;
     }
   }
@@ -248,9 +268,10 @@ export function syncAllSap() {
   if (!isSapConfigured()) return Promise.resolve({ skipped: true, reason: 'SAP_DB_* no configurado' });
   runningSync = (async () => {
     const retry = await retrySapPushes();
+    const retryFortiGate = await retryFortiGatePushes();
     const assets = await pullSapAssets();
     const mirrors = await syncSapMirrors();
-    return { retry, assets, mirrors };
+    return { retry, retryFortiGate, assets, mirrors };
   })().finally(() => { runningSync = null; });
   return runningSync;
 }

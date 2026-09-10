@@ -4,6 +4,7 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { administratorOnly } from '../auth.js';
 import { decryptSecret, encryptSecret } from '../integrations/credentialCrypto.js';
+import { pushFortiGateToSap } from '../integrations/sapClient.js';
 import { syncAllSap } from '../integrations/sapSync.js';
 import { safeDocumentPath } from '../documentStorage.js';
 import { normalizeAssetDates } from '../meta.js';
@@ -37,7 +38,7 @@ export const RESOURCE_CONFIG = Object.freeze({
   starlink: { table: 'sap_starlink', columns: ['id', 'sap_id', 'correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'importe_mes', 'dia_corte', 'suscripcion', 'cliente', 'comentario', 'record_origin', 'synced_at', 'archived_at'], search: ['correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'suscripcion', 'cliente'], create: { fields: ['correo_cuenta', 'ubicacion', 'id_starlink', 'version_equipo', 'importe_mes', 'dia_corte', 'suscripcion', 'cliente', 'comentario'], required: ['id_starlink'], numbers: ['importe_mes'] } },
   fortigate: {
     table: 'sap_fortigate', editable: true,
-    columns: ['id', 'sap_id', 'asset_uid', 'software', 'numero_serie', 'proyecto', 'fecha_expira', 'ip_address', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at'],
+    columns: ['id', 'sap_id', 'asset_uid', 'software', 'numero_serie', 'proyecto', 'fecha_expira', 'ip_address', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'],
     search: ['software', 'numero_serie', 'proyecto', 'comentario'],
     create: { fields: ['software', 'numero_serie', 'proyecto', 'fecha_expira', 'ip_address', 'comentario'], required: ['numero_serie'], dates: ['fecha_expira'] },
   },
@@ -47,6 +48,22 @@ export const RESOURCE_CONFIG = Object.freeze({
   documentos: { table: 'sap_documentos', columns: ['id', 'sap_id', 'asset_uid', 'center_code', 'nombre', 'tipo', 'archivo', 'tamano', 'subido_por', 'sap_creado_en', 'synced_at', 'archived_at', 'local_storage_path', 'mime_type', 'sha256', 'document_origin'], search: ['center_code', 'nombre', 'tipo', 'archivo', 'subido_por'] },
   'config-alertas': { table: 'sap_config_alertas', id: 'clave', archivable: false, columns: ['clave', 'nombre', 'dias_aviso', 'activo', 'sap_actualizado_en', 'synced_at'], search: ['clave', 'nombre'] },
 });
+
+// Empuja fortigate hacia SAP en segundo plano -- mismo patrón "best-effort"
+// que syncToSapBestEffort() en routes/activos.js: si SAP no responde no
+// bloquea al usuario, sólo deja constancia en sap_sync_error para que
+// retryFortiGatePushes() (sapSync.js, cada SAP_SYNC_CRON) lo reintente.
+// Primer catálogo sap_* con escritura de vuelta -- ver rollout en README.
+async function pushFortiGateBestEffort(id) {
+  try {
+    const [[row]] = await pool.query('SELECT * FROM sap_fortigate WHERE id = ?', [id]);
+    if (!row) return;
+    const { sapId } = await pushFortiGateToSap(row);
+    await pool.query('UPDATE sap_fortigate SET sap_id = COALESCE(sap_id, ?), sap_synced_at = NOW(), sap_sync_error = NULL WHERE id = ?', [sapId, id]);
+  } catch (error) {
+    await pool.query('UPDATE sap_fortigate SET sap_sync_error = ? WHERE id = ?', [String(error.message).slice(0, 255), id]);
+  }
+}
 
 function resourceOrThrow(name) {
   const config = RESOURCE_CONFIG[name];
@@ -231,6 +248,7 @@ assetSuiteRouter.post('/resources/:resource', administratorOnly, async (req, res
       columns.map((column) => record[column])
     );
     const [rows] = await pool.query(`SELECT ${config.columns.map((column) => `\`${column}\``).join(', ')} FROM \`${config.table}\` WHERE \`${config.id}\` = ? LIMIT 1`, [result.insertId]);
+    if (config.table === 'sap_fortigate') pushFortiGateBestEffort(result.insertId);
     res.status(201).json({ data: rows[0] });
   } catch (error) { next(error); }
 });
@@ -303,6 +321,7 @@ assetSuiteRouter.patch('/resources/:resource/:id', administratorOnly, async (req
       [...columns.map((column) => values[column]), req.portalUser.id, assetUid, req.params.id]
     );
     const [rows] = await pool.query(`SELECT ${config.columns.map((column) => `\`${column}\``).join(', ')} FROM \`${config.table}\` WHERE \`${config.id}\` = ? LIMIT 1`, [req.params.id]);
+    if (config.table === 'sap_fortigate') pushFortiGateBestEffort(req.params.id);
     res.json({ data: rows[0] });
   } catch (error) { next(error); }
 });
