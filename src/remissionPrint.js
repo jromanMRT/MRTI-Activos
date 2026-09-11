@@ -34,8 +34,9 @@ export function buildRemissionHtml({ asset, credentials = {}, employeeProfile = 
   const employeeNumber = employeeProfile?.employee_number || asset.id_empleado;
   const employeeName = employeeProfile?.full_name || asset.usuario_asignado;
   const phone = employeeProfile?.phone || asset.cel_empleado;
-  const company = asset.empresa || employeeProfile?.company_name || 'Minera Río Tinto';
-  const unit = employeeProfile?.unit_name || asset.unidad;
+  // La empresa es laboral (RH); la unidad destino pertenece al activo.
+  const company = employeeProfile?.company_name || asset.empresa || 'Minera Río Tinto';
+  const unit = asset.unidad;
   const jobTitle = employeeProfile?.job_title || asset.correo_puesto;
   const generatedDate = calendarDate(generatedAt);
 

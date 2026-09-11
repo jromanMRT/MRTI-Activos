@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 const projectRoot = new URL('../../', import.meta.url);
 
 test('la interfaz concentra las asignaciones de personas en RH', async () => {
-  const [app, sidebar, form, suite, list, api, remission, assetEvents] = await Promise.all([
+  const [app, sidebar, form, suite, list, api, remission, assetEvents, assignmentHistory] = await Promise.all([
     readFile(new URL('src/App.jsx', projectRoot), 'utf8'),
     readFile(new URL('src/components/Sidebar.jsx', projectRoot), 'utf8'),
     readFile(new URL('src/pages/AssetFormPage.jsx', projectRoot), 'utf8'),
@@ -14,6 +14,7 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
     readFile(new URL('src/api.js', projectRoot), 'utf8'),
     readFile(new URL('src/remissionPrint.js', projectRoot), 'utf8'),
     readFile(new URL('src/assetEvents.js', projectRoot), 'utf8'),
+    readFile(new URL('src/components/AssignmentHistory.jsx', projectRoot), 'utf8'),
   ]);
   assert.doesNotMatch(sidebar, /Terceros externos|to:\s*['"]\/terceros/);
   assert.doesNotMatch(form, /Asignar a un tercero|Tercero externo \(sin ficha en RH\)/);
@@ -40,6 +41,10 @@ test('la interfaz concentra las asignaciones de personas en RH', async () => {
   assert.match(list, /inventoryRevision/);
   assert.match(list, /tab=documentos.*stopPropagation/);
   assert.match(form, /notifyAssetChanged/);
+  assert.match(form, /Unidad asignada al activo/);
+  assert.match(assignmentHistory, /Retirar registro equivocado/);
+  assert.match(remission, /const unit = asset\.unidad/);
+  assert.match(remission, /employeeProfile\?\.company_name \|\| asset\.empresa/);
   assert.match(form, /document-uploaded/);
   assert.match(form, /document-deleted/);
   assert.match(form, /action: 'assigned'/);

@@ -173,7 +173,7 @@ export function AssetFormPage({ mode }) {
             {activeTab === 'microsoft365' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['ms_password']} title="Contraseña de Microsoft / Office para la remisión" showSaveButton={false} />}
             {activeTab === 'dropbox' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['db_password']} title="Contraseña de Dropbox para la remisión" showSaveButton={false} />}
             {activeTab === 'correo' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['password_mrt', 'password_corporativo']} title="Contraseñas de correo para la remisión" showSaveButton={false} />}
-            {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} assetUnit={values.unidad} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
+            {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} assetUnit={values.unidad} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} isAdministrator={isAdministrator} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
             {activeTab === 'administracion' && mode === 'edit' && <div className="mt-2"><UnitHistoryPanel assetId={id} isAdministrator={isAdministrator} onReverted={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
             {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel assetId={id} documents={documents} error={documentsError} onError={setDocumentsError} onUploaded={(document) => setDocuments((current) => [document, ...current.filter((item) => item.id !== document.id)])} onDeleted={(documentId) => setDocuments((current) => current.filter((item) => item.id !== documentId))} />}
             {activeTab === 'monitor' && mode === 'edit' && <ObservabilityPanel assetUid={values.asset_uid} data={observability} error={observabilityError} onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))} />}
@@ -472,7 +472,7 @@ function employeeLabel(employee) {
   return `${name}${detail ? ` — ${detail}` : ''}${employee.employment_status !== 'active' ? ' (baja)' : ''}`;
 }
 
-export function AssignmentPanel({ assetId, assetUnit, portalUserId, terceroId, rhEmployeeId, usuarioAsignado, onChange }) {
+export function AssignmentPanel({ assetId, assetUnit, portalUserId, terceroId, rhEmployeeId, usuarioAsignado, isAdministrator = false, onChange }) {
   const [historyRevision, setHistoryRevision] = useState(0);
   const [employees, setEmployees] = useState([]);
   const [employeeSearch, setEmployeeSearch] = useState('');
@@ -482,6 +482,7 @@ export function AssignmentPanel({ assetId, assetUnit, portalUserId, terceroId, r
   const [holderProfile, setHolderProfile] = useState(null);
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [unitBusy, setUnitBusy] = useState(false);
 
   useEffect(() => {
     rhDirectoryFetch(employeeSearch).then(setEmployees).catch((err) => setError(err.message));
@@ -559,6 +560,20 @@ export function AssignmentPanel({ assetId, assetUnit, portalUserId, terceroId, r
     }
   }
 
+  async function changeUnit(nextUnit) {
+    setUnitBusy(true);
+    setError('');
+    try {
+      await apiFetch(`/activos/${assetId}`, { method: 'PATCH', body: JSON.stringify({ unidad: nextUnit || null }) });
+      notifyAssetChanged({ assetId, action: 'unit-updated' });
+      await onChange();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUnitBusy(false);
+    }
+  }
+
   return (
     <fieldset className="border border-slate-800 rounded-xl p-4">
       <legend className="text-sm font-semibold text-slate-300 px-1">Asignación</legend>
@@ -581,7 +596,11 @@ export function AssignmentPanel({ assetId, assetUnit, portalUserId, terceroId, r
           </button>
         )}
       </div>
-      <p className="mt-4 text-sm text-slate-300">Unidad asignada al activo: <strong>{assignedUnit(assetUnit)}</strong></p>
+      <div className="mt-4 max-w-md">
+        <label className="mb-1 block text-xs text-slate-400">Unidad asignada al activo</label>
+        <UnitField value={assetUnit} onChange={changeUnit} />
+        <p className="mt-1 text-xs text-slate-500">Se guarda al elegirla. Valor actual: {assignedUnit(assetUnit)}{unitBusy ? ' · Guardando…' : ''}</p>
+      </div>
       {(profileLoading || holderProfile) && (
         <div className="mt-4">
           {profileLoading ? <p className="text-sm text-slate-500">Consultando ficha vigente en RH…</p> : <EmployeeAssignmentDetails profile={holderProfile} />}
@@ -622,7 +641,7 @@ export function AssignmentPanel({ assetId, assetUnit, portalUserId, terceroId, r
           Si la persona no viene de CONTPAQi, regístrala como colaborador en <a href="/rh/empleados/nuevo" className="text-sky-400 hover:underline">MRTI RH</a> y después selecciónala aquí.
         </p>
       </div>
-      <AssignmentHistory assetId={assetId} revision={historyRevision} />
+      <AssignmentHistory assetId={assetId} revision={historyRevision} isAdministrator={isAdministrator} onChanged={() => setHistoryRevision(n => n + 1)} />
     </fieldset>
   );
 }
@@ -943,9 +962,12 @@ export function AssetField({ field, value, onChange }) {
           type={field.type === 'number' ? 'number' : 'text'}
           className={commonClass}
           value={value ?? ''}
+          readOnly={field.readOnly}
+          disabled={field.readOnly}
           onChange={(e) => onChange(field.key, e.target.value)}
         />
       )}
+      {field.readOnly && <span className="mt-1 block text-xs text-slate-500">Se actualiza automáticamente al asignar una persona desde RH.</span>}
     </label>
   );
 }

@@ -38,3 +38,37 @@ export async function getOrgUnit(unitId, authorization) {
     return null;
   }
 }
+
+export async function getAssetAssignmentProfile(authorization, { employeeId, portalUserId }) {
+  const params = new URLSearchParams(employeeId
+    ? { employee_id: String(employeeId) }
+    : { portal_user_id: String(portalUserId) });
+  let response;
+  try {
+    response = await fetch(`${MRTI_RH_URL}/api/rh-self/asset-assignment-profile?${params}`, {
+      headers: authorization ? { Authorization: authorization } : {},
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch {
+    const error = new Error('No se pudo consultar la ficha laboral en RH');
+    error.status = 503;
+    throw error;
+  }
+  if (response.status === 404) {
+    const error = new Error('El empleado no existe en RH');
+    error.status = 400;
+    throw error;
+  }
+  if (!response.ok) {
+    const error = new Error('RH no pudo validar la empresa del empleado');
+    error.status = response.status === 401 || response.status === 403 ? response.status : 503;
+    throw error;
+  }
+  const body = await response.json();
+  if (!body?.data?.full_name) {
+    const error = new Error('RH devolvió una ficha laboral incompleta');
+    error.status = 503;
+    throw error;
+  }
+  return body.data;
+}

@@ -8,6 +8,7 @@ import { administratorOnly, fetchCurrentUser } from '../auth.js';
 import { assetDocumentUpload, cleanOriginalFilename, detectAssetDocument, removeStoredAssetDocument, storeAssetDocument } from '../documentStorage.js';
 import { canDeleteAssetDocument } from '../domain/documentPermissions.js';
 import { captureUnit, saveAssetFields } from '../domain/unitReview.js';
+import { getAssetAssignmentProfile } from '../integrations/rhClient.js';
 
 // Empuja el renglón recién creado/editado hacia SAP (ver plan de la
 // integración SAP: copia local + escritura en ambos lados). Si SAP no está
@@ -251,7 +252,7 @@ activosRouter.get('/:id/asignaciones', async (req, res, next) => {
       `SELECT a.*, t.nombre AS tercero_nombre, t.organizacion AS tercero_organizacion
          FROM activo_asignaciones a
          LEFT JOIN terceros t ON t.id = a.tercero_id
-        WHERE a.asset_uid = ?
+        WHERE a.asset_uid = ? AND a.archived_at IS NULL
         ORDER BY a.assigned_at DESC`,
       [asset.asset_uid]
     );
@@ -284,13 +285,19 @@ activosRouter.post('/:id/asignaciones', async (req, res, next) => {
     }
 
     let usuarioAsignado = req.body?.user_name || null;
+    let empresaAsignada = null;
     if (terceroId) {
       const [[tercero]] = await connection.query('SELECT nombre, organizacion FROM terceros WHERE id = ? AND estado <> \'Inactivo\'', [terceroId]);
       if (!tercero) return res.status(400).json({ error: 'El tercero indicado no existe o está inactivo' });
       usuarioAsignado = tercero.organizacion ? `${tercero.nombre} (${tercero.organizacion})` : tercero.nombre;
     }
-    if (rhEmployeeId && !usuarioAsignado) {
-      return res.status(400).json({ error: 'user_name es obligatorio al asignar por rh_employee_id' });
+    if (portalUserId || rhEmployeeId) {
+      const profile = await getAssetAssignmentProfile(req.headers.authorization, {
+        employeeId: rhEmployeeId,
+        portalUserId,
+      });
+      usuarioAsignado = profile.full_name;
+      empresaAsignada = profile.company_name || null;
     }
 
     const [[asset]] = await connection.query('SELECT asset_uid FROM activos WHERE id = ?', [req.params.id]);
@@ -307,8 +314,8 @@ activosRouter.post('/:id/asignaciones', async (req, res, next) => {
       [assignmentId, asset.asset_uid, portalUserId, terceroId, rhEmployeeId, req.body?.notes || null]
     );
     await connection.query(
-      'UPDATE activos SET portal_user_id = ?, tercero_id = ?, rh_employee_id = ?, usuario_asignado = ? WHERE id = ?',
-      [portalUserId, terceroId, rhEmployeeId, usuarioAsignado, req.params.id]
+      'UPDATE activos SET portal_user_id = ?, tercero_id = ?, rh_employee_id = ?, usuario_asignado = ?, empresa = ? WHERE id = ?',
+      [portalUserId, terceroId, rhEmployeeId, usuarioAsignado, empresaAsignada, req.params.id]
     );
     await connection.commit();
     res.status(201).json({ data: { id: assignmentId, asset_uid: asset.asset_uid, portal_user_id: portalUserId, tercero_id: terceroId, rh_employee_id: rhEmployeeId } });
@@ -317,6 +324,40 @@ activosRouter.post('/:id/asignaciones', async (req, res, next) => {
     next(error);
   } finally {
     connection.release();
+  }
+});
+
+// Corrección administrativa recuperable: sólo oculta movimientos finalizados.
+// La asignación vigente debe cerrarse primero mediante la operación canónica.
+activosRouter.delete('/:id/asignaciones/:assignmentId', administratorOnly, async (req, res, next) => {
+  const reason = String(req.body?.reason || '').trim();
+  if (reason.length < 8 || reason.length > 1000) {
+    return res.status(400).json({ error: 'Indica un motivo de 8 a 1000 caracteres' });
+  }
+  try {
+    const [result] = await pool.query(
+      `UPDATE activo_asignaciones aa
+       JOIN activos a ON a.asset_uid = aa.asset_uid
+          SET aa.archived_at = CURRENT_TIMESTAMP,
+              aa.archived_by = ?, aa.archive_reason = ?
+        WHERE a.id = ? AND aa.id = ?
+          AND aa.unassigned_at IS NOT NULL AND aa.archived_at IS NULL`,
+      [req.portalUser.id, reason, req.params.id, req.params.assignmentId]
+    );
+    if (!result.affectedRows) {
+      const [[assignment]] = await pool.query(
+        `SELECT aa.unassigned_at, aa.archived_at
+           FROM activo_asignaciones aa JOIN activos a ON a.asset_uid = aa.asset_uid
+          WHERE a.id = ? AND aa.id = ?`,
+        [req.params.id, req.params.assignmentId]
+      );
+      if (!assignment) return res.status(404).json({ error: 'Movimiento de asignación no encontrado' });
+      if (!assignment.unassigned_at) return res.status(409).json({ error: 'La asignación vigente debe cerrarse antes de retirarla del historial' });
+      return res.status(409).json({ error: 'El movimiento ya fue retirado del historial' });
+    }
+    return res.json({ data: { id: req.params.assignmentId, archived: true } });
+  } catch (error) {
+    return next(error);
   }
 });
 

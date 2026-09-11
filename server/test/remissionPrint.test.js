@@ -9,6 +9,7 @@ test('la remisión escapa datos dinámicos e imprime las credenciales autorizada
       empresa: 'Empresa & Asociados',
       usuario_asignado: 'Nombre antiguo',
       id_empleado: '001',
+      unidad: 'Unidad Norte',
       win_usuario: 'usuario.local',
       win_password: 'SECRETO-WINDOWS',
       ms_password: 'SECRETO-MICROSOFT',
@@ -18,7 +19,7 @@ test('la remisión escapa datos dinámicos e imprime las credenciales autorizada
       employee_number: '1978',
       full_name: 'Nombre vigente',
       company_name: 'Empresa RH',
-      unit_name: 'Unidad Norte',
+      unit_name: 'Empresa Nómina',
       area_name: 'Operaciones',
       job_title: 'Supervisión',
       phone: '6140000000',
@@ -37,10 +38,11 @@ test('la remisión escapa datos dinámicos e imprime las credenciales autorizada
   assert.equal(escapeRemissionHtml('<b>uno & dos</b>'), '&lt;b&gt;uno &amp; dos&lt;/b&gt;');
   assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
   assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
-  assert.match(html, /Empresa &amp; Asociados/);
+  assert.match(html, /Empresa RH/);
   assert.match(html, /Nombre vigente/);
   assert.match(html, /1978/);
   assert.match(html, /Unidad Norte/);
+  assert.doesNotMatch(html, /Empresa Nómina/);
   assert.doesNotMatch(html, /Nombre antiguo/);
   assert.doesNotMatch(html, /SECRETO-WINDOWS|SECRETO-MICROSOFT|SECRETO-DROPBOX/);
   assert.match(html, /&lt;clave-windows&gt;/);
