@@ -1,3 +1,5 @@
+import { AssignmentHistory } from '../components/AssignmentHistory.jsx';
+import { assignedUnit } from '../assignmentHistory.js';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiPreview, apiDownload, apiFetch, apiUpload, obsFetch, obsLinkDevice, obsUnlinkedDevices, rhAssetAssignmentProfileFetch, rhDirectoryFetch, ticketsFetch } from '../api.js';
@@ -171,7 +173,7 @@ export function AssetFormPage({ mode }) {
             {activeTab === 'microsoft365' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['ms_password']} title="Contraseña de Microsoft / Office para la remisión" showSaveButton={false} />}
             {activeTab === 'dropbox' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['db_password']} title="Contraseña de Dropbox para la remisión" showSaveButton={false} />}
             {activeTab === 'correo' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['password_mrt', 'password_corporativo']} title="Contraseñas de correo para la remisión" showSaveButton={false} />}
-            {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
+            {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} assetUnit={values.unidad} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
             {activeTab === 'administracion' && mode === 'edit' && <div className="mt-2"><UnitHistoryPanel assetId={id} isAdministrator={isAdministrator} onReverted={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
             {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel assetId={id} documents={documents} error={documentsError} onError={setDocumentsError} onUploaded={(document) => setDocuments((current) => [document, ...current.filter((item) => item.id !== document.id)])} onDeleted={(documentId) => setDocuments((current) => current.filter((item) => item.id !== documentId))} />}
             {activeTab === 'monitor' && mode === 'edit' && <ObservabilityPanel assetUid={values.asset_uid} data={observability} error={observabilityError} onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))} />}
@@ -470,7 +472,8 @@ function employeeLabel(employee) {
   return `${name}${detail ? ` — ${detail}` : ''}${employee.employment_status !== 'active' ? ' (baja)' : ''}`;
 }
 
-export function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId, usuarioAsignado, onChange }) {
+export function AssignmentPanel({ assetId, assetUnit, portalUserId, terceroId, rhEmployeeId, usuarioAsignado, onChange }) {
+  const [historyRevision, setHistoryRevision] = useState(0);
   const [employees, setEmployees] = useState([]);
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
@@ -530,6 +533,7 @@ export function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId
         body: JSON.stringify({ ...holder, user_name: employeeName }),
       });
       notifyAssetChanged({ assetId, action: 'assigned' });
+      setHistoryRevision(n => n + 1);
       setSelectedEmployeeId('');
       await onChange();
     } catch (err) {
@@ -546,6 +550,7 @@ export function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId
     try {
       await apiFetch(`/activos/${assetId}/asignacion`, { method: 'DELETE' });
       notifyAssetChanged({ assetId, action: 'unassigned' });
+      setHistoryRevision(n => n + 1);
       await onChange();
     } catch (err) {
       setError(err.message);
@@ -576,6 +581,7 @@ export function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId
           </button>
         )}
       </div>
+      <p className="mt-4 text-sm text-slate-300">Unidad asignada al activo: <strong>{assignedUnit(assetUnit)}</strong></p>
       {(profileLoading || holderProfile) && (
         <div className="mt-4">
           {profileLoading ? <p className="text-sm text-slate-500">Consultando ficha vigente en RH…</p> : <EmployeeAssignmentDetails profile={holderProfile} />}
@@ -616,6 +622,7 @@ export function AssignmentPanel({ assetId, portalUserId, terceroId, rhEmployeeId
           Si la persona no viene de CONTPAQi, regístrala como colaborador en <a href="/rh/empleados/nuevo" className="text-sky-400 hover:underline">MRTI RH</a> y después selecciónala aquí.
         </p>
       </div>
+      <AssignmentHistory assetId={assetId} revision={historyRevision} />
     </fieldset>
   );
 }
@@ -698,7 +705,6 @@ function EmployeeAssignmentDetails({ profile, title = 'Datos vigentes en RH' }) 
     ['Empresa', profile.company_name],
     ['Número de empleado', profile.employee_number],
     ['Empleado', profile.full_name],
-    ['Unidad', profile.unit_name],
     ['Área', profile.area_name],
     ['Celular', profile.phone],
   ];
