@@ -48,31 +48,38 @@ export function buildRemissionHtml({ asset, credentials = {}, employeeProfile = 
   <title>Remisión ${value(asset.center_code, '')}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,sans-serif;font-size:9pt;color:#000;background:#fff}
-    html,body{height:auto!important;width:100%}
-    .page{width:100%;max-width:205.9mm;padding:3mm 5mm 0;margin:0 auto}
-    @page{margin:5mm;size:215.9mm 279.4mm}
-    .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:4px;margin-bottom:6px}
-    .empresa{font-size:13pt;font-weight:bold}
-    .titulo{font-size:11pt;font-weight:bold;text-align:center;margin-top:2px}
-    .remision-info{text-align:right;font-size:8pt}
+    @page{size:Letter portrait;margin:6mm}
+    html,body{width:100%;min-height:100%;background:#e7e7e7}
+    body{font-family:Arial,Helvetica,sans-serif;font-size:9.5pt;line-height:1.2;color:#000}
+    .page{display:flex;min-height:267.4mm;width:203.9mm;margin:8mm auto;padding:3mm;background:#fff;box-shadow:0 2mm 8mm #0003}
+    .sheet{display:flex;min-width:0;flex:1;flex-direction:column}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;gap:7mm;border-bottom:2px solid #000;padding-bottom:1.5mm;margin-bottom:1.5mm}
+    .header>div:first-child{min-width:0;flex:1}
+    .empresa{font-size:13pt;font-weight:bold;line-height:1.1;overflow-wrap:anywhere}
+    .titulo{font-size:11pt;font-weight:bold;margin-top:.7mm}
+    .remision-info{flex:0 0 60mm;text-align:right;font-size:8.5pt;line-height:1.3}
     .remision-num{font-size:10pt;font-weight:bold}
-    table{width:100%;border-collapse:collapse;margin-bottom:5px}
-    th,td{border:1px solid #000;padding:3px 5px;font-size:8.5pt;vertical-align:top}
+    table{width:100%;table-layout:fixed;border-collapse:collapse;margin-bottom:1.5mm}
+    th,td{border:1px solid #000;padding:.9mm 1.5mm;font-size:8.7pt;line-height:1.15;vertical-align:top;overflow-wrap:anywhere}
     th{background:#d0d0d0;font-weight:bold;text-align:left}
-    .section-title{background:#404040;color:#fff;font-weight:bold;font-size:8.5pt;padding:3px 5px;margin-top:6px;margin-bottom:2px}
-    .condiciones{border:1px solid #000;padding:5px;font-size:7.5pt;margin-top:5px}
-    .condiciones p{margin-bottom:2px}
-    .firmas{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:15px}
-    .firma-box{border-top:1px solid #000;padding-top:4px;text-align:center;font-size:8pt}
-    .footer-info{font-size:7pt;color:#555;text-align:right;margin-top:3px}
-    table,.condiciones,.firmas{break-inside:avoid;page-break-inside:avoid}
-    .pin-box{border:2px solid #000;display:inline-block;padding:2px 8px;font-size:9pt;font-weight:bold}
-    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{height:auto!important;overflow:visible!important}.page{width:100%;max-width:none;padding:3mm 4mm 0;page-break-after:avoid!important;page-break-inside:avoid!important}@page{margin:5mm;size:215.9mm 279.4mm}}
+    .section-title{background:#404040;color:#fff;font-weight:bold;font-size:8.7pt;line-height:1.15;padding:.9mm 1.5mm;margin-top:1mm;margin-bottom:.5mm}
+    .condiciones{border:1px solid #000;padding:1.5mm;font-size:8pt;line-height:1.15;margin-top:1mm}
+    .condiciones p{margin-bottom:.45mm}
+    .condiciones p:last-child{margin-bottom:0}
+    .signatures{margin-top:auto;padding-top:6mm}
+    .firmas{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5mm}
+    .firma-box{min-height:15mm;border-top:1px solid #000;padding-top:1.2mm;text-align:center;font-size:8pt;line-height:1.2}
+    .footer-info{font-size:7.5pt;color:#555;text-align:right;margin-top:1.5mm}
+    table,.header,.condiciones,.signatures{break-inside:avoid;page-break-inside:avoid}
+    @media print{
+      html,body{min-height:0;background:#fff}
+      body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      .page{width:203.9mm;min-height:267.4mm;margin:0;padding:3mm;box-shadow:none;break-after:avoid;page-break-after:avoid}
+    }
   </style>
 </head>
 <body>
-  <div class="page">
+  <div class="page"><div class="sheet">
     <div class="header">
       <div><div class="empresa">${value(company)}</div><div class="titulo">REMISION DE ENTREGA DE EQUIPO</div></div>
       <div class="remision-info">
@@ -127,13 +134,15 @@ export function buildRemissionHtml({ asset, credentials = {}, employeeProfile = 
       <p>7.- PROHIBIDO ESTRICTAMENTE LA INSTALACION DE SOFTWARE NO RECOMENDADO.</p>
     </div>
 
-    <div class="firmas">
-      <div class="firma-box"><br><br><strong>${value(employeeNumber, '')} // ${value(employeeName, '')}</strong><br>Responsable del Equipo</div>
-      <div class="firma-box"><br><br>Nombre, Firma y Fecha<br>Envio RH - Recepcion de Equipo</div>
-      <div class="firma-box"><br><br>Nombre, Firma y Fecha<br>Autorizacion TI</div>
+    <div class="signatures">
+      <div class="firmas">
+        <div class="firma-box"><strong>${value(employeeNumber, '')} // ${value(employeeName, '')}</strong><br>Responsable del Equipo</div>
+        <div class="firma-box">Nombre, Firma y Fecha<br>Envio RH - Recepcion de Equipo</div>
+        <div class="firma-box">Nombre, Firma y Fecha<br>Autorizacion TI</div>
+      </div>
+      <div class="footer-info">${value(asset.center_code)} | ${value(asset.service_tag, '')} | Generado: ${value(generatedAt.toLocaleDateString('es-MX'))}</div>
     </div>
-    <div class="footer-info">${value(asset.center_code)} | ${value(asset.service_tag, '')} | Generado: ${value(generatedAt.toLocaleDateString('es-MX'))}</div>
-  </div>
+  </div></div>
 </body>
 </html>`;
 }

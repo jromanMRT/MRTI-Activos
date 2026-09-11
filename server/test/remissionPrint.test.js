@@ -51,7 +51,9 @@ test('la remisión escapa datos dinámicos e imprime las credenciales autorizada
   assert.match(html, /CLAVE-CORPORATIVA/);
   assert.match(html, /CLAVE-DROPBOX/);
   assert.match(html, /Password/);
-  assert.match(html, /size:215\.9mm 279\.4mm/);
+  assert.match(html, /size:Letter portrait/);
+  assert.match(html, /width:203\.9mm;min-height:267\.4mm/);
+  assert.match(html, /class="signatures"/);
 });
 
 test('mantiene independientes Microsoft y el correo corporativo en la remisión', () => {
