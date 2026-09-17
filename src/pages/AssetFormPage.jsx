@@ -6,6 +6,7 @@ import { apiPreview, apiDownload, apiFetch, apiUpload, obsFetch, obsLinkDevice, 
 import { openAssetRemission } from '../remissionPrint.js';
 import { notifyAssetChanged } from '../assetEvents.js';
 import { inventoryReturnHref } from '../unitInventory.js';
+import { unitHistoryLabel } from '../unitHistory.js';
 
 function currentProfile() {
   try { return JSON.parse(localStorage.getItem('auth_profile') || '{}'); } catch { return {}; }
@@ -691,15 +692,15 @@ function UnitHistoryPanel({ assetId, isAdministrator, onReverted }) {
       ) : (
         <div className="space-y-2">
           {history.map((change, index) => {
-            const before = JSON.parse(change.before_json);
-            const after = JSON.parse(change.after_json);
+            const before = unitHistoryLabel(change.before_json);
+            const after = unitHistoryLabel(change.after_json);
             return (
               <div key={change.id} className="rounded-lg bg-slate-900 p-3 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span>
-                    <span className="text-slate-500">{before.unidad || 'Sin unidad'}</span>
+                    <span className="text-slate-500">{before}</span>
                     <span className="mx-2 text-slate-600">→</span>
-                    <span className="text-slate-100">{after.unidad || 'Sin unidad'}</span>
+                    <span className="text-slate-100">{after}</span>
                     {change.reverses_id && <span className="ml-2 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-300">Reversión</span>}
                   </span>
                   {isAdministrator && index === 0 && (
