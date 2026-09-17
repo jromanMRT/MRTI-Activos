@@ -3,7 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cron from 'node-cron';
-import { moduleAccessRequired } from './auth.js';
+import { moduleAccessRequired, portalSessionRequired } from './auth.js';
+import { technicalNotesRouter } from './routes/technicalNotes.js';
 import { activosRouter } from './routes/activos.js';
 import { activosSelfRouter } from './routes/activosSelf.js';
 import { tercerosRouter } from './routes/terceros.js';
@@ -21,6 +22,7 @@ app.use(express.json({ limit: '5mb' }));
 app.use(auditMutations());
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
+app.use('/api/technical-notes', moduleAccessRequired, portalSessionRequired, technicalNotesRouter);
 
 app.use('/api/activos', moduleAccessRequired, auditRouter, offboardingRouter, activosRouter);
 app.use('/api/activos-suite', moduleAccessRequired, assetSuiteRouter);

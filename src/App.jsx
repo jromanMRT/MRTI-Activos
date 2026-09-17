@@ -5,6 +5,7 @@ import { UnitInventoryPage } from './pages/UnitInventoryPage.jsx';
 import { AssetFormPage } from './pages/AssetFormPage.jsx';
 import { AssetAlertsPage, AssetCatalogPage, AssetSuiteOverviewPage } from './pages/AssetSuitePage.jsx';
 import { EmployeeOffboardingPage } from './pages/EmployeeOffboardingPage.jsx';
+import { TechnicalNotesPage } from './pages/TechnicalNotesPage.jsx';
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<AssetSuiteOverviewPage />} />
         <Route path="/inventario" element={<ListPage />} />
+        <Route path="/notas-tecnicas" element={<TechnicalNotesPage />} />
         <Route path="/inventario/unidades" element={<UnitInventoryPage />} />
         <Route path="/terceros" element={<Navigate replace to="/inventario" />} />
         <Route path="/operacion" element={<Navigate replace to="/" />} />

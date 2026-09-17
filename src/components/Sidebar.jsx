@@ -5,6 +5,7 @@ import { useTheme } from '../hooks/useTheme.js';
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: 'dashboard' },
   { to: '/inventario', label: 'Inventario', icon: 'inventory' },
+  { to: '/notas-tecnicas', label: 'Notas técnicas', icon: 'notes' },
   { to: '/alertas', label: 'Alertas', icon: 'alert' },
   { to: '/bajas-personal', label: 'Bajas de personal', icon: 'offboarding' },
   { to: '/catalogos/credenciales', label: 'Credenciales', icon: 'catalog' },
@@ -113,6 +114,7 @@ function CollapseIcon({ collapsed }) {
 
 function NavIcon({ name }) {
   const paths = {
+    notes: <><path d="M14 3H5v18h14V8Z" /><path d="M14 3v5h5M8 12h8M8 16h6" /></>,
     inventory: <><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></>,
     people: <><circle cx="9" cy="8" r="3.5" /><path d="M3 20a6 6 0 0 1 12 0M16 5.5a3 3 0 0 1 0 5.8M17 15a5 5 0 0 1 4 5" /></>,
     dashboard: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
