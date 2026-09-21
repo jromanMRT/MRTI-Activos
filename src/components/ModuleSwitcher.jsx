@@ -16,5 +16,5 @@ export function ModuleSwitcher() {
       .catch(() => setApplications([]));
   }, []);
   function navigate(event) { if (event.target.value) window.location.assign(event.target.value); }
-  return <label className="portal-module-switcher"><span>Cambiar módulo</span><select value="" onChange={navigate} aria-label="Cambiar de módulo"><option value="" disabled>MRTI Activos</option><option value="/">Mi espacio</option>{applications.filter((application) => application.code !== 'activos').map((application) => <option key={application.code} value={applicationHref(application)}>{application.name}</option>)}</select></label>;
+  return <label className="portal-module-switcher"><span>Cambiar módulo</span><select value="" onChange={navigate} aria-label="Cambiar de módulo"><option value="" disabled>MRTI Activos</option><option value="/mi-espacio">Mi espacio</option>{applications.filter((application) => application.code !== 'activos').map((application) => <option key={application.code} value={applicationHref(application)}>{application.name}</option>)}</select></label>;
 }

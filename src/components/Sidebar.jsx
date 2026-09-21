@@ -41,7 +41,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
       }`}
     >
       <div className={`portal-module-brand portal-module-brand-row flex items-center gap-3 p-4 border-b border-slate-800 ${collapsed ? 'justify-center' : ''}`}>
-        <a href="/" title="Ir a MRTI Core" aria-label="Ir a MRTI Core" className={`portal-module-brand-home flex w-full items-center gap-3 rounded-xl ${collapsed ? 'justify-center' : ''}`}>
+        <a href="/mi-espacio" title="Ir a MRTI Core" aria-label="Ir a MRTI Core" className={`portal-module-brand-home flex w-full items-center gap-3 rounded-xl ${collapsed ? 'justify-center' : ''}`}>
           <span className="portal-module-brand-link grid h-[42px] w-[42px] shrink-0 place-items-center rounded-xl">
           <img src={logoUrl} alt="" className="h-[34px] w-[34px]" />
           </span>
