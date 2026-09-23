@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS activos (
   ms_suscripcion VARCHAR(60) NULL,
   fecha_suscripcion DATETIME NULL,
   anos_suscripcion TINYINT UNSIGNED NULL,
+  ms_vencimiento DATE NULL,
   db_cuenta VARCHAR(60) NULL,
   db_usuario VARCHAR(80) NULL,
   db_licencia VARCHAR(80) NULL,

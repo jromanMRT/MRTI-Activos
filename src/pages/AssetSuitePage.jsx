@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { apiPreview, apiDownload, apiFetch, obsFetch } from '../api.js';
 import { AssetField, AssignmentPanel, ObservabilityPanel } from './AssetFormPage.jsx';
 
 export const CATALOGS = {
-  credenciales: { title: 'Credenciales de equipos', description: 'Cuentas y licencias asociadas. Las contraseñas de los activos no se copian.', columns: [['center_code', 'Código TI'], ['usuario_asignado', 'Usuario'], ['win_usuario', 'Windows'], ['ms_usuario', 'Microsoft'], ['ms_licencia', 'Licencia'], ['correo_mrt', 'Correo MRT'], ['av_caducidad', 'Caducidad antivirus']] },
+  credenciales: { title: 'Credenciales de equipos', description: 'Cuentas y licencias asociadas. Las contraseñas de los activos no se copian.', columns: [['center_code', 'Código TI'], ['usuario_asignado', 'Usuario'], ['win_usuario', 'Windows'], ['ms_usuario', 'Microsoft'], ['ms_licencia', 'Licencia'], ['ms_vencimiento', 'Vencimiento Microsoft 365'], ['correo_mrt', 'Correo MRT'], ['av_caducidad', 'Vencimiento antivirus']] },
   componentes: { title: 'Componentes', columns: [['center_code', 'Código TI'], ['code', 'Código'], ['nombre', 'Nombre'], ['tipo', 'Tipo'], ['marca', 'Marca'], ['modelo', 'Modelo'], ['serial_service_tag', 'Serie'], ['usuario', 'Usuario']] },
   impresoras: { title: 'Impresoras', columns: [['usuario', 'Usuario'], ['ubicacion', 'Ubicación'], ['ip_address', 'IP'], ['hostname', 'Host'], ['modelo', 'Modelo'], ['numero_serie', 'Serie'], ['conteo_paginas', 'Páginas']] },
   nvr: { title: 'NVR y CCTV', secret: true, columns: [['alias', 'Alias'], ['device_domain', 'Dominio'], ['device_serial', 'Serie'], ['ip_port', 'IP / puerto'], ['status', 'Estado'], ['usuario', 'Usuario'], ['localidad', 'Localidad'], ['ubicacion', 'Ubicación']] },
@@ -19,7 +19,7 @@ export const CATALOGS = {
 };
 
 const CATALOG_CREATE_FORMS = {
-  credenciales: { endpoint: '/activos', singular: 'credencial de equipo', note: 'El código TI crea un activo nuevo; después podrás completar su ficha y asignación.', fields: [['center_code', 'Código TI', 'text', true], ['tipo', 'Tipo', 'select', false, ['Laptop', 'PC', 'Servidor']], ['descripcion', 'Descripción'], ['win_cuenta', 'Cuenta Windows'], ['win_usuario', 'Usuario Windows'], ['ms_cuenta', 'Cuenta Microsoft 365'], ['ms_usuario', 'Usuario Microsoft 365'], ['ms_licencia', 'Licencia Microsoft 365'], ['db_cuenta', 'Cuenta Dropbox'], ['db_usuario', 'Usuario Dropbox'], ['db_licencia', 'Licencia Dropbox'], ['correo_mrt', 'Correo MRT', 'email'], ['correo_corporativo', 'Correo corporativo', 'email'], ['av_licencia', 'Licencia antivirus'], ['av_caducidad', 'Caducidad antivirus', 'date']] },
+  credenciales: { endpoint: '/activos', singular: 'credencial de equipo', note: 'El código TI crea un activo nuevo; después podrás completar su ficha y asignación.', fields: [['center_code', 'Código TI', 'text', true], ['tipo', 'Tipo', 'select', false, ['Laptop', 'PC', 'Servidor']], ['descripcion', 'Descripción'], ['win_cuenta', 'Cuenta Windows'], ['win_usuario', 'Usuario Windows'], ['ms_cuenta', 'Cuenta Microsoft 365'], ['ms_usuario', 'Usuario Microsoft 365'], ['ms_licencia', 'Licencia Microsoft 365'], ['ms_vencimiento', 'Vencimiento Microsoft 365', 'date'], ['db_cuenta', 'Cuenta Dropbox'], ['db_usuario', 'Usuario Dropbox'], ['db_licencia', 'Licencia Dropbox'], ['correo_mrt', 'Correo MRT', 'email'], ['correo_corporativo', 'Correo corporativo', 'email'], ['av_licencia', 'Licencia antivirus'], ['av_caducidad', 'Vencimiento antivirus', 'date']] },
   componentes: { singular: 'componente', fields: [['center_code', 'Código TI del activo'], ['code', 'Código'], ['nombre', 'Nombre', 'text', true], ['tipo', 'Tipo'], ['marca', 'Marca'], ['modelo', 'Modelo'], ['serial_service_tag', 'Serie / service tag'], ['firmware', 'Firmware'], ['ip_address', 'Dirección IP'], ['mac_address', 'Dirección MAC'], ['hostname', 'Hostname'], ['unidad', 'Unidad'], ['departamento', 'Departamento'], ['usuario', 'Usuario'], ['contabilidad', 'Contabilidad'], ['orden_compra', 'Orden de compra'], ['comentario', 'Comentario', 'textarea']] },
   impresoras: { singular: 'impresora', fields: [['usuario', 'Usuario'], ['ubicacion', 'Ubicación'], ['ip_address', 'Dirección IP'], ['mac_address', 'Dirección MAC'], ['hostname', 'Hostname'], ['modelo', 'Modelo', 'text', true], ['numero_serie', 'Número de serie'], ['conteo_paginas', 'Conteo de páginas', 'number'], ['comentario', 'Comentario', 'textarea']] },
   nvr: { singular: 'NVR / CCTV', note: 'Las claves se cifran antes de almacenarse y no aparecen en el listado.', fields: [['alias', 'Alias', 'text', true], ['device_domain', 'Dominio del dispositivo'], ['device_serial', 'Serie'], ['ip_port', 'IP / puerto'], ['status', 'Estado'], ['usuario', 'Usuario'], ['password', 'Contraseña', 'password'], ['clave_cifrado', 'Clave de cifrado', 'password'], ['codigo_verificacion', 'Código de verificación', 'password'], ['acceso_local', 'Acceso local'], ['localidad', 'Localidad'], ['ubicacion', 'Ubicación']] },
@@ -221,7 +221,9 @@ function MonitorLinkModal({ assetUid, label, onClose }) {
 }
 
 export function AssetAlertsPage() {
-  const [data, setData] = useState(null); const [error, setError] = useState(''); const [selectedAlert, setSelectedAlert] = useState('all'); const [incompleteAsset, setIncompleteAsset] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedType = searchParams.get('tipo') || 'all';
+  const [data, setData] = useState(null); const [error, setError] = useState(''); const [selectedAlert, setSelectedAlert] = useState(requestedType); const [incompleteAsset, setIncompleteAsset] = useState(null);
   async function loadAlerts() {
     try { const body = await apiFetch('/activos-suite/alerts'); setData(body.data); setError(''); } catch (err) { setError(err.message); }
   }
@@ -236,19 +238,23 @@ export function AssetAlertsPage() {
     { key: 'antivirus', label: 'Antivirus', title: 'Antivirus vencido o próximo', rows: data.antivirus, fields: ['center_code', 'usuario_asignado', 'av_licencia', 'fecha_vence'] },
     { key: 'office365', label: 'Office 365', title: 'Office 365 vencido o próximo', rows: data.office365, fields: ['center_code', 'usuario_asignado', 'ms_licencia', 'fecha_vence'] },
   ].map((section) => ({ ...section, count: section.count ?? section.rows.length }));
-  const visibleSections = selectedAlert === 'all' ? sections : sections.filter((section) => section.key === selectedAlert);
+  const validSelection = selectedAlert === 'all' || sections.some((section) => section.key === selectedAlert) ? selectedAlert : 'all';
+  function selectAlert(key) { setSelectedAlert(key); setSearchParams(key === 'all' ? {} : { tipo: key }); }
+  const visibleSections = validSelection === 'all' ? sections : sections.filter((section) => section.key === validSelection);
   const totalAlerts = sections.reduce((total, section) => total + Number(section.count || 0), 0);
+  const licenseThresholds = data.license_alert_config || {};
   return <div>
     <h1 className="text-2xl font-bold">Alertas de activos</h1>
     <p className="mt-1 text-sm text-slate-400">Selecciona un tipo para revisar sólo los pendientes que necesitas.</p>
+    <p className="mt-2 text-xs text-slate-500">Aviso anticipado: Antivirus {licenseThresholds.antivirus?.days ?? 30} días · Microsoft 365 {licenseThresholds.office365?.days ?? 30} días · FortiGate {licenseThresholds.fortigate?.days ?? 30} días. Puedes ajustar estos valores en Configuración de alertas.</p>
     <div className="my-6 flex gap-2 overflow-x-auto pb-2" role="tablist" aria-label="Filtrar por tipo de alerta">
-      <AlertFilter active={selectedAlert === 'all'} count={totalAlerts} onClick={() => setSelectedAlert('all')}>Todas</AlertFilter>
-      {sections.map((section) => <AlertFilter key={section.key} active={selectedAlert === section.key} count={section.count} onClick={() => setSelectedAlert(section.key)}>{section.label}</AlertFilter>)}
+      <AlertFilter active={validSelection === 'all'} count={totalAlerts} onClick={() => selectAlert('all')}>Todas</AlertFilter>
+      {sections.map((section) => <AlertFilter key={section.key} active={validSelection === section.key} count={section.count} onClick={() => selectAlert(section.key)}>{section.label}</AlertFilter>)}
     </div>
     <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {sections.map((section) => <AlertCard key={section.key} title={section.label} count={section.count} active={selectedAlert === section.key} onClick={() => setSelectedAlert(section.key)} />)}
+      {sections.map((section) => <AlertCard key={section.key} title={section.label} count={section.count} active={validSelection === section.key} onClick={() => selectAlert(section.key)} />)}
     </div>
-    <div className="mb-4 flex items-center justify-between gap-3"><p className="text-sm text-slate-400">Mostrando: <span className="font-semibold text-slate-200">{selectedAlert === 'all' ? 'Todas las alertas' : sections.find((section) => section.key === selectedAlert)?.label}</span></p>{selectedAlert !== 'all' && <button type="button" onClick={() => setSelectedAlert('all')} className="text-sm text-sky-400 hover:underline">Mostrar todas</button>}</div>
+    <div className="mb-4 flex items-center justify-between gap-3"><p className="text-sm text-slate-400">Mostrando: <span className="font-semibold text-slate-200">{validSelection === 'all' ? 'Todas las alertas' : sections.find((section) => section.key === validSelection)?.label}</span></p>{validSelection !== 'all' && <button type="button" onClick={() => selectAlert('all')} className="text-sm text-sky-400 hover:underline">Mostrar todas</button>}</div>
     {visibleSections.map((section) => <AlertTable key={section.key} title={section.title} rows={section.rows} fields={section.fields} total={section.count} onRowClick={section.onRowClick} />)}
     {incompleteAsset && <IncompleteAssetModal row={incompleteAsset} onClose={() => setIncompleteAsset(null)} onSaved={loadAlerts} />}
   </div>;

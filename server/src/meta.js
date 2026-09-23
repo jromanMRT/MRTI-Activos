@@ -66,6 +66,7 @@ export const FIELD_GROUPS = [
       { key: 'ms_suscripcion', label: 'Suscripción', type: 'text' },
       { key: 'fecha_suscripcion', label: 'Fecha de suscripción', type: 'date' },
       { key: 'anos_suscripcion', label: 'Años de suscripción', type: 'number' },
+      { key: 'ms_vencimiento', label: 'Vencimiento Microsoft 365', type: 'date' },
     ],
   },
   {
@@ -95,7 +96,7 @@ export const FIELD_GROUPS = [
     label: 'Antivirus',
     fields: [
       { key: 'av_licencia', label: 'Licencia antivirus', type: 'text' },
-      { key: 'av_caducidad', label: 'Caducidad antivirus', type: 'date' },
+      { key: 'av_caducidad', label: 'Vencimiento antivirus', type: 'date' },
       { key: 'av_team', label: 'Equipo antivirus', type: 'text' },
       { key: 'av_comentario', label: 'Comentario antivirus', type: 'text' },
     ],

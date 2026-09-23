@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { licenseNotifications, loadLicenseAlerts } from '../licenseAlerts.js';
 import { access } from 'node:fs/promises';
 import { Router } from 'express';
 import { pool } from '../db.js';
@@ -31,7 +32,7 @@ export function findIncompleteAssetFields(asset) {
 export const RESOURCE_CONFIG = Object.freeze({
   credenciales: {
     table: 'activos', id: 'id', archivable: false, syncColumn: 'sap_synced_at',
-    columns: ['id', 'center_code', 'usuario_asignado', 'win_cuenta', 'win_usuario', 'ms_cuenta', 'ms_usuario', 'ms_licencia', 'ms_suscripcion', 'db_cuenta', 'db_usuario', 'db_licencia', 'correo_mrt', 'correo_corporativo', 'av_licencia', 'av_caducidad'],
+    columns: ['id', 'center_code', 'usuario_asignado', 'win_cuenta', 'win_usuario', 'ms_cuenta', 'ms_usuario', 'ms_licencia', 'ms_suscripcion', 'ms_vencimiento', 'db_cuenta', 'db_usuario', 'db_licencia', 'correo_mrt', 'correo_corporativo', 'av_licencia', 'av_caducidad'],
     search: ['center_code', 'usuario_asignado', 'win_usuario', 'ms_usuario', 'correo_mrt', 'correo_corporativo'],
   },
   componentes: { table: 'sap_componentes', editable: true, columns: ['id', 'sap_id', 'center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'ip_address', 'hostname', 'unidad', 'departamento', 'usuario', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'], search: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'usuario'], create: { fields: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'firmware', 'ip_address', 'mac_address', 'hostname', 'unidad', 'departamento', 'usuario', 'contabilidad', 'orden_compra', 'comentario'], required: ['nombre'] } },
@@ -254,7 +255,7 @@ assetSuiteRouter.get('/dashboard', async (_req, res, next) => {
 
 assetSuiteRouter.get('/alerts', async (_req, res, next) => {
   try {
-    const [missingResult, missingDetailResult, fortigateResult, antivirusResult, officeResult, perpetualResult, incompleteResult, duplicateResult] = await Promise.all([
+    const [missingResult, missingDetailResult, licenseAlerts, perpetualResult, incompleteResult, duplicateResult] = await Promise.all([
       pool.query(`SELECT COUNT(*) AS total FROM activos a WHERE a.estado = 'Activo' AND NOT EXISTS (
         SELECT 1 FROM sap_documentos d WHERE d.archived_at IS NULL
           AND (d.asset_uid = a.asset_uid OR (d.asset_uid IS NULL AND d.center_code = a.center_code))
@@ -264,9 +265,7 @@ assetSuiteRouter.get('/alerts', async (_req, res, next) => {
           SELECT 1 FROM sap_documentos d WHERE d.archived_at IS NULL
             AND (d.asset_uid = a.asset_uid OR (d.asset_uid IS NULL AND d.center_code = a.center_code))
         ) ORDER BY a.center_code LIMIT 500`),
-      pool.query(`SELECT id, software, numero_serie, proyecto, fecha_expira FROM sap_fortigate WHERE archived_at IS NULL AND fecha_expira IS NOT NULL AND fecha_expira <= DATE_ADD(CURDATE(), INTERVAL 90 DAY) ORDER BY fecha_expira`),
-      pool.query(`SELECT id, center_code, usuario_asignado, av_licencia, av_caducidad, DATE_ADD(av_caducidad, INTERVAL 1 YEAR) AS fecha_vence FROM activos WHERE estado = 'Activo' AND av_caducidad IS NOT NULL AND DATE_ADD(av_caducidad, INTERVAL 1 YEAR) <= DATE_ADD(CURDATE(), INTERVAL 90 DAY) ORDER BY fecha_vence`),
-      pool.query(`SELECT id, center_code, usuario_asignado, ms_cuenta, ms_usuario, ms_licencia, fecha_suscripcion, anos_suscripcion, DATE_ADD(fecha_suscripcion, INTERVAL COALESCE(anos_suscripcion, 1) YEAR) AS fecha_vence FROM activos WHERE estado = 'Activo' AND fecha_suscripcion IS NOT NULL AND COALESCE(anos_suscripcion, 1) > 0 AND DATE_ADD(fecha_suscripcion, INTERVAL COALESCE(anos_suscripcion, 1) YEAR) <= DATE_ADD(CURDATE(), INTERVAL 90 DAY) ORDER BY fecha_vence`),
+      loadLicenseAlerts(pool),
       pool.query(`SELECT id, center_code, usuario_asignado, ms_cuenta, ms_usuario, ms_licencia FROM activos WHERE estado = 'Activo' AND anos_suscripcion = 0 ORDER BY center_code`),
       pool.query(`SELECT id, center_code, tipo, marca, modelo, service_tag, numero_serie, usuario_asignado, unidad, fecha_compra, empresa FROM activos WHERE estado = 'Activo' AND (marca IS NULL OR marca = '' OR modelo IS NULL OR modelo = '' OR service_tag IS NULL OR service_tag = '' OR numero_serie IS NULL OR numero_serie = '' OR usuario_asignado IS NULL OR usuario_asignado = '' OR unidad IS NULL OR unidad = '' OR fecha_compra IS NULL OR empresa IS NULL OR empresa = '') ORDER BY center_code LIMIT 300`),
       pool.query(`SELECT center_code, source_ids_json, detected_at, last_seen_at FROM sap_asset_duplicates WHERE resolved_at IS NULL ORDER BY center_code`),
@@ -277,7 +276,15 @@ assetSuiteRouter.get('/alerts', async (_req, res, next) => {
       const normalized = normalizeAssetDates(row);
       return { ...normalized, missing_fields: findIncompleteAssetFields(normalized) };
     });
-    res.json({ data: { sin_documentos: Number(missingDocuments.total || 0), sin_documentos_detalle: missingDetailResult[0], fortigate: fortigateResult[0], antivirus: antivirusResult[0], office365: officeResult[0], perpetuas: perpetualResult[0], incompletos: incompleteAssets, duplicados: duplicates } });
+    res.json({ data: { sin_documentos: Number(missingDocuments.total || 0), sin_documentos_detalle: missingDetailResult[0], fortigate: licenseAlerts.fortigate, antivirus: licenseAlerts.antivirus, office365: licenseAlerts.office365, license_alert_config: licenseAlerts.config, perpetuas: perpetualResult[0], incompletos: incompleteAssets, duplicados: duplicates } });
+  } catch (error) { next(error); }
+});
+
+assetSuiteRouter.get('/license-notifications', async (_req, res, next) => {
+  try {
+    const alerts = await loadLicenseAlerts(pool);
+    res.set('Cache-Control', 'no-store');
+    res.json({ data: licenseNotifications(alerts) });
   } catch (error) { next(error); }
 });
 
