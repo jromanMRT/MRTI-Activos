@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS activos (
   correo_baja VARCHAR(10) NULL,
   av_licencia VARCHAR(80) NULL,
   av_caducidad DATETIME NULL,
+  av_vencimiento DATE NULL,
   av_team VARCHAR(80) NULL,
   av_comentario VARCHAR(80) NULL,
   sap_synced_at DATETIME NULL,

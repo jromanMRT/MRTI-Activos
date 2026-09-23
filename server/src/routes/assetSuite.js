@@ -32,7 +32,7 @@ export function findIncompleteAssetFields(asset) {
 export const RESOURCE_CONFIG = Object.freeze({
   credenciales: {
     table: 'activos', id: 'id', archivable: false, syncColumn: 'sap_synced_at',
-    columns: ['id', 'center_code', 'usuario_asignado', 'win_cuenta', 'win_usuario', 'ms_cuenta', 'ms_usuario', 'ms_licencia', 'ms_suscripcion', 'ms_vencimiento', 'db_cuenta', 'db_usuario', 'db_licencia', 'correo_mrt', 'correo_corporativo', 'av_licencia', 'av_caducidad'],
+    columns: ['id', 'center_code', 'usuario_asignado', 'win_cuenta', 'win_usuario', 'ms_cuenta', 'ms_usuario', 'ms_licencia', 'ms_suscripcion', 'ms_vencimiento', 'db_cuenta', 'db_usuario', 'db_licencia', 'correo_mrt', 'correo_corporativo', 'av_licencia', 'av_caducidad', 'av_vencimiento'],
     search: ['center_code', 'usuario_asignado', 'win_usuario', 'ms_usuario', 'correo_mrt', 'correo_corporativo'],
   },
   componentes: { table: 'sap_componentes', editable: true, columns: ['id', 'sap_id', 'center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'ip_address', 'hostname', 'unidad', 'departamento', 'usuario', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'], search: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'usuario'], create: { fields: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'firmware', 'ip_address', 'mac_address', 'hostname', 'unidad', 'departamento', 'usuario', 'contabilidad', 'orden_compra', 'comentario'], required: ['nombre'] } },

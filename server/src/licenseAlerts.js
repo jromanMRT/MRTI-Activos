@@ -24,10 +24,13 @@ export async function loadLicenseAlerts(db) {
   const empty = Promise.resolve([[]]);
   const [antivirusResult, officeResult, fortigateResult] = await Promise.all([
     config.antivirus.active ? db.query(`SELECT id, asset_uid, center_code, usuario_asignado, av_licencia,
-        DATE(av_caducidad) AS fecha_vence, DATEDIFF(DATE(av_caducidad), CURDATE()) AS dias_restantes
+        DATE(av_caducidad) AS fecha_adquisicion,
+        COALESCE(av_vencimiento, DATE_ADD(DATE(av_caducidad), INTERVAL 1 YEAR)) AS fecha_vence,
+        DATEDIFF(COALESCE(av_vencimiento, DATE_ADD(DATE(av_caducidad), INTERVAL 1 YEAR)), CURDATE()) AS dias_restantes
       FROM activos
-      WHERE estado = 'Activo' AND av_caducidad IS NOT NULL
-        AND DATE(av_caducidad) <= DATE_ADD(CURDATE(), INTERVAL ? DAY)
+      WHERE estado = 'Activo'
+        AND COALESCE(av_vencimiento, DATE_ADD(DATE(av_caducidad), INTERVAL 1 YEAR)) IS NOT NULL
+        AND COALESCE(av_vencimiento, DATE_ADD(DATE(av_caducidad), INTERVAL 1 YEAR)) <= DATE_ADD(CURDATE(), INTERVAL ? DAY)
       ORDER BY fecha_vence, center_code`, [config.antivirus.days]) : empty,
     config.office365.active ? db.query(`SELECT id, asset_uid, center_code, usuario_asignado, ms_cuenta, ms_usuario, ms_licencia,
         fecha_suscripcion, anos_suscripcion,

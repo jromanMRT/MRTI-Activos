@@ -96,7 +96,8 @@ export const FIELD_GROUPS = [
     label: 'Antivirus',
     fields: [
       { key: 'av_licencia', label: 'Licencia antivirus', type: 'text' },
-      { key: 'av_caducidad', label: 'Vencimiento antivirus', type: 'date' },
+      { key: 'av_caducidad', label: 'Adquisición antivirus', type: 'date' },
+      { key: 'av_vencimiento', label: 'Vencimiento antivirus', type: 'date' },
       { key: 'av_team', label: 'Equipo antivirus', type: 'text' },
       { key: 'av_comentario', label: 'Comentario antivirus', type: 'text' },
     ],
