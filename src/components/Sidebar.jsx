@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { to: '/inventario', label: 'Inventario', icon: 'inventory' },
   { to: '/referencias-tecnicas', label: 'Referencias técnicas', icon: 'notes' },
   { to: '/alertas', label: 'Alertas', icon: 'alert' },
+  { to: '/licencias-antivirus', label: 'Licencias antivirus', icon: 'catalog' },
   { to: '/bajas-personal', label: 'Bajas de personal', icon: 'offboarding' },
   { to: '/catalogos/credenciales', label: 'Credenciales', icon: 'catalog' },
   { to: '/catalogos/componentes', label: 'Componentes', icon: 'catalog' },

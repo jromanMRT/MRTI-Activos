@@ -44,7 +44,7 @@ const COLUMN_LABELS = {
   center_code: 'Código TI', source_ids: 'IDs de origen', detected_at: 'Detectado', last_seen_at: 'Última detección',
   tipo: 'Tipo', marca: 'Marca', modelo: 'Modelo', numero_serie: 'Serie', usuario_asignado: 'Usuario asignado',
   ms_cuenta: 'Cuenta Microsoft', ms_licencia: 'Licencia Microsoft', software: 'Software', proyecto: 'Proyecto',
-  fecha_expira: 'Vencimiento', av_licencia: 'Licencia antivirus', fecha_vence: 'Vencimiento', missing_fields: 'Datos faltantes',
+  fecha_expira: 'Vencimiento', av_licencia: 'Licencia antivirus', license_key: 'Licencia antivirus', device_count: 'Dispositivos', center_codes: 'Equipos', date_status: 'Revisión', fecha_vence: 'Vencimiento', missing_fields: 'Datos faltantes',
 };
 const INCOMPLETE_ASSET_FIELDS = ['marca', 'modelo', 'service_tag', 'numero_serie', 'usuario_asignado', 'unidad', 'fecha_compra', 'empresa'];
 function isMissing(value) { return value === null || value === undefined || (typeof value === 'string' && value.trim() === ''); }
@@ -81,8 +81,8 @@ export function AssetSuiteOverviewPage() {
   const alertItems = alerts ? [
     { title: 'Sin documentos', count: alerts.sin_documentos, detail: 'Activos sin respaldo adjunto', tone: 'red' },
     { title: 'Datos incompletos', count: alerts.incompletos.length, detail: 'Falta información esencial', tone: 'amber' },
-    { title: 'Antivirus', count: alerts.antivirus.length, detail: 'Vencidos o próximos a vencer', tone: 'amber' },
-    { title: 'Office 365', count: alerts.office365.length, detail: 'Renovaciones en 90 días', tone: 'amber' },
+    { title: 'Antivirus', count: alerts.antivirus.length, detail: 'Licencias vencidas o próximas', tone: 'amber' },
+    { title: 'Office 365', count: alerts.office365.length, detail: 'Vencidas o próximas a vencer', tone: 'amber' },
     { title: 'FortiGate', count: alerts.fortigate.length, detail: 'Licencias por atender', tone: 'amber' },
     { title: 'Duplicados', count: alerts.duplicados.length, detail: 'Códigos repetidos en origen', tone: 'red' },
   ] : [];
@@ -235,7 +235,7 @@ export function AssetAlertsPage() {
     { key: 'incompletos', label: 'Datos incompletos', title: 'Datos incompletos', rows: data.incompletos, fields: ['center_code', 'tipo', 'marca', 'modelo', 'numero_serie', 'usuario_asignado', 'missing_fields'], onRowClick: setIncompleteAsset },
     { key: 'perpetuas', label: 'Licencias perpetuas', title: 'Licencias perpetuas', rows: data.perpetuas, fields: ['center_code', 'usuario_asignado', 'ms_cuenta', 'ms_licencia'] },
     { key: 'fortigate', label: 'FortiGate', title: 'FortiGate vencido o próximo', rows: data.fortigate, fields: ['software', 'numero_serie', 'proyecto', 'fecha_expira'] },
-    { key: 'antivirus', label: 'Antivirus', title: 'Antivirus vencido o próximo', rows: data.antivirus, fields: ['center_code', 'usuario_asignado', 'av_licencia', 'fecha_vence'] },
+    { key: 'antivirus', label: 'Antivirus', title: 'Licencias antivirus vencidas o próximas', rows: data.antivirus, fields: ['license_key', 'device_count', 'center_codes', 'fecha_vence', 'date_status'] },
     { key: 'office365', label: 'Office 365', title: 'Office 365 vencido o próximo', rows: data.office365, fields: ['center_code', 'usuario_asignado', 'ms_licencia', 'fecha_vence'] },
   ].map((section) => ({ ...section, count: section.count ?? section.rows.length }));
   const validSelection = selectedAlert === 'all' || sections.some((section) => section.key === selectedAlert) ? selectedAlert : 'all';
@@ -246,7 +246,7 @@ export function AssetAlertsPage() {
   return <div>
     <h1 className="text-2xl font-bold">Alertas de activos</h1>
     <p className="mt-1 text-sm text-slate-400">Selecciona un tipo para revisar sólo los pendientes que necesitas.</p>
-    <p className="mt-2 text-xs text-slate-500">Aviso anticipado: Antivirus {licenseThresholds.antivirus?.days ?? 30} días · Microsoft 365 {licenseThresholds.office365?.days ?? 30} días · FortiGate {licenseThresholds.fortigate?.days ?? 30} días. Puedes ajustar estos valores en Configuración de alertas.</p>
+    <p className="mt-2 text-xs text-slate-500">Aviso anticipado: Antivirus {licenseThresholds.antivirus?.days ?? 30} días · Microsoft 365 {licenseThresholds.office365?.days ?? 30} días · FortiGate {licenseThresholds.fortigate?.days ?? 30} días. Puedes ajustar estos valores en Configuración de alertas. <Link to="/licencias-antivirus" className="text-sky-400 hover:underline">Administrar grupos de antivirus →</Link></p>
     <div className="my-6 flex gap-2 overflow-x-auto pb-2" role="tablist" aria-label="Filtrar por tipo de alerta">
       <AlertFilter active={validSelection === 'all'} count={totalAlerts} onClick={() => selectAlert('all')}>Todas</AlertFilter>
       {sections.map((section) => <AlertFilter key={section.key} active={validSelection === section.key} count={section.count} onClick={() => selectAlert(section.key)}>{section.label}</AlertFilter>)}

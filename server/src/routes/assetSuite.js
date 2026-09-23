@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { loadAntivirusLicenseGroups } from '../antivirusLicenses.js';
 import { licenseNotifications, loadLicenseAlerts } from '../licenseAlerts.js';
 import { access } from 'node:fs/promises';
 import { Router } from 'express';
@@ -285,6 +286,24 @@ assetSuiteRouter.get('/license-notifications', async (_req, res, next) => {
     const alerts = await loadLicenseAlerts(pool);
     res.set('Cache-Control', 'no-store');
     res.json({ data: licenseNotifications(alerts) });
+  } catch (error) { next(error); }
+});
+
+assetSuiteRouter.get('/antivirus-licenses', async (_req, res, next) => {
+  try {
+    const groups = await loadAntivirusLicenseGroups(pool);
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      data: groups,
+      meta: {
+        licenses: groups.filter((group) => group.license_key).length,
+        devices: groups.reduce((total, group) => total + group.device_count, 0),
+        available_seats: groups.filter((group) => group.license_key).reduce((total, group) => total + group.available_seats, 0),
+        conflicts: groups.filter((group) => group.purchase_conflict || group.expiration_conflict).length,
+        over_capacity: groups.filter((group) => group.over_capacity).length,
+        default_capacity: 5,
+      },
+    });
   } catch (error) { next(error); }
 });
 

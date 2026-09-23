@@ -22,16 +22,8 @@ export async function loadLicenseAlerts(db) {
   );
   const config = noticeConfiguration(configRows);
   const empty = Promise.resolve([[]]);
-  const [antivirusResult, officeResult, fortigateResult] = await Promise.all([
-    config.antivirus.active ? db.query(`SELECT id, asset_uid, center_code, usuario_asignado, av_licencia,
-        DATE(av_caducidad) AS fecha_adquisicion,
-        COALESCE(av_vencimiento, DATE_ADD(DATE(av_caducidad), INTERVAL 1 YEAR)) AS fecha_vence,
-        DATEDIFF(COALESCE(av_vencimiento, DATE_ADD(DATE(av_caducidad), INTERVAL 1 YEAR)), CURDATE()) AS dias_restantes
-      FROM activos
-      WHERE estado = 'Activo'
-        AND COALESCE(av_vencimiento, DATE_ADD(DATE(av_caducidad), INTERVAL 1 YEAR)) IS NOT NULL
-        AND COALESCE(av_vencimiento, DATE_ADD(DATE(av_caducidad), INTERVAL 1 YEAR)) <= DATE_ADD(CURDATE(), INTERVAL ? DAY)
-      ORDER BY fecha_vence, center_code`, [config.antivirus.days]) : empty,
+  const [antivirusGroups, officeResult, fortigateResult] = await Promise.all([
+    config.antivirus.active ? loadAntivirusLicenseGroups(db) : Promise.resolve([]),
     config.office365.active ? db.query(`SELECT id, asset_uid, center_code, usuario_asignado, ms_cuenta, ms_usuario, ms_licencia,
         fecha_suscripcion, anos_suscripcion,
         COALESCE(ms_vencimiento,
@@ -62,7 +54,8 @@ export async function loadLicenseAlerts(db) {
       ORDER BY fecha_expira`, [config.fortigate.days]) : empty,
   ]);
   return {
-    antivirus: antivirusResult[0], office365: officeResult[0], fortigate: fortigateResult[0], config,
+    antivirus: antivirusGroups.filter((group) => Number.isFinite(Number(group.dias_restantes)) && Number(group.dias_restantes) <= config.antivirus.days),
+    office365: officeResult[0], fortigate: fortigateResult[0], config,
   };
 }
 
@@ -76,7 +69,7 @@ function dateText(value) {
 
 export function licenseNotifications(alerts, timestamp = new Date().toISOString()) {
   const definitions = [
-    { key: 'antivirus', label: 'Antivirus', rows: alerts.antivirus || [], href: '/activos/alertas?tipo=antivirus', assetLabel: (row) => row.center_code },
+    { key: 'antivirus', label: 'Antivirus', rows: alerts.antivirus || [], href: '/activos/alertas?tipo=antivirus', assetLabel: (row) => row.device_count > 1 ? `${row.device_count} dispositivos` : row.center_codes || row.center_code },
     { key: 'office365', label: 'Microsoft 365', rows: alerts.office365 || [], href: '/activos/alertas?tipo=office365', assetLabel: (row) => row.center_code },
     { key: 'fortigate', label: 'FortiGate', rows: alerts.fortigate || [], href: '/activos/alertas?tipo=fortigate', assetLabel: (row) => row.numero_serie || row.software },
   ];
@@ -111,3 +104,4 @@ export function licenseNotifications(alerts, timestamp = new Date().toISOString(
   }
   return items;
 }
+import { loadAntivirusLicenseGroups } from './antivirusLicenses.js';

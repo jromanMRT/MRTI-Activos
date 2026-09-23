@@ -15,9 +15,11 @@ si está vacío, conserva el cálculo histórico
 La pantalla de Alertas y la campanilla global usan `sap_config_alertas` como
 única configuración del margen de aviso. Antivirus y Office 365 quedaron en 30
 días; FortiGate conserva su margen configurado. Cada licencia futura dentro de
-la ventana genera un aviso propio. Los registros ya vencidos se agrupan por
-tipo para no saturar la campanilla, y todos enlazan al filtro correspondiente de
-`/activos/alertas`.
+la ventana genera un aviso propio. En Antivirus, los dispositivos con la misma
+clave forman un solo grupo y producen un único aviso; una diferencia de fechas
+usa preventivamente el vencimiento más próximo y queda señalada para revisión.
+Los registros ya vencidos se agrupan por tipo para no saturar la campanilla, y
+todos enlazan al filtro correspondiente de `/activos/alertas`.
 
 Core sólo consolida la lectura de `/api/activos-suite/license-notifications` y
 reenvía la sesión. No copia fechas, no calcula vencimientos y no concede acceso:
