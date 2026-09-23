@@ -13,6 +13,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<AssetSuiteOverviewPage />} />
         <Route path="/inventario" element={<ListPage />} />
+        <Route path="/referencias-tecnicas" element={<TechnicalNotesPage />} />
         <Route path="/notas-tecnicas" element={<TechnicalNotesPage />} />
         <Route path="/inventario/unidades" element={<UnitInventoryPage />} />
         <Route path="/terceros" element={<Navigate replace to="/inventario" />} />

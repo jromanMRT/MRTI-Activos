@@ -1,3 +1,4 @@
+import { AssetKnowledgePanel } from '../components/AssetKnowledgePanel.jsx';
 import { AssignmentHistory } from '../components/AssignmentHistory.jsx';
 import { assignedUnit } from '../assignmentHistory.js';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
@@ -123,6 +124,7 @@ export function AssetFormPage({ mode }) {
       { key: 'documentos', label: 'Documentos', count: documents.length },
       { key: 'monitor', label: 'Monitor' },
       { key: 'tickets', label: 'Tickets' },
+      { key: 'articulos', label: 'Artículos relacionados' },
     ] : []),
   ];
 
@@ -178,6 +180,7 @@ export function AssetFormPage({ mode }) {
             {activeTab === 'administracion' && mode === 'edit' && <div className="mt-2"><UnitHistoryPanel assetId={id} isAdministrator={isAdministrator} onReverted={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
             {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel assetId={id} documents={documents} error={documentsError} onError={setDocumentsError} onUploaded={(document) => setDocuments((current) => [document, ...current.filter((item) => item.id !== document.id)])} onDeleted={(documentId) => setDocuments((current) => current.filter((item) => item.id !== documentId))} />}
             {activeTab === 'monitor' && mode === 'edit' && <ObservabilityPanel assetUid={values.asset_uid} data={observability} error={observabilityError} onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))} />}
+            {activeTab === 'articulos' && mode === 'edit' && <AssetKnowledgePanel assetUid={values.asset_uid} />}
             {activeTab === 'tickets' && mode === 'edit' && <TicketsPanel assetUid={values.asset_uid} createTicketUrl={createTicketUrl} />}
           </>}
         </div>

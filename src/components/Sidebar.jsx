@@ -5,7 +5,7 @@ import { useTheme } from '../hooks/useTheme.js';
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: 'dashboard' },
   { to: '/inventario', label: 'Inventario', icon: 'inventory' },
-  { to: '/notas-tecnicas', label: 'Notas técnicas', icon: 'notes' },
+  { to: '/referencias-tecnicas', label: 'Referencias técnicas', icon: 'notes' },
   { to: '/alertas', label: 'Alertas', icon: 'alert' },
   { to: '/bajas-personal', label: 'Bajas de personal', icon: 'offboarding' },
   { to: '/catalogos/credenciales', label: 'Credenciales', icon: 'catalog' },
