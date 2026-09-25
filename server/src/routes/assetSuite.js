@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { loadAntivirusLicenseGroups } from '../antivirusLicenses.js';
 import { licenseNotifications, loadLicenseAlerts } from '../licenseAlerts.js';
 import { access } from 'node:fs/promises';
 import { Router } from 'express';
@@ -16,6 +15,7 @@ import { normalizeAssetDates } from '../meta.js';
 import { readUnitInventory } from '../unitInventory.js';
 import { unitReviewRouter } from './unitReview.js';
 import { reviewReason, unitUsage } from '../domain/unitReview.js';
+import { antivirusLicensesRouter } from './antivirusLicenses.js';
 
 export { safeDocumentPath } from '../documentStorage.js';
 
@@ -33,7 +33,7 @@ export function findIncompleteAssetFields(asset) {
 export const RESOURCE_CONFIG = Object.freeze({
   credenciales: {
     table: 'activos', id: 'id', archivable: false, syncColumn: 'sap_synced_at',
-    columns: ['id', 'center_code', 'usuario_asignado', 'win_cuenta', 'win_usuario', 'ms_cuenta', 'ms_usuario', 'ms_licencia', 'ms_suscripcion', 'ms_vencimiento', 'db_cuenta', 'db_usuario', 'db_licencia', 'correo_mrt', 'correo_corporativo', 'av_licencia', 'av_caducidad', 'av_vencimiento'],
+    columns: ['id', 'center_code', 'usuario_asignado', 'win_cuenta', 'win_usuario', 'ms_cuenta', 'ms_usuario', 'ms_licencia', 'ms_suscripcion', 'ms_vencimiento', 'db_cuenta', 'db_usuario', 'db_licencia', 'correo_mrt', 'correo_corporativo'],
     search: ['center_code', 'usuario_asignado', 'win_usuario', 'ms_usuario', 'correo_mrt', 'correo_corporativo'],
   },
   componentes: { table: 'sap_componentes', editable: true, columns: ['id', 'sap_id', 'center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'ip_address', 'hostname', 'unidad', 'departamento', 'usuario', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'], search: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'usuario'], create: { fields: ['center_code', 'code', 'nombre', 'tipo', 'marca', 'modelo', 'serial_service_tag', 'firmware', 'ip_address', 'mac_address', 'hostname', 'unidad', 'departamento', 'usuario', 'contabilidad', 'orden_compra', 'comentario'], required: ['nombre'] } },
@@ -198,6 +198,7 @@ async function auditSecretRead(req) {
 export const assetSuiteRouter = Router();
 
 assetSuiteRouter.use('/unit-review', unitReviewRouter);
+assetSuiteRouter.use('/antivirus-licenses', antivirusLicensesRouter);
 
 assetSuiteRouter.get('/summary', async (_req, res, next) => {
   try {
@@ -286,24 +287,6 @@ assetSuiteRouter.get('/license-notifications', async (_req, res, next) => {
     const alerts = await loadLicenseAlerts(pool);
     res.set('Cache-Control', 'no-store');
     res.json({ data: licenseNotifications(alerts) });
-  } catch (error) { next(error); }
-});
-
-assetSuiteRouter.get('/antivirus-licenses', async (_req, res, next) => {
-  try {
-    const groups = await loadAntivirusLicenseGroups(pool);
-    res.set('Cache-Control', 'no-store');
-    res.json({
-      data: groups,
-      meta: {
-        licenses: groups.filter((group) => group.license_key).length,
-        devices: groups.reduce((total, group) => total + group.device_count, 0),
-        available_seats: groups.filter((group) => group.license_key).reduce((total, group) => total + group.available_seats, 0),
-        conflicts: groups.filter((group) => group.purchase_conflict || group.expiration_conflict).length,
-        over_capacity: groups.filter((group) => group.over_capacity).length,
-        default_capacity: 5,
-      },
-    });
   } catch (error) { next(error); }
 });
 

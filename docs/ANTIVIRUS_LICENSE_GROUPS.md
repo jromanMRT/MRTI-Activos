@@ -1,49 +1,46 @@
-# Agrupación de licencias antivirus
+# Control de licencias antivirus
 
-Fecha: 2026-09-23.
+Fecha inicial: 2026-09-23. Entidad canónica: 2026-09-25.
 
 ## Resultado
 
-Los activos con la misma clave de Antivirus se presentan como una sola licencia
-en `/activos/licencias-antivirus`. Cada grupo muestra capacidad operativa de
-cinco dispositivos, lugares disponibles, compra, vencimiento y enlaces a los
-equipos vinculados. La coincidencia normaliza mayúsculas y espacios; los equipos
-sin clave permanecen separados para no crear relaciones falsas.
+`/activos/licencias-antivirus` administra compras reales. Cada licencia define
+producto, clave, compra, caducidad, proveedor, referencia, notas y capacidad.
+Los equipos se vinculan por `asset_uid`; el servidor bloquea una asignación si
+el activo ya pertenece a otra licencia o si no quedan lugares.
 
-Las alertas y la campanilla también trabajan por grupo. Si cinco equipos usan la
-misma clave, generan un solo aviso. Cuando un grupo contiene fechas distintas,
-se muestra el intervalo completo, se marca para revisión y la alerta usa el
-vencimiento más próximo para no ocultar un riesgo.
+El catálogo incluye ESET Endpoint Security como opción predeterminada y también
+Microsoft Defender, Bitdefender, Kaspersky, Sophos, CrowdStrike, SentinelOne,
+Trend Micro, Avast y Otro. Las alertas leen una vez la caducidad de la licencia,
+por lo que cinco equipos generan un solo aviso.
 
-## Decisión de estructura
+## Migración y compatibilidad
 
-Esta fase deriva los grupos de los datos existentes y no crea todavía una tabla
-central. El inventario real contiene 18 claves con fechas distintas al considerar
-todos los estados y 14 entre equipos activos; dos claves activas aparecen en seis
-dispositivos. Migrar automáticamente una fecha central descartaría diferencias
-que primero deben revisarse.
+`026_antivirus_license_entities.sql` crea `antivirus_products`,
+`antivirus_licenses` y `antivirus_license_assets`. Es aditiva e idempotente.
+Migra una licencia por clave normalizada y conserva todos los campos `av_*`.
+Cuando una clave ya tenía seis equipos, su capacidad inicial queda en seis para
+no dejar la base en un estado inválido. Cuando había fechas distintas, conserva
+la más próxima para continuidad de alertas y marca `needs_review`; la evidencia
+original sigue disponible en cada activo.
 
-Después de corregir esos grupos se puede añadir, en una migración independiente,
-una entidad propietaria de licencia con capacidad configurable e historial de
-compras/renovaciones, más una tabla de asignaciones por `asset_uid`. Hasta
-entonces `activos.av_licencia`, `av_caducidad` y `av_vencimiento` siguen siendo
-la fuente compatible y no se duplican ni reescriben.
+Las altas y modificaciones sincronizan clave y fechas hacia `activos.av_licencia`,
+`av_caducidad` y `av_vencimiento` mientras ActivosTI/SAP dependa de ellos. La
+interfaz ya no ofrece esos campos como una segunda captura. Cuatro activos sin
+clave quedaron visibles como históricos para vincularlos manualmente.
 
 ## Evidencia
 
-- 61 claves activas y 123 dispositivos activos con datos de Antivirus.
-- 14 grupos activos con fechas por revisar y 2 sobre la capacidad inicial.
-- Suite completa de Activos: 154/154 pruebas.
-- Build Vite, sintaxis y `git diff --check` correctos.
-- Smoke publicado: API sin sesión 401; API autenticada 200; agrupación, alertas
-  y campanilla verificadas; Chromium a 1440, 390 y 320 px sin errores ni
-  desbordamiento; cero fixtures residuales.
-- `mrti-activos-api` quedó en línea y la configuración de PM2 fue guardada.
-- Respaldo y capturas: `/tmp/mrti-antivirus-groups-btuIN7`.
+- 10 productos, 60 licencias, 119 asignaciones activas y cero asignaciones
+  duplicadas por `asset_uid`.
+- Capacidad total migrada: 302; 15 licencias marcadas para revisión.
+- La segunda ejecución del runner no aplicó cambios.
+- Suite completa del servidor y build Vite correctos.
 
 ## Rollback
 
-Revertir el commit de Activos, reconstruir el frontend y reiniciar
-`mrti-activos-api`. Para restaurar de inmediato la publicación anterior, copiar
-el `index.html` del directorio de evidencia. No existe migración de base ni dato
-nuevo que retirar; las fechas y claves originales permanecen intactas.
+Revertir código y frontend devuelve temporalmente la lectura agrupada anterior:
+los campos `av_*` se conservan y siguen completos. Mantener las tres tablas
+nuevas durante el periodo de compatibilidad. Si después se autoriza retirarlas,
+exportar primero las tablas, verificar que cada asignación aún esté reflejada en
+`activos.av_*` y eliminarlas en orden: asignaciones, licencias y productos.
