@@ -57,11 +57,17 @@ test('HTTP rejects another author and concurrent edits before altering a note', 
   const server = app.listen(0, '127.0.0.1');
   await new Promise((resolve) => server.once('listening', resolve));
   const request = (actor, path, body) => fetch(`http://127.0.0.1:${server.address().port}${path}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'x-test-actor': actor }, body: JSON.stringify(body) });
+  const base = `http://127.0.0.1:${server.address().port}`;
   try {
     assert.equal((await request('other', '/note', { ...valid, revision: 2 })).status, 403);
     assert.equal((await request('other', '/note/archive', { archived: true, revision: 2 })).status, 403);
     assert.equal(writes, 0);
     assert.equal((await request('author', '/note', { ...valid, revision: 1 })).status, 409);
     assert.equal((await request('author', '/note/archive', { archived: true, revision: 1 })).status, 409);
+    // Agregar o quitar imágenes está sujeto a la misma regla de autor/administrador.
+    const writesBeforeImages = writes;
+    assert.equal((await fetch(`${base}/note/images`, { method: 'POST', headers: { 'x-test-actor': 'other' } })).status, 403);
+    assert.equal((await fetch(`${base}/note/images/img-1`, { method: 'DELETE', headers: { 'x-test-actor': 'other' } })).status, 403);
+    assert.equal(writes, writesBeforeImages);
   } finally { await new Promise((resolve) => server.close(resolve)); }
 });

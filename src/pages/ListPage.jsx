@@ -177,7 +177,7 @@ function AssetRow({ item, employeeProfile }) {
       <td className="px-3 py-3.5"><strong className="block text-slate-100">{item.marca || '—'}</strong><span className="mt-0.5 block max-w-40 truncate text-slate-500" title={item.modelo || item.descripcion}>{item.modelo || item.descripcion || '—'}</span></td>
       <td className="px-3 py-3.5 font-mono"><span className="block text-slate-200">{item.service_tag || '—'}</span><span className="mt-0.5 block text-[10px] text-slate-500">{item.numero_serie || '—'}</span></td>
       <td className="px-3 py-3.5"><AssignmentBadge assigned={linkedToRh} /><span className="mt-1 block max-w-48 text-slate-100">{employeeProfile?.full_name || item.usuario_asignado || '—'}</span><span className="mt-0.5 block text-[10px] text-slate-500">ID: {employeeNumber || '—'}</span></td>
-      <td className="px-3 py-3.5"><span className="block text-slate-200">{item.unidad || '—'}</span><span className="mt-0.5 block max-w-36 truncate text-[10px] text-slate-500" title={item.area}>{item.area || '—'}</span></td>
+      <td className="px-3 py-3.5"><span className="block text-slate-200">{item.unidad || '—'}</span><span className="mt-0.5 block max-w-36 truncate text-[10px] text-slate-500" title={employeeProfile?.area_name || item.area}>{employeeProfile?.area_name || item.area || '—'}</span></td>
       <td className="px-3 py-3.5"><span className="block max-w-48 text-slate-200">{employeeProfile?.company_name || item.empresa || '—'}</span></td>
       <td className="px-3 py-3.5"><EstadoBadge estado={item.estado} /></td>
       <td className="px-3 py-3.5"><strong className="block text-emerald-400">{age.label}</strong><span className="mt-0.5 block text-[10px] text-slate-500">{age.date}</span></td>

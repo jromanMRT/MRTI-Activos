@@ -1,20 +1,40 @@
 /* Navegación global compartida visualmente; copia local por frontend. */
-.portal-header-navigation { display: flex; flex: 0 1 auto; align-items: flex-end; gap: 10px; min-width: 0; }
-.portal-header-navigation .header-module-switcher { margin-right: 0; }
-.portal-dashboard-link { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; box-sizing: border-box; height: 34px; padding: 0 12px; border: 1px solid currentColor; border-radius: 9px; color: inherit; background: transparent; font-size: 12px; font-weight: 700; line-height: 1; text-decoration: none; white-space: nowrap; }
-.portal-dashboard-link:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
-.portal-dashboard-link:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.portal-header-navigation { display: flex; flex: 0 1 auto; align-items: center; gap: 10px; min-width: 0; }
+
+/* Pestañas de módulos: visibles siempre en el encabezado, sin abrir nada. */
+.module-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.module-tabs::-webkit-scrollbar { display: none; }
+.module-tab {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: rgb(var(--ink-soft));
+  background: transparent;
+  font-size: .74rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 120ms ease, color 120ms ease;
+}
+.module-tab:hover { color: rgb(var(--ink)); background: rgb(var(--surface-soft)); }
+/* Marca en cuál módulo estás. */
+.module-tab.is-current { color: rgb(var(--gold-deep)); background: rgb(var(--gold) / .14); font-weight: 800; box-shadow: inset 0 -2px rgb(var(--gold)); }
+.module-tab.is-current:hover { background: rgb(var(--gold) / .14); }
 @media (max-width: 767px) {
   .portal-header-navigation { gap: 6px; }
-  .portal-header-navigation select { min-width: 0 !important; max-width: 100px !important; }
-  .portal-dashboard-link { padding-inline: 8px; }
   .topbar:has(.portal-header-navigation), .portal-module-topbar:has(.portal-header-navigation) { gap: 6px; padding-inline: 10px; }
   .topbar:has(.portal-header-navigation) > span:first-of-type, .portal-module-topbar:has(.portal-header-navigation) .portal-module-context { display: none; }
   .topbar:has(.portal-header-navigation) .mobile-menu-button { margin-right: 0; }
   .portal-module-topbar:has(.portal-header-navigation) .portal-module-actions { margin-left: auto; gap: 6px; }
+  .module-tabs { max-width: 46vw; }
 }
 /* Keep adjacent controls from overlapping on very narrow screens. */
-.portal-header-navigation:has(select) { flex-shrink: 0; }
+.portal-header-navigation:has(.module-tabs) { flex-shrink: 1; min-width: 0; }
 @media (max-width: 767px) {
   header:has(.portal-header-navigation) > .h-full { padding-inline: 10px; gap: 6px; }
   header:has(.portal-header-navigation) > .h-full > .min-w-0 { gap: 6px; }

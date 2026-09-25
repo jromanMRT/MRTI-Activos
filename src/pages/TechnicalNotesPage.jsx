@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { apiFetch } from '../api.js';
+import { apiFetch, apiImageBlobUrl, apiUpload } from '../api.js';
+
+const MAX_NOTE_IMAGES = 6;
 
 const EMPTY_NOTE = { title: '', equipment_reference: '', serial_reference: '', replacement_reference: '', purchase_url: '', content: '', asset_uid: '' };
 const INPUT = 'w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100';
@@ -76,6 +78,7 @@ export function TechnicalNotesPage() {
           </dl>
           <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-200">{note.content}</p>
           {note.purchase_url && <a href={note.purchase_url} target="_blank" rel="noopener noreferrer" className="inline-block break-all text-sm text-sky-400 underline">Ver referencia de compra ↗</a>}
+          {note.image_count > 0 && <NoteImages noteId={note.id} canEdit={false} />}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 pt-3">
             <p className="text-xs text-slate-500">{note.created_by_name || 'Usuario de Activos'} · Actualizada {new Date(note.updated_at).toLocaleDateString('es-MX')}</p>
             {note.can_edit && <div className="flex gap-2">{!note.archived_at && <button type="button" disabled={Boolean(editor) || Boolean(busyId)} className={BUTTON} onClick={() => { setEditor(note); setNotice(''); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Editar</button>}<button type="button" disabled={Boolean(busyId) || Boolean(editor)} className={BUTTON} onClick={() => archive(note)}>{busyId === note.id ? 'Guardando…' : note.archived_at ? 'Restaurar' : 'Archivar'}</button></div>}
@@ -101,6 +104,25 @@ function NoteEditor({ note, onCancel, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [dirty, setDirty] = useState(false);
+  // Antes de guardar la referencia todavía no existe un id al que asociar imágenes
+  // en el servidor, así que las que se eligen aquí se quedan en el navegador
+  // (con su propia miniatura local) y se suben recién al guardar.
+  const [pendingImages, setPendingImages] = useState([]);
+  const [createdNote, setCreatedNote] = useState(null);
+  const activeNote = createdNote || note;
+  useEffect(() => () => { pendingImages.forEach((entry) => URL.revokeObjectURL(entry.previewUrl)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  function addPendingImage(file) {
+    setDirty(true);
+    setPendingImages((current) => [...current, { file, previewUrl: URL.createObjectURL(file) }]);
+  }
+  function removePendingImage(index) {
+    setDirty(true);
+    setPendingImages((current) => {
+      const target = current[index];
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return current.filter((_, i) => i !== index);
+    });
+  }
   const update = (field, value) => { setDirty(true); setForm((current) => ({ ...current, [field]: value })); };
   useEffect(() => {
     if (!dirty) return;
@@ -121,10 +143,36 @@ function NoteEditor({ note, onCancel, onSaved }) {
     }, 250);
     return () => { current = false; clearTimeout(timer); };
   }, [assetQuery]);
+  async function uploadPendingImages(noteId, images) {
+    const remaining = [...images];
+    while (remaining.length) {
+      const entry = remaining[0];
+      const formData = new FormData();
+      formData.append('file', entry.file);
+      await apiUpload(`/technical-notes/${noteId}/images`, formData);
+      URL.revokeObjectURL(entry.previewUrl);
+      remaining.shift();
+      setPendingImages([...remaining]);
+    }
+  }
   async function save(event) {
     event.preventDefault(); setSaving(true); setError('');
     try {
-      await apiFetch(`/technical-notes${note.id ? `/${note.id}` : ''}`, { method: note.id ? 'PATCH' : 'POST', body: JSON.stringify({ ...form, ...(note.id ? { revision: note.revision } : {}) }) });
+      let savedId = activeNote.id;
+      if (savedId) {
+        await apiFetch(`/technical-notes/${savedId}`, { method: 'PATCH', body: JSON.stringify({ ...form, revision: activeNote.revision }) });
+      } else {
+        const response = await apiFetch('/technical-notes', { method: 'POST', body: JSON.stringify(form) });
+        savedId = response.data.id;
+        setCreatedNote(response.data);
+      }
+      if (pendingImages.length) {
+        try {
+          await uploadPendingImages(savedId, pendingImages);
+        } catch (imageError) {
+          throw new Error(`La referencia se guardó, pero una imagen no se pudo subir: ${imageError.message}`);
+        }
+      }
       onSaved();
     } catch (err) { setError(err.message); }
     finally { setSaving(false); }
@@ -142,6 +190,15 @@ function NoteEditor({ note, onCancel, onSaved }) {
       </div>
       <div><label htmlFor="technical-note-content" className="block text-sm text-slate-300">Notas y especificaciones *</label><textarea id="technical-note-content" required maxLength={20000} rows={6} className={`${INPUT} mt-1`} value={form.content} onChange={(event) => update('content', event.target.value)} placeholder="Anota voltaje, capacidad, tipo de conector, medidas, compatibilidad confirmada y cualquier detalle útil antes de comprar." /></div>
       <div className="rounded-lg border border-slate-700 p-4">
+        <h3 className="text-sm font-semibold">Imágenes de referencia</h3>
+        <p className="mt-1 text-xs text-slate-400">Una foto de la etiqueta, el número de parte o la especificación ayuda a comprar exactamente lo correcto.</p>
+        <div className="mt-3">
+          {activeNote.id
+            ? <NoteImages noteId={activeNote.id} canEdit />
+            : <PendingImages images={pendingImages} onAdd={addPendingImage} onRemove={removePendingImage} />}
+        </div>
+      </div>
+      <div className="rounded-lg border border-slate-700 p-4">
         <h3 className="text-sm font-semibold">Vincular a un activo (opcional)</h3>
         <p className="mt-1 text-xs text-slate-400">Puedes guardar compatibilidades para varios modelos sin elegir un equipo.</p>
         {selectedAsset ? <div className="mt-3 flex flex-wrap items-center gap-3 text-sm"><span>{selectedAsset.center_code || 'Equipo seleccionado'} · {selectedAsset.modelo} · {selectedAsset.numero_serie}</span><button type="button" className={BUTTON} onClick={() => { setSelectedAsset(null); update('asset_uid', ''); }}>Quitar vínculo</button></div> : <>
@@ -156,4 +213,294 @@ function NoteEditor({ note, onCancel, onSaved }) {
     {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
     <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-slate-400">Visible para usuarios con acceso a Activos. El autor y los administradores pueden editarla.</p><div className="flex gap-2"><button type="button" className={BUTTON} disabled={saving} onClick={() => { if (!dirty || window.confirm('¿Descartar los cambios sin guardar?')) onCancel(); }}>Cancelar</button><button type="submit" className={PRIMARY} disabled={saving}>{saving ? 'Guardando…' : 'Guardar referencia'}</button></div></div>
   </form>;
+}
+
+// Las imágenes viven en disco en el servidor (ver server/src/imageStorage.js),
+// no como blob en la base de datos; aquí sólo se listan metadatos y se piden
+// los binarios uno por uno para las miniaturas.
+// Imágenes elegidas para una nota que todavía no existe en el servidor: sólo
+// viven en el navegador (miniatura vía URL.createObjectURL) hasta el guardado.
+function PendingImages({ images, onAdd, onRemove }) {
+  const fileRef = useRef(null);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+  function handleChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (file) onAdd(file);
+  }
+  const lightboxItems = images.map((entry) => ({ key: entry.previewUrl, url: entry.previewUrl, label: entry.file.name }));
+  return (
+    <div className="space-y-2">
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {images.map((entry, index) => (
+            <div key={entry.previewUrl} className="group relative">
+              <button type="button" onClick={() => setLightboxIndex(index)} className="block h-20 w-20 overflow-hidden rounded-lg border border-slate-700 bg-slate-800" title="Ver en grande">
+                <img src={entry.previewUrl} alt={entry.file.name} className="h-full w-full object-cover" />
+              </button>
+              <button type="button" onClick={() => onRemove(index)} className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs leading-none text-white group-hover:flex" aria-label="Quitar imagen">×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      {images.length < MAX_NOTE_IMAGES && (
+        <>
+          <input ref={fileRef} type="file" accept="image/png,image/jpeg" onChange={handleChange} className="hidden" />
+          <button type="button" className={BUTTON} onClick={() => fileRef.current?.click()}>+ Agregar imagen</button>
+        </>
+      )}
+      <p className="text-xs text-slate-500">Se suben al guardar la referencia.</p>
+      {lightboxIndex !== null && <ImageLightbox items={lightboxItems} index={lightboxIndex} onClose={() => setLightboxIndex(null)} onSelect={setLightboxIndex} />}
+    </div>
+  );
+}
+
+function NoteImages({ noteId, canEdit }) {
+  const [images, setImages] = useState([]);
+  const [urls, setUrls] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [refresh, setRefresh] = useState(0);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+  const fileRef = useRef(null);
+
+  useEffect(() => {
+    let current = true;
+    setLoading(true); setError('');
+    apiFetch(`/technical-notes/${noteId}/images`)
+      .then((body) => { if (current) setImages(body.data || []); })
+      .catch((err) => { if (current) setError(err.message); })
+      .finally(() => { if (current) setLoading(false); });
+    return () => { current = false; };
+  }, [noteId, refresh]);
+
+  useEffect(() => {
+    let current = true;
+    const objectUrls = [];
+    setUrls({});
+    (async () => {
+      for (const image of images) {
+        try {
+          const url = await apiImageBlobUrl(`/technical-notes/${noteId}/images/${image.id}/file`);
+          if (!current) { URL.revokeObjectURL(url); continue; }
+          objectUrls.push(url);
+          setUrls((previous) => ({ ...previous, [image.id]: url }));
+        } catch { /* se omite esta miniatura si la imagen ya no está disponible */ }
+      }
+    })();
+    return () => { current = false; objectUrls.forEach((url) => URL.revokeObjectURL(url)); };
+  }, [images, noteId]);
+
+  async function upload(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setUploading(true); setError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      await apiUpload(`/technical-notes/${noteId}/images`, formData);
+      setRefresh((value) => value + 1);
+    } catch (err) { setError(err.message); }
+    finally { setUploading(false); }
+  }
+
+  async function remove(image) {
+    if (!window.confirm('¿Quitar esta imagen de la referencia?')) return;
+    setError('');
+    try {
+      await apiFetch(`/technical-notes/${noteId}/images/${image.id}`, { method: 'DELETE' });
+      setRefresh((value) => value + 1);
+    } catch (err) { setError(err.message); }
+  }
+
+  if (loading) return <p className="text-xs text-slate-500">Cargando imágenes…</p>;
+
+  const lightboxItems = images.map((image) => ({ key: image.id, url: urls[image.id], label: image.original_name || 'Imagen de la referencia' }));
+
+  return (
+    <div className="space-y-2">
+      {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {images.map((image, index) => (
+            <div key={image.id} className="group relative">
+              {urls[image.id]
+                ? <button type="button" onClick={() => setLightboxIndex(index)} className="block h-20 w-20 overflow-hidden rounded-lg border border-slate-700 bg-slate-800" title="Ver en grande">
+                    <img src={urls[image.id]} alt={image.original_name || 'Imagen de la referencia'} className="h-full w-full object-cover" />
+                  </button>
+                : <div className="h-20 w-20 animate-pulse rounded-lg border border-slate-800 bg-slate-800" />}
+              {canEdit && (
+                <button type="button" onClick={() => remove(image)} className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs leading-none text-white group-hover:flex" aria-label="Quitar imagen">×</button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {canEdit && images.length < MAX_NOTE_IMAGES && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input ref={fileRef} type="file" accept="image/png,image/jpeg" disabled={uploading} onChange={upload} className="hidden" />
+          <button type="button" className={BUTTON} disabled={uploading} onClick={() => fileRef.current?.click()}>{uploading ? 'Subiendo…' : '+ Agregar imagen'}</button>
+        </div>
+      )}
+      {lightboxIndex !== null && <ImageLightbox items={lightboxItems} index={lightboxIndex} onClose={() => setLightboxIndex(null)} onSelect={setLightboxIndex} />}
+    </div>
+  );
+}
+
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 4;
+const ZOOM_STEP = 0.4;
+const PAN_EXTRA_MARGIN = 48;
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+// Técnica clásica y sin ambigüedad: la imagen se centra con
+// position:absolute + transform (no depende de flexbox ni de porcentajes
+// que un navegador podría no resolver), y el zoom es un scale() puro sobre
+// esa misma imagen -- un solo número que multiplica ancho y alto por igual,
+// así que no hay forma de que se estire sólo en un eje. Mover la vista
+// mientras está acercada es otro translate() sumado, sin tocar scroll.
+function ImagePanZoom({ url, label }) {
+  const containerRef = useRef(null);
+  const imgRef = useRef(null);
+  const zoomRef = useRef(1);
+  const dragStateRef = useRef(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+
+  // Cuánto se puede mover la imagen sin perderla de vista: la mitad de lo
+  // que sobresale del recuadro (para poder centrar cualquier orilla), más
+  // un margen extra para no quedar exactamente al ras del borde.
+  function getMaxPan() {
+    const img = imgRef.current;
+    const container = containerRef.current;
+    if (!img || !container) return { x: 0, y: 0 };
+    const imgRect = img.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const overflowX = imgRect.width - containerRect.width;
+    const overflowY = imgRect.height - containerRect.height;
+    return {
+      x: overflowX > 0 ? overflowX / 2 + PAN_EXTRA_MARGIN : 0,
+      y: overflowY > 0 ? overflowY / 2 + PAN_EXTRA_MARGIN : 0,
+    };
+  }
+
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  useEffect(() => {
+    if (zoom <= ZOOM_MIN) { setPan({ x: 0, y: 0 }); return; }
+    const max = getMaxPan();
+    setPan((p) => ({ x: clamp(p.x, -max.x, max.x), y: clamp(p.y, -max.y, max.y) }));
+  }, [zoom]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    function onWheel(event) {
+      event.preventDefault();
+      setZoom((z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z + (event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP))));
+    }
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
+  // Arrastrar con el clic izquierdo para mover la imagen ampliada.
+  function startDrag(event) {
+    if (event.button !== 0 || zoomRef.current <= ZOOM_MIN) return;
+    event.preventDefault();
+    containerRef.current?.setPointerCapture?.(event.pointerId);
+    dragStateRef.current = { startX: event.clientX, startY: event.clientY, panX: pan.x, panY: pan.y };
+    setDragging(true);
+  }
+  function onDragMove(event) {
+    const state = dragStateRef.current;
+    if (!state) return;
+    const max = getMaxPan();
+    setPan({
+      x: clamp(state.panX + (event.clientX - state.startX), -max.x, max.x),
+      y: clamp(state.panY + (event.clientY - state.startY), -max.y, max.y),
+    });
+  }
+  function endDrag() {
+    dragStateRef.current = null;
+    setDragging(false);
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative h-full w-full overflow-hidden rounded-lg"
+      style={{ cursor: zoom > ZOOM_MIN ? (dragging ? 'grabbing' : 'grab') : 'default', touchAction: 'none' }}
+      onPointerDown={startDrag}
+      onPointerMove={onDragMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+    >
+      <img
+        ref={imgRef}
+        src={url}
+        alt={label}
+        draggable={false}
+        onDragStart={(event) => event.preventDefault()}
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          maxWidth: '100%',
+          maxHeight: '100%',
+          transform: `translate(-50%, -50%) translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+        }}
+        className="select-none rounded"
+      />
+      <span className="pointer-events-none absolute bottom-2 left-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-slate-300">{Math.round(zoom * 100)}% · rueda para acercar/alejar{zoom > ZOOM_MIN ? ' · arrastra para mover' : ''}</span>
+    </div>
+  );
+}
+
+// Visor compartido por NoteImages (imágenes ya guardadas) y PendingImages
+// (elegidas antes de guardar la referencia): sólo necesita una url por elemento,
+// sin que le importe si viene de un blob del servidor o de un File local.
+function ImageLightbox({ items, index, onClose, onSelect }) {
+  useEffect(() => {
+    function onKeyDown(event) {
+      if (event.key === 'Escape') onClose();
+      else if (event.key === 'ArrowRight') onSelect((current) => Math.min(current + 1, items.length - 1));
+      else if (event.key === 'ArrowLeft') onSelect((current) => Math.max(current - 1, 0));
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [items.length, onClose, onSelect]);
+
+  const item = items[index];
+  if (!item) return null;
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-label="Imagen ampliada" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-xl border border-slate-700 bg-slate-900 p-3 shadow-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-2">
+          <p className="min-w-0 flex-1 truncate text-sm text-slate-200">{item.label}{items.length > 1 ? ` · ${index + 1} de ${items.length}` : ''}</p>
+          <button type="button" onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-slate-600 text-slate-200 hover:bg-slate-800" aria-label="Cerrar">×</button>
+        </div>
+        {/* Ojo: NUNCA "flex-1" aquí -- en Tailwind eso es flex-basis:0%, que
+            ignora por completo este "height" inline y colapsa la caja a 0
+            si el modal (el padre) no tiene una altura propia definida. */}
+        <div className="rounded-lg bg-black/40" style={{ height: '52vh' }}>
+          {item.url ? <ImagePanZoom key={item.key} url={item.url} label={item.label} /> : <div className="flex h-full items-center justify-center"><p className="text-sm text-slate-400">Cargando imagen…</p></div>}
+        </div>
+        {items.length > 1 && (
+          <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+            {items.map((thumb, thumbIndex) => (
+              <button key={thumb.key} type="button" onClick={() => onSelect(thumbIndex)} className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 ${thumbIndex === index ? 'border-sky-400' : 'border-transparent'}`}>
+                {thumb.url ? <img src={thumb.url} alt={thumb.label} className="h-full w-full object-cover" /> : <div className="h-full w-full animate-pulse bg-slate-800" />}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

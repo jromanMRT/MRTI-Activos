@@ -93,7 +93,7 @@ export function buildRemissionHtml({ asset, credentials = {}, employeeProfile = 
 
     <div class="section-title">Descripcion del Equipo</div>
     <table>
-      <tr><th style="width:15%">Marca/Modelo</th><td style="width:35%">${value(asset.marca, '')}<br>${value(asset.modelo, '')}</td><th style="width:12%">Service TAG</th><td style="width:18%">${value(asset.service_tag)}</td><th style="width:8%">PIN</th><td>${value(asset.service_tag)}</td></tr>
+      <tr><th style="width:15%">Marca/Modelo</th><td style="width:35%">${value(asset.marca, '')}<br>${value(asset.modelo, '')}</td><th style="width:12%">Service TAG</th><td style="width:18%">${value(asset.service_tag)}</td><th style="width:8%">PIN</th><td>${value(asset.bitlocker)}</td></tr>
       <tr><th>Tipo</th><td>${value(asset.tipo)}</td><th>Serie</th><td>${value(asset.numero_serie)}</td><th>Activo Fijo</th><td>${value(asset.cuenta_contable)}</td></tr>
       <tr><th colspan="1">Descripcion</th><td colspan="5">${value(asset.descripcion || asset.esp_tec)}</td></tr>
     </table>
@@ -127,7 +127,7 @@ export function buildRemissionHtml({ asset, credentials = {}, employeeProfile = 
       <p><strong>CONDICIONES DE USO Y RESGUARDO:</strong></p>
       <p>1.- EL EQUIPO DEBE PERMANECER EN BUENAS CONDICIONES DE USO.</p>
       <p>2.- EN CASO QUE PRESENTE FALLAS DE SOFTWARE O HARDWARE, DEBIDO AL USO NORMAL, SERAN ENVIADAS A DEPTO DE SISTEMAS PARA SU DIAGNOSTICO Y REPARACION.</p>
-      <p>3.- LA PERSONA RESPONSABLE DEL RESGUARDO DEBERA REPONER LA HERRAMIENTA O EQUIPO EXTRAVIADO O DANIADO POR USO INADECUADO EL COSTO DE REPOSICION.</p>
+      <p>3.- LA PERSONA RESPONSABLE DEL RESGUARDO DEBERA REPONER LA HERRAMIENTA O EQUIPO EXTRAVIADO O DAÑADO POR USO INADECUADO EL COSTO DE REPOSICION.</p>
       <p>4.- EL EQUIPO PODRA SER AUDITADO, TANTO EN SOFTWARE COMO HARDWARE EN CUALQUIER MOMENTO.</p>
       <p>5.- LA HERRAMIENTA O TELEFONO DEBERA ENTREGARSE AL DEPTO. CORRESPONDIENTE AL MOMENTO DE TERMINARSE LA NECESIDAD DE USO.</p>
       <p>6.- EL EQUIPO SE ENCUENTRA CONFIGURADO E INSTALADO CON EL SOFTWARE LEGAL ADQUIRIDO POR LA EMPRESA. EL MAL USO O INSTALACION DE SOFTWARE ILEGAL, ES RESPONSABILIDAD DEL USUARIO.</p>

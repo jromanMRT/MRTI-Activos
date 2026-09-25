@@ -6,8 +6,11 @@ function applicationHref(application) {
   return `${application.url}#token=${encodeURIComponent(localStorage.getItem('auth_token') || '')}&theme=${encodeURIComponent(localStorage.getItem('mrti_theme') || '')}`;
 }
 
+// Pestañas visibles directamente en el encabezado, sin nada que abrir; copia
+// local del mismo componente en Core.
 export function ModuleSwitcher() {
   const [applications, setApplications] = useState([]);
+
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
     if (!token) return;
@@ -16,6 +19,23 @@ export function ModuleSwitcher() {
       .then(({ data }) => setApplications(Array.isArray(data) ? data : []))
       .catch(() => setApplications([]));
   }, []);
-  function navigate(event) { if (event.target.value) window.location.assign(event.target.value); }
-  return <nav className="portal-header-navigation" aria-label="Navegación de la plataforma"><a className="portal-dashboard-link" href="/dashboard">Dashboard</a><label className="portal-module-switcher"><span>Cambiar módulo</span><select value="" onChange={navigate} aria-label="Cambiar de módulo"><option value="" disabled>MRTI Activos</option>{applications.filter((application) => application.code !== 'activos').map((application) => <option key={application.code} value={applicationHref(application)}>{application.name}</option>)}</select></label></nav>;
+
+  return (
+    <nav className="portal-header-navigation module-tabs" aria-label="Navegación de la plataforma">
+      <a className="module-tab" href="/dashboard">Dashboard</a>
+      {applications.map((application) => {
+        const isCurrent = application.code === 'activos';
+        return (
+          <a
+            key={application.code}
+            className={`module-tab${isCurrent ? ' is-current' : ''}`}
+            href={applicationHref(application)}
+            aria-current={isCurrent ? 'page' : undefined}
+          >
+            {application.name.replace(/^MRTI\s*/i, '')}
+          </a>
+        );
+      })}
+    </nav>
+  );
 }

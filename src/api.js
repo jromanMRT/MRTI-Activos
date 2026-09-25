@@ -49,6 +49,22 @@ export async function apiDownload(path, fallbackName = 'documento.pdf') {
   URL.revokeObjectURL(url);
 }
 
+// Para mostrar una imagen protegida en un <img>, que no puede mandar el
+// encabezado Authorization por sí solo: se trae el binario y se expone como
+// blob URL. Quien la use debe revocarla (URL.revokeObjectURL) al terminar.
+export async function apiImageBlobUrl(path) {
+  const token = getToken();
+  const response = await fetch(`/activos-api/api${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (response.status === 401) { goToPortalLogin(); throw new Error('No autenticado'); }
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `Error ${response.status}`);
+  }
+  return URL.createObjectURL(await response.blob());
+}
+
 // Open synchronously so the browser associates the tab with the user's click.
 export async function apiPreview(path, title = 'Documento') {
   const preview = window.open('', '_blank');

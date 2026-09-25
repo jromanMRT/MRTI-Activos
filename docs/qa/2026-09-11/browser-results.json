@@ -1,0 +1,488 @@
+{
+  "api": [
+    {
+      "endpoint": "/activos-api/api/activos",
+      "role": "none",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "/activos-api/api/activos",
+      "role": "invalid",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "/activos-api/api/activos",
+      "role": "administrator",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "endpoint": "/activos-api/api/activos",
+      "role": "viewer",
+      "status": 403,
+      "expected": 403
+    },
+    {
+      "endpoint": "/activos-api/api/activos-suite/summary",
+      "role": "none",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "/activos-api/api/activos-suite/summary",
+      "role": "invalid",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "/activos-api/api/activos-suite/summary",
+      "role": "administrator",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "endpoint": "/activos-api/api/activos-suite/summary",
+      "role": "viewer",
+      "status": 403,
+      "expected": 403
+    },
+    {
+      "endpoint": "/activos-api/api/activos-suite/unit-inventory",
+      "role": "none",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "/activos-api/api/activos-suite/unit-inventory",
+      "role": "invalid",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "/activos-api/api/activos-suite/unit-inventory",
+      "role": "administrator",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "endpoint": "/activos-api/api/activos-suite/unit-inventory",
+      "role": "viewer",
+      "status": 403,
+      "expected": 403
+    },
+    {
+      "endpoint": "/activos-api/api/activos-suite/dashboard",
+      "role": "none",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "/activos-api/api/activos-suite/dashboard",
+      "role": "invalid",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "/activos-api/api/activos-suite/dashboard",
+      "role": "administrator",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "endpoint": "/activos-api/api/activos-suite/dashboard",
+      "role": "viewer",
+      "status": 403,
+      "expected": 403
+    },
+    {
+      "endpoint": "/activos-api/api/activos-suite/alerts",
+      "role": "none",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "/activos-api/api/activos-suite/alerts",
+      "role": "invalid",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "/activos-api/api/activos-suite/alerts",
+      "role": "administrator",
+      "status": 200,
+      "expected": 200
+    },
+    {
+      "endpoint": "/activos-api/api/activos-suite/alerts",
+      "role": "viewer",
+      "status": 403,
+      "expected": 403
+    }
+  ],
+  "pages": [
+    {
+      "path": "/activos/",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "Dashboard de activos",
+      "textLength": 2630,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/inventario",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "Inventario de equipos",
+      "textLength": 46854,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/inventario/unidades",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "Inventario por unidad",
+      "textLength": 2471,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/alertas",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "Alertas de activos",
+      "textLength": 29317,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/bajas-personal",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "Devolución de activos",
+      "textLength": 8403,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/nuevo",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "Inventario de equipos | Nuevo activo",
+      "textLength": 47650,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/credenciales",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "Credenciales de equipos",
+      "textLength": 22945,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/componentes",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "Componentes",
+      "textLength": 14361,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/impresoras",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "Impresoras",
+      "textLength": 5138,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/nvr",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "NVR y CCTV",
+      "textLength": 1905,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/passwords",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "Contraseñas de red",
+      "textLength": 1926,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/starlink",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "Starlink",
+      "textLength": 2603,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/fortigate",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "FortiGate",
+      "textLength": 1375,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/dominios",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "Dominios",
+      "textLength": 680,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/mantenimientos",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "Mantenimientos",
+      "textLength": 739,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/unidades",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "Catálogo de unidades de inventario",
+      "textLength": 1801,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/documentos",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "Documentos",
+      "textLength": 8012,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/config-alertas",
+      "width": 1440,
+      "title": "MRTI Activos",
+      "heading": "Configuración de alertas",
+      "textLength": 633,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "Dashboard de activos",
+      "textLength": 2330,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/inventario",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "Inventario de equipos",
+      "textLength": 46564,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/inventario/unidades",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "Inventario por unidad",
+      "textLength": 2170,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/alertas",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "Alertas de activos",
+      "textLength": 29030,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/bajas-personal",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "Devolución de activos",
+      "textLength": 8106,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/nuevo",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "Inventario de equipos | Nuevo activo",
+      "textLength": 47358,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/credenciales",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "Credenciales de equipos",
+      "textLength": 22645,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/componentes",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "Componentes",
+      "textLength": 14061,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/impresoras",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "Impresoras",
+      "textLength": 4838,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/nvr",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "NVR y CCTV",
+      "textLength": 1605,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/passwords",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "Contraseñas de red",
+      "textLength": 1626,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/starlink",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "Starlink",
+      "textLength": 2303,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/fortigate",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "FortiGate",
+      "textLength": 1075,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/dominios",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "Dominios",
+      "textLength": 380,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/mantenimientos",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "Mantenimientos",
+      "textLength": 439,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/unidades",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "Catálogo de unidades de inventario",
+      "textLength": 1501,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/documentos",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "Documentos",
+      "textLength": 7712,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    },
+    {
+      "path": "/activos/catalogos/config-alertas",
+      "width": 390,
+      "title": "MRTI Activos",
+      "heading": "Configuración de alertas",
+      "textLength": 333,
+      "overflow": false,
+      "errors": [],
+      "http": []
+    }
+  ],
+  "residualFixtures": 0,
+  "failures": 0
+}

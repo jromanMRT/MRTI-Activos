@@ -1,10 +1,10 @@
 import { AssetKnowledgePanel } from '../components/AssetKnowledgePanel.jsx';
 import { AssignmentHistory } from '../components/AssignmentHistory.jsx';
 import { assignedUnit } from '../assignmentHistory.js';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiPreview, apiDownload, apiFetch, apiUpload, obsFetch, obsLinkDevice, obsUnlinkedDevices, rhAssetAssignmentProfileFetch, rhDirectoryFetch, ticketsFetch } from '../api.js';
-import { openAssetRemission } from '../remissionPrint.js';
+import { buildRemissionHtml, openAssetRemission } from '../remissionPrint.js';
 import { notifyAssetChanged } from '../assetEvents.js';
 import { inventoryReturnHref } from '../unitInventory.js';
 import { unitHistoryLabel } from '../unitHistory.js';
@@ -12,6 +12,31 @@ import { unitHistoryLabel } from '../unitHistory.js';
 function currentProfile() {
   try { return JSON.parse(localStorage.getItem('auth_profile') || '{}'); } catch { return {}; }
 }
+
+// Contraseñas que se incluyen en la hoja de remisión, capturadas junto con
+// los demás campos de cada pestaña en vez de en un panel aparte.
+const CREDENTIAL_FIELDS = [
+  { key: 'win_password', label: 'Contraseña de Windows local', group: 'windows' },
+  { key: 'ms_password', label: 'Contraseña de Microsoft / Office', group: 'microsoft365' },
+  { key: 'password_mrt', label: 'Contraseña de correo autorizado (MRT)', group: 'correo' },
+  { key: 'password_corporativo', label: 'Contraseña de correo corporativo', group: 'correo' },
+  { key: 'db_password', label: 'Contraseña de Dropbox', group: 'dropbox' },
+];
+const CREDENTIAL_FIELDS_BY_GROUP = CREDENTIAL_FIELDS.reduce((groups, field) => {
+  (groups[field.group] ||= []).push(field);
+  return groups;
+}, {});
+const EMPTY_CREDENTIAL_VALUES = Object.fromEntries(CREDENTIAL_FIELDS.map(({ key }) => [key, '']));
+const EMPTY_CREDENTIAL_CLEAR = Object.fromEntries(CREDENTIAL_FIELDS.map(({ key }) => [key, false]));
+
+// Tamaño intrínseco de la hoja de remisión (buildRemissionHtml usa Carta con
+// márgenes en mm); se renderiza a este tamaño real dentro del iframe y se
+// reduce con CSS para verse como miniatura sin recalcular el documento.
+const PREVIEW_WIDTH = 850;
+const PREVIEW_HEIGHT = 1100;
+const PREVIEW_SCALE = 0.58;
+const PREVIEW_COMPACT_SCALE = 0.16;
+const LARGE_SCREEN_QUERY = '(min-width: 1280px)';
 
 export function AssetFormPage({ mode }) {
   const { id } = useParams();
@@ -28,8 +53,37 @@ export function AssetFormPage({ mode }) {
   const [documents, setDocuments] = useState([]);
   const [documentsError, setDocumentsError] = useState('');
   const [activeTab, setActiveTab] = useState(() => new URLSearchParams(location.search).get('tab') || 'general');
-  const remissionCredentialsRef = useRef(null);
   const isAdministrator = String(currentProfile().role || '').toLowerCase() === 'administrator';
+  const [credentialConfigured, setCredentialConfigured] = useState({});
+  const [credentialValues, setCredentialValues] = useState(EMPTY_CREDENTIAL_VALUES);
+  const [credentialClear, setCredentialClear] = useState(EMPTY_CREDENTIAL_CLEAR);
+  const [showCredentials, setShowCredentials] = useState(false);
+  // En pantalla grande la vista previa se muestra sola; en una chica no, para
+  // no robarle espacio a la ficha, pero el botón la deja abrir en pequeño.
+  // "null" = sin decisión manual todavía -> se sigue el tamaño de pantalla.
+  const [isLargeScreen, setIsLargeScreen] = useState(() => typeof window !== 'undefined' && window.matchMedia(LARGE_SCREEN_QUERY).matches);
+  const [previewManualOverride, setPreviewManualOverride] = useState(null);
+  const [previewProfile, setPreviewProfile] = useState(null);
+
+  useEffect(() => {
+    const query = window.matchMedia(LARGE_SCREEN_QUERY);
+    const handleChange = (event) => setIsLargeScreen(event.matches);
+    query.addEventListener('change', handleChange);
+    return () => query.removeEventListener('change', handleChange);
+  }, []);
+
+  // Al cruzar el punto de quiebre se vuelve a seguir el tamaño de pantalla,
+  // en vez de arrastrar una preferencia manual pensada para el otro tamaño.
+  useEffect(() => {
+    setPreviewManualOverride(null);
+  }, [isLargeScreen]);
+
+  const previewOpen = mode === 'edit' && (previewManualOverride !== null ? previewManualOverride : isLargeScreen);
+  const previewPanelVisible = previewOpen && isLargeScreen;
+  const previewCompactVisible = previewOpen && !isLargeScreen;
+  function togglePreview() {
+    setPreviewManualOverride(!previewOpen);
+  }
 
   useEffect(() => {
     setActiveTab(new URLSearchParams(location.search).get('tab') || 'general');
@@ -73,8 +127,60 @@ export function AssetFormPage({ mode }) {
       .finally(() => setLoading(false));
   }, [mode, id]);
 
+  useEffect(() => {
+    if (mode !== 'edit' || !isAdministrator) return;
+    let current = true;
+    apiFetch(`/activos/${id}/remission-credential-status`)
+      .then((result) => { if (current) setCredentialConfigured(result.data || {}); })
+      .catch((err) => { if (current) setError(err.message); });
+    return () => { current = false; };
+  }, [mode, id, isAdministrator]);
+
+  // La ficha de RH sólo se consulta mientras el panel de vista previa está
+  // abierto: al cerrarlo no tiene sentido seguir refrescándola.
+  useEffect(() => {
+    if (!previewOpen || mode !== 'edit') return;
+    if (!values.rh_employee_id && !values.portal_user_id) {
+      setPreviewProfile(null);
+      return;
+    }
+    let current = true;
+    rhAssetAssignmentProfileFetch({ employeeId: values.rh_employee_id, portalUserId: values.portal_user_id })
+      .then((profile) => { if (current) setPreviewProfile(profile); })
+      .catch(() => { if (current) setPreviewProfile(null); });
+    return () => { current = false; };
+  }, [previewOpen, mode, values.rh_employee_id, values.portal_user_id]);
+
+  const previewCredentials = useMemo(() => {
+    const result = {};
+    for (const { key } of CREDENTIAL_FIELDS) result[key] = credentialClear[key] ? '' : credentialValues[key];
+    return result;
+  }, [credentialValues, credentialClear]);
+
+  // Se recalcula sólo mientras el panel está abierto: buildRemissionHtml es
+  // barato, pero no hay razón para reconstruir el documento en cada tecleo
+  // si nadie lo está viendo.
+  const previewHtml = useMemo(() => {
+    if (!previewOpen) return '';
+    return buildRemissionHtml({
+      asset: values,
+      credentials: isAdministrator ? previewCredentials : {},
+      employeeProfile: previewProfile,
+      actorName: currentProfile().full_name || 'MRTI Activos',
+    });
+  }, [previewOpen, values, previewCredentials, previewProfile, isAdministrator]);
+
   function setField(key, value) {
     setValues((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function credentialChanges() {
+    const changes = {};
+    for (const { key } of CREDENTIAL_FIELDS) {
+      if (credentialClear[key]) changes[key] = null;
+      else if (credentialValues[key] !== '') changes[key] = credentialValues[key];
+    }
+    return changes;
   }
 
   async function handleSubmit(event) {
@@ -88,6 +194,16 @@ export function AssetFormPage({ mode }) {
         navigate(`/${result.data.id}`);
       } else {
         await apiFetch(`/activos/${id}`, { method: 'PATCH', body: JSON.stringify(values) });
+        if (isAdministrator) {
+          const changes = credentialChanges();
+          if (Object.keys(changes).length) {
+            await apiFetch(`/activos/${id}/remission-credentials`, { method: 'PATCH', body: JSON.stringify(changes) });
+            setCredentialValues(EMPTY_CREDENTIAL_VALUES);
+            setCredentialClear(EMPTY_CREDENTIAL_CLEAR);
+            const status = await apiFetch(`/activos/${id}/remission-credential-status`);
+            setCredentialConfigured(status.data || {});
+          }
+        }
         notifyAssetChanged({ assetId: id, action: 'updated' });
         navigate(returnHref);
       }
@@ -110,7 +226,6 @@ export function AssetFormPage({ mode }) {
   }
 
   const groupsByKey = Object.fromEntries(groups.map((group) => [group.key, group]));
-  const credentialAreaActive = mode === 'edit' && isAdministrator && ['windows', 'microsoft365', 'dropbox', 'correo'].includes(activeTab);
   const tabs = [
     { key: 'general', label: 'General', groups: ['identificacion', 'software'] },
     ...(mode === 'edit' ? [{ key: 'asignacion', label: 'Asignación', groups: [] }] : []),
@@ -145,15 +260,18 @@ export function AssetFormPage({ mode }) {
     }
   }
 
+  const showCredentialToggle = mode === 'edit' && isAdministrator && ['windows', 'microsoft365', 'dropbox', 'correo'].includes(activeTab);
+
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/65 p-0 backdrop-blur-sm sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) closeModal(); }}>
-      <form onSubmit={handleSubmit} role="dialog" aria-modal="true" aria-labelledby="asset-dialog-title" className="flex h-full w-full flex-col overflow-hidden bg-slate-950 shadow-2xl sm:h-[85dvh] sm:max-h-[880px] sm:max-w-6xl sm:rounded-2xl sm:border sm:border-slate-800">
+      <form onSubmit={handleSubmit} role="dialog" aria-modal="true" aria-labelledby="asset-dialog-title" className={`flex h-full w-full flex-col overflow-hidden bg-slate-950 shadow-2xl sm:h-[85dvh] sm:max-h-[880px] sm:rounded-2xl sm:border sm:border-slate-800 ${previewPanelVisible ? 'sm:max-w-[104rem]' : 'sm:max-w-6xl'}`}>
         <header className="flex items-start justify-between gap-4 border-b border-slate-800 px-5 py-4 sm:px-7">
           <div>
             <h1 id="asset-dialog-title" className="text-xl font-bold sm:text-2xl">{mode === 'create' ? 'Nuevo activo' : 'Editar activo'}</h1>
             {mode === 'edit' && <p className="mt-1 text-sm text-slate-500">{values.center_code || 'Cargando información…'}{values.descripcion ? ` · ${values.descripcion}` : ''}</p>}
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {mode === 'edit' && <button type="button" onClick={togglePreview} className={`rounded-lg border px-3 py-2 text-sm font-medium hover:bg-slate-900 ${previewOpen ? 'border-sky-500/60 bg-sky-500/10 text-sky-400' : 'border-slate-700 text-slate-300'}`}>{previewOpen ? 'Ocultar vista previa' : 'Vista previa'}</button>}
             {mode === 'edit' && <button type="button" onClick={printRemission} disabled={loading} className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-900 disabled:opacity-50">Imprimir remisión</button>}
             {createTicketUrl && <a href={createTicketUrl} className="rounded-lg border border-sky-500/40 px-3 py-2 text-sm font-medium text-sky-400 hover:bg-sky-500/10">Crear ticket</a>}
             <button type="button" onClick={closeModal} disabled={saving} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-800 text-slate-400 hover:bg-slate-900 hover:text-slate-100 disabled:opacity-50" aria-label="Cerrar">×</button>
@@ -164,163 +282,94 @@ export function AssetFormPage({ mode }) {
           {tabs.map((tab) => <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)} className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm transition ${activeTab === tab.key ? 'border-sky-400 text-sky-400' : 'border-transparent text-slate-500 hover:text-slate-200'}`}>{tab.label}{Number.isInteger(tab.count) && <span className="ml-1.5 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px]">{tab.count}</span>}</button>)}
         </nav>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
-          {error && <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300">{error}</div>}
-          {loading ? <p className="py-12 text-center text-slate-500">Cargando activo…</p> : <>
-            {tabs.find((tab) => tab.key === activeTab)?.groups?.map((groupKey) => {
-              const group = groupsByKey[groupKey];
-              if (!group) return null;
-              if (group.key === 'antivirus') return <AntivirusAssignmentPanel key={group.key} mode={mode} assetUid={values.asset_uid} legacy={values} />;
-              return <section key={group.key} className="mb-7 last:mb-0"><h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">{group.label}</h2><div className="grid grid-cols-1 gap-4 md:grid-cols-2">{group.fields.map((field) => <AssetField key={field.key} field={field} value={values[field.key]} onChange={setField} />)}</div></section>;
-            })}
-            {activeTab === 'windows' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['win_password']} title="Contraseña de Windows para la remisión" showSaveButton={false} />}
-            {activeTab === 'microsoft365' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['ms_password']} title="Contraseña de Microsoft / Office para la remisión" showSaveButton={false} />}
-            {activeTab === 'dropbox' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['db_password']} title="Contraseña de Dropbox para la remisión" showSaveButton={false} />}
-            {activeTab === 'correo' && mode === 'edit' && isAdministrator && <RemissionCredentialsPanel ref={remissionCredentialsRef} assetId={id} fieldKeys={['password_mrt', 'password_corporativo']} title="Contraseñas de correo para la remisión" showSaveButton={false} />}
-            {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} assetUnit={values.unidad} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} isAdministrator={isAdministrator} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
-            {activeTab === 'administracion' && mode === 'edit' && <div className="mt-2"><UnitHistoryPanel assetId={id} isAdministrator={isAdministrator} onReverted={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
-            {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel assetId={id} documents={documents} error={documentsError} onError={setDocumentsError} onUploaded={(document) => setDocuments((current) => [document, ...current.filter((item) => item.id !== document.id)])} onDeleted={(documentId) => setDocuments((current) => current.filter((item) => item.id !== documentId))} />}
-            {activeTab === 'monitor' && mode === 'edit' && <ObservabilityPanel assetUid={values.asset_uid} data={observability} error={observabilityError} onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))} />}
-            {activeTab === 'articulos' && mode === 'edit' && <AssetKnowledgePanel assetUid={values.asset_uid} />}
-            {activeTab === 'tickets' && mode === 'edit' && <TicketsPanel assetUid={values.asset_uid} createTicketUrl={createTicketUrl} />}
-          </>}
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
+            {error && <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300">{error}</div>}
+            {loading ? <p className="py-12 text-center text-slate-500">Cargando activo…</p> : <>
+              {showCredentialToggle && (
+                <div className="mb-4 flex justify-end">
+                  <button type="button" onClick={() => setShowCredentials((v) => !v)} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-900">
+                    {showCredentials ? 'Ocultar contraseñas mientras escribo' : 'Mostrar contraseñas mientras escribo'}
+                  </button>
+                </div>
+              )}
+              {tabs.find((tab) => tab.key === activeTab)?.groups?.map((groupKey) => {
+                const group = groupsByKey[groupKey];
+                if (!group) return null;
+                if (group.key === 'antivirus') return <AntivirusAssignmentPanel key={group.key} mode={mode} assetUid={values.asset_uid} legacy={values} />;
+                const credentialFields = mode === 'edit' && isAdministrator ? CREDENTIAL_FIELDS_BY_GROUP[group.key] || [] : [];
+                return (
+                  <section key={group.key} className="mb-7 last:mb-0">
+                    <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">{group.label}</h2>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      {group.fields.map((field) => <AssetField key={field.key} field={field} value={values[field.key]} onChange={setField} />)}
+                      {credentialFields.map((credentialField) => (
+                        <CredentialField
+                          key={credentialField.key}
+                          field={credentialField}
+                          value={credentialValues[credentialField.key]}
+                          configured={credentialConfigured[credentialField.key]}
+                          clear={credentialClear[credentialField.key]}
+                          show={showCredentials}
+                          onChange={(next) => setCredentialValues((prev) => ({ ...prev, [credentialField.key]: next }))}
+                          onToggleClear={(checked) => setCredentialClear((prev) => ({ ...prev, [credentialField.key]: checked }))}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+              {activeTab === 'asignacion' && mode === 'edit' && <div className="mt-6"><AssignmentPanel assetId={id} assetUnit={values.unidad} portalUserId={values.portal_user_id} terceroId={values.tercero_id} rhEmployeeId={values.rh_employee_id} usuarioAsignado={values.usuario_asignado} isAdministrator={isAdministrator} onChange={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
+              {activeTab === 'administracion' && mode === 'edit' && <div className="mt-2"><UnitHistoryPanel assetId={id} isAdministrator={isAdministrator} onReverted={() => apiFetch(`/activos/${id}`).then((r) => setValues(r.data)).catch((err) => setError(err.message))} /></div>}
+              {activeTab === 'documentos' && mode === 'edit' && <DocumentsPanel assetId={id} documents={documents} error={documentsError} onError={setDocumentsError} onUploaded={(document) => setDocuments((current) => [document, ...current.filter((item) => item.id !== document.id)])} onDeleted={(documentId) => setDocuments((current) => current.filter((item) => item.id !== documentId))} />}
+              {activeTab === 'monitor' && mode === 'edit' && <ObservabilityPanel assetUid={values.asset_uid} data={observability} error={observabilityError} onChange={() => obsFetch(values.asset_uid).then(setObservability).catch((err) => setObservabilityError(err.message))} />}
+              {activeTab === 'articulos' && mode === 'edit' && <AssetKnowledgePanel assetUid={values.asset_uid} />}
+              {activeTab === 'tickets' && mode === 'edit' && <TicketsPanel assetUid={values.asset_uid} createTicketUrl={createTicketUrl} />}
+            </>}
+          </div>
+
+          {previewPanelVisible && (
+            <aside className="w-[540px] shrink-0 overflow-y-auto border-l border-slate-800 bg-slate-900/40 p-4">
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Vista previa de la remisión</h2>
+              <div className="mx-auto overflow-hidden rounded-lg border border-slate-800 bg-slate-800" style={{ position: 'relative', width: PREVIEW_WIDTH * PREVIEW_SCALE, height: PREVIEW_HEIGHT * PREVIEW_SCALE }}>
+                <iframe
+                  title="Vista previa de la remisión"
+                  srcDoc={previewHtml}
+                  style={{ position: 'absolute', top: 0, left: 0, width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT, border: 'none', transform: `scale(${PREVIEW_SCALE})`, transformOrigin: 'top left', pointerEvents: 'none' }}
+                />
+              </div>
+              <p className="mt-3 text-xs text-slate-500">Se actualiza mientras editas. Las contraseñas se muestran tal como las escribes aquí, no las que ya estaban guardadas.</p>
+            </aside>
+          )}
         </div>
+
+        {previewCompactVisible && (
+          <div className="fixed bottom-4 right-4 z-[80] w-40 overflow-hidden rounded-lg border border-slate-700 bg-slate-900 shadow-2xl">
+            <div className="flex items-center justify-between gap-2 border-b border-slate-800 px-2 py-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Vista previa</span>
+              <button type="button" onClick={togglePreview} className="text-slate-500 hover:text-slate-200" aria-label="Cerrar vista previa">×</button>
+            </div>
+            <div className="bg-slate-800" style={{ position: 'relative', width: PREVIEW_WIDTH * PREVIEW_COMPACT_SCALE, height: PREVIEW_HEIGHT * PREVIEW_COMPACT_SCALE, overflow: 'hidden' }}>
+              <iframe
+                title="Vista previa de la remisión"
+                srcDoc={previewHtml}
+                style={{ position: 'absolute', top: 0, left: 0, width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT, border: 'none', transform: `scale(${PREVIEW_COMPACT_SCALE})`, transformOrigin: 'top left', pointerEvents: 'none' }}
+              />
+            </div>
+          </div>
+        )}
 
         <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-800 bg-slate-900/50 px-5 py-4 sm:px-7">
           <div>{mode === 'edit' && <button type="button" onClick={handleDelete} disabled={saving || loading} className="rounded-lg border border-red-500/40 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 disabled:opacity-50">Retirar activo</button>}</div>
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" onClick={closeModal} disabled={saving} className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50">Cancelar</button>
             <button type="submit" disabled={saving || loading} className="rounded-lg border border-sky-500/50 px-5 py-2 text-sm font-semibold text-sky-300 hover:bg-sky-500/10 disabled:opacity-50">{saving ? 'Guardando…' : 'Guardar activo'}</button>
-            {credentialAreaActive && <button type="button" onClick={() => remissionCredentialsRef.current?.save()} disabled={loading} className="rounded-lg bg-sky-500 px-5 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">Guardar credenciales</button>}
           </div>
         </footer>
       </form>
     </div>
   );
 }
-
-const REMISSION_CREDENTIAL_FIELDS = [
-  { key: 'win_password', label: 'Contraseña de Windows local' },
-  { key: 'ms_password', label: 'Contraseña de Microsoft / Office' },
-  { key: 'password_mrt', label: 'Contraseña de correo autorizado (MRT)' },
-  { key: 'password_corporativo', label: 'Contraseña de correo corporativo' },
-  { key: 'db_password', label: 'Contraseña de Dropbox' },
-];
-
-const RemissionCredentialsPanel = forwardRef(function RemissionCredentialsPanel({ assetId, fieldKeys = null, title = 'Credenciales de remisión', showSaveButton = true }, ref) {
-  const visibleFields = fieldKeys
-    ? REMISSION_CREDENTIAL_FIELDS.filter(({ key }) => fieldKeys.includes(key))
-    : REMISSION_CREDENTIAL_FIELDS;
-  const emptyValues = Object.fromEntries(REMISSION_CREDENTIAL_FIELDS.map(({ key }) => [key, '']));
-  const emptyClears = Object.fromEntries(REMISSION_CREDENTIAL_FIELDS.map(({ key }) => [key, false]));
-  const [configured, setConfigured] = useState({});
-  const [values, setValues] = useState(emptyValues);
-  const [clear, setClear] = useState(emptyClears);
-  const [show, setShow] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
-
-  async function refreshStatus() {
-    const result = await apiFetch(`/activos/${assetId}/remission-credential-status`);
-    setConfigured(result.data || {});
-  }
-
-  useEffect(() => {
-    let current = true;
-    apiFetch(`/activos/${assetId}/remission-credential-status`)
-      .then((result) => { if (current) setConfigured(result.data || {}); })
-      .catch((statusError) => { if (current) setError(statusError.message); })
-      .finally(() => { if (current) setLoading(false); });
-    return () => { current = false; };
-  }, [assetId]);
-
-  async function saveCredentials() {
-    if (loading || saving) return;
-    const changes = {};
-    for (const { key } of visibleFields) {
-      if (clear[key]) changes[key] = null;
-      else if (values[key] !== '') changes[key] = values[key];
-    }
-    if (!Object.keys(changes).length) {
-      setMessage('Escribe una contraseña nueva o marca una para quitarla.');
-      return;
-    }
-    setSaving(true);
-    setError('');
-    setMessage('');
-    try {
-      await apiFetch(`/activos/${assetId}/remission-credentials`, {
-        method: 'PATCH',
-        body: JSON.stringify(changes),
-      });
-      setValues(emptyValues);
-      setClear(emptyClears);
-      await refreshStatus();
-      setMessage('Credenciales actualizadas. Aparecerán en la próxima remisión que imprimas.');
-    } catch (saveError) {
-      setError(saveError.message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  useImperativeHandle(ref, () => ({ save: saveCredentials }));
-
-  return (
-    <fieldset className="rounded-xl border border-slate-800 p-4 sm:p-5">
-      <legend className="px-1 text-sm font-semibold text-slate-300">{title}</legend>
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-sm text-slate-300">Captura aquí las contraseñas que recibirá el usuario final en su hoja.</p>
-          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Por seguridad, las contraseñas guardadas no se muestran en pantalla. Deja un campo vacío para conservar su valor actual y usa <strong className="text-slate-300">Guardar credenciales</strong> en el pie fijo. Esta sección y la impresión están disponibles sólo para administradores.</p>
-        </div>
-        <button type="button" onClick={() => setShow((value) => !value)} className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-900">
-          {show ? 'Ocultar mientras escribo' : 'Mostrar mientras escribo'}
-        </button>
-      </div>
-      {error && <p className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>}
-      {message && <p className="mb-4 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-sm text-sky-300">{message}</p>}
-      {loading ? <p className="py-8 text-center text-sm text-slate-500">Consultando credenciales…</p> : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {visibleFields.map(({ key, label }) => (
-            <div key={key} className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <label htmlFor={`remission-${key}`} className="text-sm font-medium text-slate-200">{label}</label>
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${configured[key] ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-800 text-slate-500'}`}>
-                  {configured[key] ? 'Configurada' : 'Sin configurar'}
-                </span>
-              </div>
-              <input
-                id={`remission-${key}`}
-                type={show ? 'text' : 'password'}
-                value={values[key]}
-                onChange={(event) => setValues((previous) => ({ ...previous, [key]: event.target.value }))}
-                onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); saveCredentials(); } }}
-                disabled={clear[key] || saving}
-                maxLength={255}
-                autoComplete="new-password"
-                placeholder={configured[key] ? 'Dejar vacío para conservar' : 'Escribir contraseña'}
-                className="block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 disabled:opacity-50"
-              />
-              <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-slate-400">
-                <input type="checkbox" checked={clear[key]} disabled={saving} onChange={(event) => setClear((previous) => ({ ...previous, [key]: event.target.checked }))} className="rounded border-slate-700 bg-slate-950 text-sky-500" />
-                Quitar esta contraseña guardada
-              </label>
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-800 pt-4">
-        <p className="text-xs text-slate-500">Los cambios quedan auditados sin registrar los valores secretos.</p>
-        {showSaveButton && <button type="button" onClick={saveCredentials} disabled={loading || saving} className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">
-          {saving ? 'Guardando credenciales…' : 'Guardar credenciales'}
-        </button>}
-      </div>
-    </fieldset>
-  );
-});
 
 function AntivirusAssignmentPanel({ mode, assetUid, legacy }) {
   const [record, setRecord] = useState(null);
@@ -994,6 +1043,36 @@ export function AssetField({ field, value, onChange }) {
         />
       )}
       {field.readOnly && <span className="mt-1 block text-xs text-slate-500">Se actualiza automáticamente al asignar una persona desde RH.</span>}
+    </label>
+  );
+}
+
+// Contraseña de remisión capturada junto a los demás campos de su pestaña
+// (ver CREDENTIAL_FIELDS_BY_GROUP en AssetFormPage) en vez de en un panel
+// aparte con su propio guardado: se envía junto con "Guardar activo".
+function CredentialField({ field, value, configured, clear, show, onChange, onToggleClear }) {
+  return (
+    <label className="block">
+      <span className="mb-1 flex items-center justify-between gap-2">
+        <span className="text-xs text-slate-400">{field.label}</span>
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${configured ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-800 text-slate-500'}`}>
+          {configured ? 'Configurada' : 'Sin configurar'}
+        </span>
+      </span>
+      <input
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={clear}
+        maxLength={255}
+        autoComplete="new-password"
+        placeholder={configured ? 'Dejar vacío para conservar' : 'Escribir contraseña'}
+        className="w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 disabled:opacity-50"
+      />
+      <span className="mt-1.5 flex cursor-pointer items-center gap-2 text-[11px] text-slate-500">
+        <input type="checkbox" checked={clear} onChange={(e) => onToggleClear(e.target.checked)} className="rounded border-slate-700 bg-slate-950 text-sky-500" />
+        Quitar esta contraseña guardada
+      </span>
     </label>
   );
 }
