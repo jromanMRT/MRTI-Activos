@@ -118,7 +118,7 @@ antivirusLicensesRouter.get('/', async (_req, res, next) => {
     res.set('Cache-Control', 'no-store');
     res.json({ data: groups, meta: {
       licenses: groups.filter((group) => !group.legacy).length,
-      devices: groups.reduce((total, group) => total + Number(group.device_count || 0), 0),
+      devices: groups.filter((group) => !group.legacy).reduce((total, group) => total + Number(group.device_count || 0), 0),
       capacity: groups.filter((group) => !group.legacy).reduce((total, group) => total + Number(group.capacity || 0), 0),
       available_seats: groups.filter((group) => !group.legacy).reduce((total, group) => total + Number(group.available_seats || 0), 0),
       conflicts: groups.filter((group) => group.migration_status === 'needs_review' || group.purchase_conflict || group.expiration_conflict).length,
