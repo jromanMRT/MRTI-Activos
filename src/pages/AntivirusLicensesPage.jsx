@@ -70,7 +70,7 @@ export function AntivirusLicensesPage() {
     setEdit({ product_id: String(selected.product_id), display_name: selected.display_name || '', license_key: selected.license_key || '', purchase_date: selected.fecha_adquisicion || '', expires_on: selected.fecha_vence || '', seat_capacity: selected.capacity, provider: selected.provider || '', purchase_reference: selected.purchase_reference || '', notes: selected.notes || '' });
   }, [selectedId, licenses]);
   const shown = useMemo(() => { const q = query.trim().toLowerCase(); return !q ? licenses : licenses.filter((l) => [l.display_name, l.license_key, l.product_name, l.vendor, l.center_codes].some((v) => String(v || '').toLowerCase().includes(q))); }, [licenses, query]);
-  const candidates = useMemo(() => { const q = assetSearch.trim().toLowerCase(); return assets.filter((a) => !a.license_id && (!q || [a.center_code, a.descripcion, a.usuario_asignado].some((v) => String(v || '').toLowerCase().includes(q)))).slice(0, 100); }, [assets, assetSearch]);
+  const candidates = useMemo(() => { const q = assetSearch.trim().toLowerCase(); return assets.filter((a) => !a.license_id && (!q || [a.center_code, a.descripcion, a.usuario_asignado, a.numero_serie].some((v) => String(v || '').toLowerCase().includes(q)))); }, [assets, assetSearch]);
   const change = (setter) => (key, value) => setter((current) => ({ ...current, [key]: value }));
   const feedback = () => { setError(''); setMessage(''); };
 
