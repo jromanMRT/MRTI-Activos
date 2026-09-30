@@ -12,6 +12,7 @@ function currentRouteLabel(pathname) {
   if (['/notas-tecnicas', '/referencias-tecnicas'].includes(pathname)) return 'Referencias técnicas';
   if (pathname === '/alertas') return 'Alertas';
   if (pathname === '/licencias-antivirus') return 'Licencias antivirus';
+  if (pathname === '/teamviewer') return 'TeamViewer';
   if (pathname === '/bajas-personal') return 'Bajas de personal';
   if (pathname.startsWith('/catalogos/')) return 'Catálogos de activos';
   return 'Detalle del activo';

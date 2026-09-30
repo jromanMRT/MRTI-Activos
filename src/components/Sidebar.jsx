@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: '/referencias-tecnicas', label: 'Referencias técnicas', icon: 'notes' },
   { to: '/alertas', label: 'Alertas', icon: 'alert' },
   { to: '/licencias-antivirus', label: 'Licencias antivirus', icon: 'catalog' },
+  { to: '/teamviewer', label: 'TeamViewer', icon: 'catalog' },
   { to: '/bajas-personal', label: 'Bajas de personal', icon: 'offboarding' },
   { to: '/catalogos/credenciales', label: 'Credenciales', icon: 'catalog' },
   { to: '/catalogos/componentes', label: 'Componentes', icon: 'catalog' },

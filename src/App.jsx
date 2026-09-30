@@ -7,6 +7,7 @@ import { AssetAlertsPage, AssetCatalogPage, AssetSuiteOverviewPage } from './pag
 import { EmployeeOffboardingPage } from './pages/EmployeeOffboardingPage.jsx';
 import { TechnicalNotesPage } from './pages/TechnicalNotesPage.jsx';
 import { AntivirusLicensesPage } from './pages/AntivirusLicensesPage.jsx';
+import { TeamViewerPage } from './pages/TeamViewerPage.jsx';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/catalogos/:resource" element={<AssetCatalogPage />} />
         <Route path="/alertas" element={<AssetAlertsPage />} />
         <Route path="/licencias-antivirus" element={<AntivirusLicensesPage />} />
+        <Route path="/teamviewer" element={<TeamViewerPage />} />
         <Route path="/bajas-personal" element={<EmployeeOffboardingPage />} />
         <Route path="/nuevo" element={<><ListPage /><AssetFormPage mode="create" /></>} />
         <Route path="/:id" element={<><ListPage /><AssetFormPage mode="edit" /></>} />
