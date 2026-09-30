@@ -9,7 +9,7 @@ const css = 'mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py
 export const formatTeamviewerId = (value) => String(value || '').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 const assetLabel = (a) => `${a.center_code || 'Sin código'} · ${a.usuario_asignado || a.descripcion || 'Sin asignar'}${a.estado && a.estado !== 'Activo' ? ` (${a.estado})` : ''}`;
 
-async function copy(text, setMessage) {
+export async function copy(text, setMessage) {
   try { await navigator.clipboard.writeText(text); setMessage('Copiado al portapapeles.'); } catch { setMessage('No se pudo copiar; selecciónalo manualmente.'); }
 }
 
@@ -120,7 +120,7 @@ export function TeamViewerPage() {
     <section className="overflow-hidden rounded-xl border border-slate-800">{loading ? <p className="p-5 text-slate-500">Cargando…</p> : !shown.length ? <p className="p-5 text-sm text-slate-500">{devices.length ? 'Sin resultados para esa búsqueda.' : 'Todavía no hay TeamViewer registrados.'}</p> : <div className="overflow-x-auto"><table className="min-w-full text-sm"><thead className="bg-slate-900 text-left text-slate-400"><tr><th className="px-4 py-3">ID TeamViewer</th><th className="px-4 py-3">Contraseña</th><th className="px-4 py-3">Equipo</th><th className="px-4 py-3">Asignado a</th><th className="px-4 py-3">Notas</th></tr></thead><tbody>{shown.map((d) => <tr key={d.id} onClick={() => admin && open(d)} className={`border-t border-slate-800 ${admin ? 'cursor-pointer hover:bg-slate-900/60' : ''}`}>
       <td className="px-4 py-3"><span className="flex items-center gap-2"><strong className="font-mono">{formatTeamviewerId(d.teamviewer_id)}</strong><button type="button" onClick={(e) => { e.stopPropagation(); copy(d.teamviewer_id, setMessage); }} className="text-xs text-sky-300">Copiar</button></span>{d.alias && <small className="block text-slate-500">{d.alias}</small>}</td>
       <td className="px-4 py-3"><PasswordCell record={d} admin={admin} setMessage={setMessage} setError={setError} /></td>
-      <td className="px-4 py-3">{d.asset_uid ? <><Link to={`/${d.asset_id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-sky-300">{d.center_code || 'Sin código'}</Link><small className="block text-slate-500">{d.descripcion}</small></> : <span className="text-amber-300">Sin vincular</span>}</td>
+      <td className="px-4 py-3">{d.asset_uid ? <><Link to={`/${d.asset_id}?tab=antivirus`} onClick={(e) => e.stopPropagation()} className="font-medium text-sky-300">{d.center_code || 'Sin código'}</Link><small className="block text-slate-500">{d.descripcion}</small></> : <span className="text-amber-300">Sin vincular</span>}</td>
       <td className="px-4 py-3">{d.usuario_asignado || <span className="text-slate-500">—</span>}</td>
       <td className="max-w-64 truncate px-4 py-3 text-slate-400">{d.notes || '—'}</td>
     </tr>)}</tbody></table></div>}</section>

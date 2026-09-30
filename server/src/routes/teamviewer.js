@@ -56,9 +56,10 @@ function duplicateMessage(error) {
     : 'Ese ID de TeamViewer ya está registrado';
 }
 
-teamviewerRouter.get('/', async (_req, res, next) => {
+teamviewerRouter.get('/', async (req, res, next) => {
   try {
-    const [rows] = await pool.query(`${LIST_SELECT} ORDER BY a.center_code IS NULL, a.center_code, t.alias, t.teamviewer_id`);
+    const byAsset = req.query.asset_uid ? String(req.query.asset_uid) : null;
+    const [rows] = await pool.query(`${LIST_SELECT} ${byAsset ? 'WHERE t.asset_uid = ?' : ''} ORDER BY a.center_code IS NULL, a.center_code, t.alias, t.teamviewer_id`, byAsset ? [byAsset] : []);
     res.json({ data: rows.map((row) => ({ ...row, has_password: Boolean(row.has_password) })) });
   } catch (error) { next(error); }
 });

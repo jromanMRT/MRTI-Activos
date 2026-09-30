@@ -1,5 +1,6 @@
 import { AssetKnowledgePanel } from '../components/AssetKnowledgePanel.jsx';
 import { AssignmentHistory } from '../components/AssignmentHistory.jsx';
+import { TeamViewerAssetPanel } from '../components/TeamViewerAssetPanel.jsx';
 import { assignedUnit } from '../assignmentHistory.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -234,7 +235,7 @@ export function AssetFormPage({ mode }) {
     { key: 'microsoft365', label: 'Microsoft', groups: ['microsoft365'] },
     { key: 'dropbox', label: 'Dropbox', groups: ['dropbox'] },
     { key: 'correo', label: 'Correo', groups: ['correo'] },
-    { key: 'antivirus', label: 'Antivirus', groups: ['antivirus'] },
+    { key: 'antivirus', label: 'Antivirus y TeamViewer', groups: ['antivirus'] },
     ...(mode === 'edit' ? [
       { key: 'documentos', label: 'Documentos', count: documents.length },
       { key: 'monitor', label: 'Monitor' },
@@ -296,7 +297,7 @@ export function AssetFormPage({ mode }) {
               {tabs.find((tab) => tab.key === activeTab)?.groups?.map((groupKey) => {
                 const group = groupsByKey[groupKey];
                 if (!group) return null;
-                if (group.key === 'antivirus') return <AntivirusAssignmentPanel key={group.key} mode={mode} assetUid={values.asset_uid} legacy={values} />;
+                if (group.key === 'antivirus') return <div key={group.key}><AntivirusAssignmentPanel mode={mode} assetUid={values.asset_uid} legacy={values} /><TeamViewerAssetPanel mode={mode} assetUid={values.asset_uid} isAdministrator={isAdministrator} /></div>;
                 const credentialFields = mode === 'edit' && isAdministrator ? CREDENTIAL_FIELDS_BY_GROUP[group.key] || [] : [];
                 return (
                   <section key={group.key} className="mb-7 last:mb-0">
@@ -384,11 +385,11 @@ function AntivirusAssignmentPanel({ mode, assetUid, legacy }) {
   }, [mode, assetUid]);
   return <section className="mb-7 rounded-xl border border-slate-800 bg-slate-900/40 p-5">
     <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500">Antivirus</h2>
-    {mode === 'create' ? <p className="mt-4 text-sm text-slate-400">Guarda primero el activo y después vincúlalo desde Licencias antivirus. Así la compra, caducidad y capacidad se administran una sola vez.</p>
+    {mode === 'create' ? <p className="mt-4 text-sm text-slate-400">Guarda primero el activo y después vincúlalo desde Seguridad de equipos. Así la compra, caducidad y capacidad se administran una sola vez.</p>
       : loading ? <p className="mt-4 text-sm text-slate-500">Consultando licencia…</p>
       : error ? <p className="mt-4 text-sm text-red-300">{error}</p>
-      : record?.license_id ? <div className="mt-4 flex flex-wrap items-center justify-between gap-4"><div><p className="font-medium text-slate-100">{record.license_name || record.product_name}</p><p className="mt-1 break-all text-xs text-slate-500">{record.product_name} · {record.license_key}</p></div><Link to="/licencias-antivirus" className="rounded-lg border border-sky-500/40 px-4 py-2 text-sm text-sky-300 hover:bg-sky-500/10">Administrar licencia</Link></div>
-      : <div className="mt-4 flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm text-amber-300">Este activo no está vinculado a una licencia canónica.</p>{legacy.av_licencia && <p className="mt-1 break-all text-xs text-slate-500">Dato anterior: {legacy.av_licencia}</p>}</div><Link to="/licencias-antivirus" className="rounded-lg border border-sky-500/40 px-4 py-2 text-sm text-sky-300 hover:bg-sky-500/10">Vincular licencia</Link></div>}
+      : record?.license_id ? <div className="mt-4 flex flex-wrap items-center justify-between gap-4"><div><p className="font-medium text-slate-100">{record.license_name || record.product_name}</p><p className="mt-1 break-all text-xs text-slate-500">{record.product_name} · {record.license_key}</p></div><Link to="/seguridad-acceso?tab=antivirus" className="rounded-lg border border-sky-500/40 px-4 py-2 text-sm text-sky-300 hover:bg-sky-500/10">Administrar licencia</Link></div>
+      : <div className="mt-4 flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm text-amber-300">Este activo no está vinculado a una licencia canónica.</p>{legacy.av_licencia && <p className="mt-1 break-all text-xs text-slate-500">Dato anterior: {legacy.av_licencia}</p>}</div><Link to="/seguridad-acceso?tab=antivirus" className="rounded-lg border border-sky-500/40 px-4 py-2 text-sm text-sky-300 hover:bg-sky-500/10">Vincular licencia</Link></div>}
   </section>;
 }
 

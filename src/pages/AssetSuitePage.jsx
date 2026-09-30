@@ -246,7 +246,7 @@ export function AssetAlertsPage() {
   return <div>
     <h1 className="text-2xl font-bold">Alertas de activos</h1>
     <p className="mt-1 text-sm text-slate-400">Selecciona un tipo para revisar sólo los pendientes que necesitas.</p>
-    <p className="mt-2 text-xs text-slate-500">Aviso anticipado: Antivirus {licenseThresholds.antivirus?.days ?? 30} días · Microsoft 365 {licenseThresholds.office365?.days ?? 30} días · FortiGate {licenseThresholds.fortigate?.days ?? 30} días. Puedes ajustar estos valores en Configuración de alertas. <Link to="/licencias-antivirus" className="text-sky-400 hover:underline">Administrar grupos de antivirus →</Link></p>
+    <p className="mt-2 text-xs text-slate-500">Aviso anticipado: Antivirus {licenseThresholds.antivirus?.days ?? 30} días · Microsoft 365 {licenseThresholds.office365?.days ?? 30} días · FortiGate {licenseThresholds.fortigate?.days ?? 30} días. Puedes ajustar estos valores en Configuración de alertas. <Link to="/seguridad-acceso?tab=antivirus" className="text-sky-400 hover:underline">Administrar grupos de antivirus →</Link></p>
     <div className="my-6 flex gap-2 overflow-x-auto pb-2" role="tablist" aria-label="Filtrar por tipo de alerta">
       <AlertFilter active={validSelection === 'all'} count={totalAlerts} onClick={() => selectAlert('all')}>Todas</AlertFilter>
       {sections.map((section) => <AlertFilter key={section.key} active={validSelection === section.key} count={section.count} onClick={() => selectAlert(section.key)}>{section.label}</AlertFilter>)}
