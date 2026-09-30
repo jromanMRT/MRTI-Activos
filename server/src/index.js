@@ -4,6 +4,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cron from 'node-cron';
 import { moduleAccessRequired, portalSessionRequired } from './auth.js';
+import { pool } from './db.js';
+import { requestContext } from './vendor/mrti-platform/request-context.js';
 import { assetKnowledgeRouter } from './routes/assetKnowledge.js';
 import { technicalNotesRouter } from './routes/technicalNotes.js';
 import { activosRouter } from './routes/activos.js';
@@ -17,12 +19,21 @@ import { offboardingRouter } from './routes/offboarding.js';
 
 const app = express();
 
+app.use(requestContext({ service: 'mrti-activos-api' }));
+
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: process.env.CORS_ORIGIN || true }));
 app.use(express.json({ limit: '5mb' }));
 app.use(auditMutations());
 
-app.get('/api/health', (_req, res) => res.json({ ok: true }));
+app.get('/api/health', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ ok: true, database: 'mysql' });
+  } catch {
+    res.status(500).json({ ok: false, error: 'Sin conexión a MySQL' });
+  }
+});
 app.use('/api/asset-knowledge', moduleAccessRequired, portalSessionRequired, assetKnowledgeRouter);
 app.use('/api/technical-notes', moduleAccessRequired, portalSessionRequired, technicalNotesRouter);
 

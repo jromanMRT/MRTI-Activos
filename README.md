@@ -52,7 +52,9 @@ npm run dev            # http://localhost:5173 (peticiones /activos-api vía pro
 
 ## Producción
 
-- Frontend: `npm run build` (genera `dist/`) y se publica en `/activos/`.
+- Frontend: `npm run build` genera y verifica un release sin publicarlo;
+  `npm run release:promote` lo publica en `/activos/` y `npm run release:rollback`
+  regresa al anterior (`dist/` es un symlink a `releases/<id>/`; ver `MRTI-Platform/README.md`).
 - Backend: `pm2 start ecosystem.config.cjs` dentro de esta carpeta.
 - Nginx: agrega los bloques `/activos/` y `/activos-api/` (ver
   `deploy/nginx.conf.example` del portal MRTI).

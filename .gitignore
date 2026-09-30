@@ -2,3 +2,8 @@ node_modules/
 dist/
 *.log
 .DS_Store
+# Publicación por releases (MRTI-Platform release.mjs); dist es un symlink
+dist
+releases/
+build-local/
+.dist-*
