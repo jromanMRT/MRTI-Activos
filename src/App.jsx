@@ -7,6 +7,7 @@ import { AssetAlertsPage, AssetCatalogPage, AssetSuiteOverviewPage } from './pag
 import { EmployeeOffboardingPage } from './pages/EmployeeOffboardingPage.jsx';
 import { TechnicalNotesPage } from './pages/TechnicalNotesPage.jsx';
 import { SecurityAccessPage } from './pages/SecurityAccessPage.jsx';
+import { SetupChecklistPage } from './pages/SetupChecklistPage.jsx';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/catalogos/:resource" element={<AssetCatalogPage />} />
         <Route path="/alertas" element={<AssetAlertsPage />} />
         <Route path="/seguridad-acceso" element={<SecurityAccessPage />} />
+        <Route path="/checklist-equipos" element={<SetupChecklistPage />} />
         <Route path="/licencias-antivirus" element={<Navigate replace to="/seguridad-acceso?tab=antivirus" />} />
         <Route path="/teamviewer" element={<Navigate replace to="/seguridad-acceso?tab=teamviewer" />} />
         <Route path="/bajas-personal" element={<EmployeeOffboardingPage />} />

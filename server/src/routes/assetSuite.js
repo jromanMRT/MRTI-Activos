@@ -17,6 +17,7 @@ import { unitReviewRouter } from './unitReview.js';
 import { reviewReason, unitUsage } from '../domain/unitReview.js';
 import { antivirusLicensesRouter } from './antivirusLicenses.js';
 import { teamviewerRouter } from './teamviewer.js';
+import { setupChecklistRouter } from './setupChecklist.js';
 
 export { safeDocumentPath } from '../documentStorage.js';
 
@@ -201,6 +202,7 @@ export const assetSuiteRouter = Router();
 assetSuiteRouter.use('/unit-review', unitReviewRouter);
 assetSuiteRouter.use('/antivirus-licenses', antivirusLicensesRouter);
 assetSuiteRouter.use('/teamviewer', teamviewerRouter);
+assetSuiteRouter.use('/setup-checklist', setupChecklistRouter);
 
 assetSuiteRouter.get('/summary', async (_req, res, next) => {
   try {

@@ -11,7 +11,8 @@ function currentRouteLabel(pathname) {
   if (pathname === '/inventario') return 'Inventario';
   if (['/notas-tecnicas', '/referencias-tecnicas'].includes(pathname)) return 'Referencias técnicas';
   if (pathname === '/alertas') return 'Alertas';
-  if (pathname === '/seguridad-acceso') return 'Seguridad de equipos';
+  if (pathname === '/seguridad-acceso') return 'Seguridad y acceso';
+  if (pathname === '/checklist-equipos') return 'Checklist de equipos';
   if (pathname === '/bajas-personal') return 'Bajas de personal';
   if (pathname.startsWith('/catalogos/')) return 'Catálogos de activos';
   return 'Detalle del activo';
