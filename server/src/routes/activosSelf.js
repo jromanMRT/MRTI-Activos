@@ -16,7 +16,7 @@ const CROSS_MODULE_COLUMNS = `id, asset_uid, center_code, descripcion, tipo, mar
 
 activosSelfRouter.get('/uid/:assetUid', portalSessionOrServiceKey, async (req, res, next) => {
   try {
-    const [[row]] = await pool.query(`SELECT ${CROSS_MODULE_COLUMNS} FROM activos WHERE asset_uid = ?`, [req.params.assetUid]);
+    const [[row]] = await pool.query(`SELECT ${CROSS_MODULE_COLUMNS} FROM activos WHERE asset_uid = ? AND deleted_at IS NULL`, [req.params.assetUid]);
     if (!row) return res.status(404).json({ error: 'Activo no encontrado' });
     res.json({ data: row });
   } catch (error) {
@@ -41,7 +41,7 @@ async function resolveAssignments(user) {
   if (!linked.length && user.email) {
     const [result] = await pool.query(
       `UPDATE activos SET portal_user_id = ?
-        WHERE LOWER(correo_corporativo) = LOWER(?) AND portal_user_id IS NULL AND rh_employee_id IS NULL`,
+        WHERE LOWER(correo_corporativo) = LOWER(?) AND portal_user_id IS NULL AND rh_employee_id IS NULL AND deleted_at IS NULL`,
       [user.id, user.email]
     );
     if (result.affectedRows) {

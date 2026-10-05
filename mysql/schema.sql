@@ -85,6 +85,9 @@ CREATE TABLE IF NOT EXISTS activos (
   av_comentario VARCHAR(80) NULL,
   sap_synced_at DATETIME NULL,
   sap_sync_error VARCHAR(255) NULL,
+  deleted_at DATETIME NULL,
+  deleted_by_user_id CHAR(36) NULL,
+  deleted_by_name VARCHAR(160) NULL,
   UNIQUE KEY uq_activos_asset_uid (asset_uid),
   KEY idx_activos_tipo (tipo),
   KEY idx_activos_estado (estado),
@@ -93,7 +96,8 @@ CREATE TABLE IF NOT EXISTS activos (
   KEY idx_activos_usuario (usuario_asignado),
   KEY idx_activos_portal_user (portal_user_id),
   KEY idx_activos_physical_area (physical_area_id),
-  KEY idx_activos_sap_sync_error (sap_sync_error(1))
+  KEY idx_activos_sap_sync_error (sap_sync_error(1)),
+  KEY idx_activos_deleted_at (deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS activo_asignaciones (

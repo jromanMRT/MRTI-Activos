@@ -119,7 +119,7 @@ setupChecklistRouter.post('/assets/:assetUid', async (req, res, next) => {
   let connection;
   try {
     connection = await pool.getConnection(); await connection.beginTransaction();
-    const [[asset]] = await connection.query('SELECT asset_uid FROM activos WHERE asset_uid = ? FOR UPDATE', [req.params.assetUid]);
+    const [[asset]] = await connection.query('SELECT asset_uid FROM activos WHERE asset_uid = ? AND deleted_at IS NULL FOR UPDATE', [req.params.assetUid]);
     if (!asset) { await connection.rollback(); return notFound(res, 'Activo no encontrado'); }
     const [[open]] = await connection.query("SELECT id FROM asset_setup_checklists WHERE asset_uid = ? AND status = 'open' LIMIT 1", [asset.asset_uid]);
     if (open) { await connection.rollback(); return res.status(409).json({ error: 'Este equipo ya tiene un checklist abierto' }); }

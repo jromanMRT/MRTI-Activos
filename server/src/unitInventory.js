@@ -7,7 +7,7 @@ export const UNIT_INVENTORY_SQL = `
     COALESCE(a.asignados, 0) AS asignados
   FROM (
     SELECT NULLIF(TRIM(nombre), '') AS nombre FROM sap_unidades
-    UNION SELECT NULLIF(TRIM(unidad), '') FROM activos
+    UNION SELECT NULLIF(TRIM(unidad), '') FROM activos WHERE deleted_at IS NULL
   ) names
   LEFT JOIN (
     SELECT NULLIF(TRIM(nombre), '') AS nombre, COUNT(*) AS registros,
@@ -20,7 +20,7 @@ export const UNIT_INVENTORY_SQL = `
       SUM(estado = 'En mantenimiento') AS mantenimiento,
       SUM(estado = 'Baja') AS bajas,
       SUM(portal_user_id IS NOT NULL OR rh_employee_id IS NOT NULL OR tercero_id IS NOT NULL) AS asignados
-    FROM activos GROUP BY NULLIF(TRIM(unidad), '')
+    FROM activos WHERE deleted_at IS NULL GROUP BY NULLIF(TRIM(unidad), '')
   ) a ON a.nombre <=> names.nombre
   ORDER BY total DESC, names.nombre`;
 

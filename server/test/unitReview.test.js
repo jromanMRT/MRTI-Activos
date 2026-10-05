@@ -87,7 +87,7 @@ function mockConnection({ asset, rows = [] }) {
       release() { queries.push('RELEASE'); },
       async query(sql, params) {
         queries.push([sql.trim().slice(0, 40), params]);
-        if (/SELECT \* FROM activos WHERE id = \? FOR UPDATE/.test(sql)) return [[state.asset]];
+        if (/SELECT \* FROM activos WHERE id = \? AND deleted_at IS NULL FOR UPDATE/.test(sql)) return [[state.asset]];
         if (/SELECT nombre FROM sap_unidades/.test(sql)) return [rows];
         if (/INSERT INTO asset_unit_changes/.test(sql)) return [{ affectedRows: 1 }];
         if (/INSERT INTO audit_events/.test(sql)) return [{ affectedRows: 1 }];

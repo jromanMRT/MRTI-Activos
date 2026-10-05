@@ -13,7 +13,7 @@ export function createTechnicalNotesRouter(db = pool) {
   const select = `SELECT n.*, a.id AS asset_id, a.center_code AS asset_code,
     a.marca AS asset_brand, a.modelo AS asset_model, a.numero_serie AS asset_serial, a.service_tag AS asset_service_tag,
     (SELECT COUNT(*) FROM asset_technical_note_images i WHERE i.note_id = n.id) AS image_count
-    FROM asset_technical_notes n LEFT JOIN activos a ON a.asset_uid = n.asset_uid`;
+    FROM asset_technical_notes n LEFT JOIN activos a ON a.asset_uid = n.asset_uid AND a.deleted_at IS NULL`;
   const publicNote = (row, actor) => ({ ...row, can_edit: canEditNote(row, actor) });
   const read = async (id) => {
     const [[row]] = await db.query(`${select} WHERE n.id = ?`, [id]);
@@ -22,7 +22,7 @@ export function createTechnicalNotesRouter(db = pool) {
   };
   const validateAsset = async (uid) => {
     if (!uid) return;
-    const [[asset]] = await db.query('SELECT id FROM activos WHERE asset_uid = ?', [uid]);
+    const [[asset]] = await db.query('SELECT id FROM activos WHERE asset_uid = ? AND deleted_at IS NULL', [uid]);
     if (!asset) throw noteError('El equipo vinculado ya no está disponible.');
   };
 
@@ -31,7 +31,7 @@ export function createTechnicalNotesRouter(db = pool) {
       const terms = noteSearch(req.query.q);
       if (!terms.length) return res.json({ data: [] });
       const where = terms.map(() => "CONCAT_WS(' ',center_code,marca,modelo,numero_serie,service_tag) LIKE ? ESCAPE '='").join(' AND ');
-      const [rows] = await db.query(`SELECT id,asset_uid,center_code,marca,modelo,numero_serie,service_tag FROM activos WHERE ${where} ORDER BY center_code DESC LIMIT 20`, terms);
+      const [rows] = await db.query(`SELECT id,asset_uid,center_code,marca,modelo,numero_serie,service_tag FROM activos WHERE deleted_at IS NULL AND ${where} ORDER BY center_code DESC LIMIT 20`, terms);
       res.json({ data: rows });
     } catch (error) { next(error); }
   });

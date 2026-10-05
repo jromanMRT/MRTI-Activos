@@ -4,6 +4,11 @@ import { apiFetch, rhAssetAssignmentProfilesFetch } from '../api.js';
 import { openAssetRemission } from '../remissionPrint.js';
 import { ASSET_CHANGED_EVENT } from '../assetEvents.js';
 import { inventoryContext } from '../unitInventory.js';
+import { DeleteAssetDialog } from '../components/DeleteAssetDialog.jsx';
+
+function currentProfile() {
+  try { return JSON.parse(localStorage.getItem('auth_profile') || '{}'); } catch { return {}; }
+}
 
 const EMPTY_STATS = { total: 0, activos: 0, mantenimiento: 0, inactivos: 0, baja: 0 };
 
@@ -159,6 +164,8 @@ function AssetRow({ item, employeeProfile }) {
   const linkedToRh = Boolean(item.portal_user_id || item.tercero_id || item.rh_employee_id);
   const inheritedEmployeeId = item.id_empleado && item.id_empleado !== '-' ? item.id_empleado : null;
   const employeeNumber = employeeProfile?.employee_number || inheritedEmployeeId;
+  const isAdministrator = String(currentProfile().role || '').toLowerCase() === 'administrator';
+  const [deleteOpen, setDeleteOpen] = useState(false);
   async function printRemission(event) {
     event.stopPropagation();
     try {
@@ -182,7 +189,7 @@ function AssetRow({ item, employeeProfile }) {
       <td className="px-3 py-3.5"><EstadoBadge estado={item.estado} /></td>
       <td className="px-3 py-3.5"><strong className="block text-emerald-400">{age.label}</strong><span className="mt-0.5 block text-[10px] text-slate-500">{age.date}</span></td>
       <td className="px-3 py-3.5"><DocumentBadge item={item} /></td>
-      <td className="px-3 py-3.5"><button type="button" onClick={printRemission} className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-sky-500/40 px-2 py-1 text-[10px] font-semibold text-sky-400 hover:bg-sky-500/10" title={`Imprimir remisión de ${item.center_code}`} aria-label={`Imprimir remisión de ${item.center_code}`}><PrintIcon />Imprimir</button></td>
+      <td className="px-3 py-3.5"><button type="button" onClick={printRemission} className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-sky-500/40 px-2 py-1 text-[10px] font-semibold text-sky-400 hover:bg-sky-500/10" title={`Imprimir remisión de ${item.center_code}`} aria-label={`Imprimir remisión de ${item.center_code}`}><PrintIcon />Imprimir</button>{isAdministrator && <button type="button" onClick={(event) => { event.stopPropagation(); setDeleteOpen(true); }} className="mt-1.5 block whitespace-nowrap rounded-md border border-red-500/40 px-2 py-1 text-[10px] font-semibold text-red-400 hover:bg-red-500/10" title={`Eliminar ${item.center_code}`} aria-label={`Eliminar ${item.center_code}`}>Eliminar</button>}{deleteOpen && <DeleteAssetDialog asset={item} onClose={() => setDeleteOpen(false)} onDeleted={() => setDeleteOpen(false)} />}</td>
     </tr>
   );
 }

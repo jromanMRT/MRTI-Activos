@@ -2,6 +2,7 @@ import { AssetKnowledgePanel } from '../components/AssetKnowledgePanel.jsx';
 import { AssignmentHistory } from '../components/AssignmentHistory.jsx';
 import { TeamViewerAssetPanel } from '../components/TeamViewerAssetPanel.jsx';
 import { SetupChecklistPanel } from '../components/SetupChecklistPanel.jsx';
+import { DeleteAssetDialog } from '../components/DeleteAssetDialog.jsx';
 import { assignedUnit } from '../assignmentHistory.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -56,6 +57,7 @@ export function AssetFormPage({ mode }) {
   const [documentsError, setDocumentsError] = useState('');
   const [activeTab, setActiveTab] = useState(() => new URLSearchParams(location.search).get('tab') || 'general');
   const isAdministrator = String(currentProfile().role || '').toLowerCase() === 'administrator';
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [credentialConfigured, setCredentialConfigured] = useState({});
   const [credentialValues, setCredentialValues] = useState(EMPTY_CREDENTIAL_VALUES);
   const [credentialClear, setCredentialClear] = useState(EMPTY_CREDENTIAL_CLEAR);
@@ -93,7 +95,7 @@ export function AssetFormPage({ mode }) {
 
   useEffect(() => {
     function closeOnEscape(event) {
-      if (event.key === 'Escape' && !saving) navigate(returnHref);
+      if (event.key === 'Escape' && !saving && !deleteOpen) navigate(returnHref);
     }
     document.addEventListener('keydown', closeOnEscape);
     const previousOverflow = document.body.style.overflow;
@@ -102,7 +104,7 @@ export function AssetFormPage({ mode }) {
       document.removeEventListener('keydown', closeOnEscape);
       document.body.style.overflow = previousOverflow;
     };
-  }, [navigate, saving, returnHref]);
+  }, [navigate, saving, returnHref, deleteOpen]);
 
   useEffect(() => {
     Promise.all([
@@ -251,7 +253,7 @@ export function AssetFormPage({ mode }) {
     : null;
 
   function closeModal() {
-    if (!saving) navigate(returnHref);
+    if (!saving && !deleteOpen) navigate(returnHref);
   }
 
   async function printRemission() {
@@ -364,12 +366,16 @@ export function AssetFormPage({ mode }) {
         )}
 
         <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-800 bg-slate-900/50 px-5 py-4 sm:px-7">
-          <div>{mode === 'edit' && <button type="button" onClick={handleDelete} disabled={saving || loading} className="rounded-lg border border-red-500/40 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 disabled:opacity-50">Retirar activo</button>}</div>
+          <div className="flex flex-wrap gap-2">
+            {mode === 'edit' && <button type="button" onClick={handleDelete} disabled={saving || loading} className="rounded-lg border border-red-500/40 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 disabled:opacity-50">Retirar activo</button>}
+            {mode === 'edit' && isAdministrator && <button type="button" onClick={() => setDeleteOpen(true)} disabled={saving || loading} className="rounded-lg bg-red-600/90 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50">Eliminar activo</button>}
+          </div>
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" onClick={closeModal} disabled={saving} className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50">Cancelar</button>
             <button type="submit" disabled={saving || loading} className="rounded-lg border border-sky-500/50 px-5 py-2 text-sm font-semibold text-sky-300 hover:bg-sky-500/10 disabled:opacity-50">{saving ? 'Guardando…' : 'Guardar activo'}</button>
           </div>
         </footer>
+        {deleteOpen && <DeleteAssetDialog asset={{ ...values, id }} onClose={() => setDeleteOpen(false)} onDeleted={() => navigate(returnHref)} />}
       </form>
     </div>
   );

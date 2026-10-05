@@ -14,7 +14,7 @@ export function createAssetKnowledgeRouter(db = pool, request = knowledgeRequest
   router.use('/:assetUid', async (req, res, next) => {
     try {
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.assetUid)) throw fail('Activo inválido.');
-      const [[asset]] = await db.query('SELECT asset_uid FROM activos WHERE asset_uid = ?', [req.params.assetUid]);
+      const [[asset]] = await db.query('SELECT asset_uid FROM activos WHERE asset_uid = ? AND deleted_at IS NULL', [req.params.assetUid]);
       if (!asset) throw fail('Activo no encontrado.', 404);
       req.knowledgeAssetUid = asset.asset_uid;
       res.set('Cache-Control', 'no-store');

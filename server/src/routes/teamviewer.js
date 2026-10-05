@@ -36,7 +36,7 @@ const LIST_SELECT = `SELECT t.id, t.teamviewer_id, t.alias, t.notes, t.asset_uid
     t.password_updated_at, t.created_at, t.updated_at,
     a.id AS asset_id, a.center_code, a.descripcion, a.usuario_asignado, a.estado
   FROM teamviewer_devices t
-  LEFT JOIN activos a ON a.asset_uid = t.asset_uid`;
+  LEFT JOIN activos a ON a.asset_uid = t.asset_uid AND a.deleted_at IS NULL`;
 
 async function loadOne(id) {
   const [rows] = await pool.query(`${LIST_SELECT} WHERE t.id = ? LIMIT 1`, [id]);
@@ -45,7 +45,7 @@ async function loadOne(id) {
 
 async function assertAssetExists(assetUid) {
   if (!assetUid) return;
-  const [[asset]] = await pool.query('SELECT asset_uid FROM activos WHERE asset_uid = ? LIMIT 1', [assetUid]);
+  const [[asset]] = await pool.query('SELECT asset_uid FROM activos WHERE asset_uid = ? AND deleted_at IS NULL LIMIT 1', [assetUid]);
   if (!asset) throw badRequest('El equipo seleccionado no existe');
 }
 
@@ -70,6 +70,7 @@ teamviewerRouter.get('/assets', async (_req, res, next) => {
   try {
     const [rows] = await pool.query(`SELECT a.asset_uid, a.center_code, a.descripcion, a.usuario_asignado, a.numero_serie, a.estado, t.id AS teamviewer_device_id
       FROM activos a LEFT JOIN teamviewer_devices t ON t.asset_uid = a.asset_uid
+      WHERE a.deleted_at IS NULL
       ORDER BY a.center_code`);
     res.json({ data: rows });
   } catch (error) { next(error); }

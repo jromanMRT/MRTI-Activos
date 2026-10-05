@@ -8,7 +8,7 @@ function normalized(value) {
 // RH remains the owner of names and employee numbers; nothing is persisted.
 export async function assetPersonSearch(db, authorization, query) {
   const [rows] = await db.query(`SELECT DISTINCT rh_employee_id, portal_user_id FROM activos
-    WHERE rh_employee_id IS NOT NULL OR portal_user_id IS NOT NULL`);
+    WHERE deleted_at IS NULL AND (rh_employee_id IS NOT NULL OR portal_user_id IS NOT NULL)`);
   const references = [...new Map(rows.map((row) => row.rh_employee_id
     ? [`rh:${row.rh_employee_id}`, { employee_id: row.rh_employee_id }]
     : [`core:${row.portal_user_id}`, { portal_user_id: row.portal_user_id }])).values()];

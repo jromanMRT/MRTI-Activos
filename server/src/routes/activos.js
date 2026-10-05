@@ -7,6 +7,7 @@ import { fetchSapAssetCredentials, pushAssetToSap, updateSapAssetCredentials } f
 import { administratorOnly, fetchCurrentUser } from '../auth.js';
 import { assetDocumentUpload, cleanOriginalFilename, detectAssetDocument, removeStoredAssetDocument, storeAssetDocument } from '../documentStorage.js';
 import { canDeleteAssetDocument } from '../domain/documentPermissions.js';
+import { deleteAsset } from '../domain/assetDeletion.js';
 import { captureUnit, saveAssetFields } from '../domain/unitReview.js';
 import { getAssetAssignmentProfile } from '../integrations/rhClient.js';
 import { assetPersonSearch } from '../assetPersonSearch.js';
@@ -79,7 +80,7 @@ activosRouter.get('/meta', (_req, res) => {
 activosRouter.get('/', async (req, res, next) => {
   try {
     const { q, tipo, estado, unidad, empresa, area, limit, sort, order } = req.query;
-    const where = [];
+    const where = ['deleted_at IS NULL'];
     const params = [];
 
     const unitFilter = unitInventoryFilter(req.query);
@@ -101,7 +102,7 @@ activosRouter.get('/', async (req, res, next) => {
       params.push(areaTerm, areaTerm);
     }
 
-    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const whereSql = `WHERE ${where.join(' AND ')}`;
     const cap = Math.min(Math.max(Number(limit) || 500, 1), 1000);
     const orderSql = resolveAssetSort(sort, order);
 
@@ -127,7 +128,7 @@ activosRouter.get('/stats', async (_req, res, next) => {
       SUM(estado = 'En mantenimiento') AS mantenimiento,
       SUM(estado = 'Inactivo') AS inactivos,
       SUM(estado = 'Baja') AS baja
-      FROM activos`);
+      FROM activos WHERE deleted_at IS NULL`);
     res.json({ data: Object.fromEntries(Object.entries(row).map(([key, value]) => [key, Number(value || 0)])) });
   } catch (error) {
     next(error);
@@ -136,10 +137,10 @@ activosRouter.get('/stats', async (_req, res, next) => {
 
 activosRouter.get('/filtros', async (_req, res, next) => {
   try {
-    const [tipos] = await pool.query('SELECT DISTINCT tipo FROM activos WHERE tipo IS NOT NULL ORDER BY tipo');
-    const [estados] = await pool.query('SELECT DISTINCT estado FROM activos WHERE estado IS NOT NULL ORDER BY estado');
-    const [unidades] = await pool.query('SELECT DISTINCT unidad FROM activos WHERE unidad IS NOT NULL ORDER BY unidad');
-    const [empresas] = await pool.query('SELECT DISTINCT empresa FROM activos WHERE empresa IS NOT NULL ORDER BY empresa');
+    const [tipos] = await pool.query('SELECT DISTINCT tipo FROM activos WHERE tipo IS NOT NULL AND deleted_at IS NULL ORDER BY tipo');
+    const [estados] = await pool.query('SELECT DISTINCT estado FROM activos WHERE estado IS NOT NULL AND deleted_at IS NULL ORDER BY estado');
+    const [unidades] = await pool.query('SELECT DISTINCT unidad FROM activos WHERE unidad IS NOT NULL AND deleted_at IS NULL ORDER BY unidad');
+    const [empresas] = await pool.query('SELECT DISTINCT empresa FROM activos WHERE empresa IS NOT NULL AND deleted_at IS NULL ORDER BY empresa');
     res.json({
       tipos: tipos.map((r) => r.tipo),
       estados: estados.map((r) => r.estado),
@@ -160,7 +161,7 @@ activosRouter.get('/assignment-options', async (_req, res, next) => {
               portal_user_id AS assigned_user_id,
               CASE WHEN portal_user_id IS NULL THEN 0 ELSE 1 END AS is_primary_user_device
          FROM activos
-        WHERE estado <> 'Inactivo'
+        WHERE estado <> 'Inactivo' AND deleted_at IS NULL
         ORDER BY center_code, descripcion`
     );
     res.json({ data: rows.map((row) => ({ ...row, is_primary_user_device: Boolean(row.is_primary_user_device) })) });
@@ -181,7 +182,7 @@ activosRouter.post('/primary-assignment', async (req, res, next) => {
     let asset = null;
     if (assetInternalId || assetUid) {
       [[asset]] = await connection.query(
-        "SELECT id, asset_uid, physical_area_id FROM activos WHERE (id = ? OR asset_uid = ?) AND estado <> 'Inactivo'",
+        "SELECT id, asset_uid, physical_area_id FROM activos WHERE (id = ? OR asset_uid = ?) AND estado <> 'Inactivo' AND deleted_at IS NULL",
         [assetInternalId, assetUid]
       );
       if (!asset) return res.status(400).json({ error: 'El activo no existe o está retirado' });
@@ -231,7 +232,7 @@ activosRouter.post('/primary-assignment', async (req, res, next) => {
 
 activosRouter.get('/uid/:assetUid', async (req, res, next) => {
   try {
-    const [[row]] = await pool.query('SELECT * FROM activos WHERE asset_uid = ?', [req.params.assetUid]);
+    const [[row]] = await pool.query('SELECT * FROM activos WHERE asset_uid = ? AND deleted_at IS NULL', [req.params.assetUid]);
     if (row) return res.json({ data: normalizeAssetDates(row) });
     // El mismo tipo de UUID también puede pertenecer a un renglón de
     // sap_fortigate vinculado a MRTI Monitor (ver migración 014).
@@ -570,7 +571,7 @@ activosRouter.patch('/:id/remission-credentials', administratorOnly, async (req,
 
 activosRouter.get('/:id', async (req, res, next) => {
   try {
-    const [[row]] = await pool.query('SELECT * FROM activos WHERE id = ?', [req.params.id]);
+    const [[row]] = await pool.query('SELECT * FROM activos WHERE id = ? AND deleted_at IS NULL', [req.params.id]);
     if (!row) return res.status(404).json({ error: 'Activo no encontrado' });
     res.json({ data: normalizeAssetDates(row) });
   } catch (error) {
@@ -627,7 +628,7 @@ activosRouter.patch('/:id', async (req, res, next) => {
       return res.json({ data: normalizeAssetDates(result.data) });
     }
     const [result] = await pool.query(
-      `UPDATE activos SET ${columns.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`,
+      `UPDATE activos SET ${columns.map((c) => `${c} = ?`).join(', ')} WHERE id = ? AND deleted_at IS NULL`,
       [...columns.map((c) => fields[c]), req.params.id]
     );
     if (!result.affectedRows) return res.status(404).json({ error: 'Activo no encontrado' });
@@ -644,11 +645,25 @@ activosRouter.delete('/:id', async (req, res, next) => {
     // Retiro lógico: conserva asignaciones, mantenimientos y referencias que
     // MRTI-Obs guarde mediante asset_uid.
     const [result] = await pool.query(
-      "UPDATE activos SET estado = 'Inactivo', active = 'NO', portal_user_id = NULL, usuario_asignado = NULL WHERE id = ?",
+      "UPDATE activos SET estado = 'Inactivo', active = 'NO', portal_user_id = NULL, usuario_asignado = NULL WHERE id = ? AND deleted_at IS NULL",
       [req.params.id]
     );
     if (!result.affectedRows) return res.status(404).json({ error: 'Activo no encontrado' });
     res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Eliminación (sólo administradores): a diferencia de "Retirar", el activo
+// desaparece del inventario. Exige el Código TI escrito a mano en
+// confirm_center_code para evitar borrar el equipo equivocado. Ver
+// domain/assetDeletion.js.
+activosRouter.delete('/:id/eliminar', administratorOnly, async (req, res, next) => {
+  try {
+    const actor = req.portalUser || await fetchCurrentUser(req.headers.authorization);
+    const result = await deleteAsset(pool, req.params.id, req.body?.confirm_center_code, actor);
+    res.json({ data: result });
   } catch (error) {
     next(error);
   }

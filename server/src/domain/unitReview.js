@@ -57,7 +57,7 @@ export async function saveAssetFields(db, assetId, fields, actor, options = {}) 
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
-    const [[asset]] = await connection.query('SELECT * FROM activos WHERE id = ? FOR UPDATE', [assetId]);
+    const [[asset]] = await connection.query('SELECT * FROM activos WHERE id = ? AND deleted_at IS NULL FOR UPDATE', [assetId]);
     if (!asset) throw unitError('Activo no encontrado.', 404);
     const next = { ...fields };
     if (Object.hasOwn(next, 'unidad')) next.unidad = await captureUnit(connection, next.unidad, asset.unidad);
@@ -150,7 +150,7 @@ export async function classifyUnit(db, id, review, actor) {
 }
 
 export async function unitUsage(db, name) {
-  const [[assets]] = await db.query("SELECT COUNT(*) AS total FROM activos WHERE NULLIF(TRIM(unidad),'') <=> NULLIF(TRIM(?),'')", [name]);
+  const [[assets]] = await db.query("SELECT COUNT(*) AS total FROM activos WHERE deleted_at IS NULL AND NULLIF(TRIM(unidad),'') <=> NULLIF(TRIM(?),'')", [name]);
   const [[components]] = await db.query("SELECT COUNT(*) AS total FROM sap_componentes WHERE NULLIF(TRIM(unidad),'') <=> NULLIF(TRIM(?),'')", [name]);
   return { assets: Number(assets.total), components: Number(components.total) };
 }

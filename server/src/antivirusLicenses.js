@@ -83,7 +83,7 @@ export async function loadAntivirusLicenseGroups(db) {
     const [assignments] = await db.query(`SELECT ala.license_id, a.id, a.asset_uid, a.center_code,
         a.descripcion, a.usuario_asignado, a.numero_serie
       FROM antivirus_license_assets ala
-      JOIN activos a ON a.asset_uid=ala.asset_uid
+      JOIN activos a ON a.asset_uid=ala.asset_uid AND a.deleted_at IS NULL
       WHERE ala.unassigned_at IS NULL
       ORDER BY a.center_code`);
     const devicesByLicense = new Map();

@@ -14,7 +14,7 @@ import {
 // petición). Mientras un renglón tenga error pendiente, pullSapAssets() no
 // lo sobreescribe -- así no se pierde el cambio local que aún no llegó.
 export async function retrySapPushes() {
-  const [rows] = await pool.query('SELECT * FROM activos WHERE sap_sync_error IS NOT NULL');
+  const [rows] = await pool.query('SELECT * FROM activos WHERE sap_sync_error IS NOT NULL AND deleted_at IS NULL');
   let fixed = 0;
   let stillFailing = 0;
   for (const row of rows) {
@@ -116,12 +116,15 @@ export async function pullSapAssets() {
   let skipped = 0;
   let unitProtected = 0;
   for (const row of rows) {
+    // Si el mismo Código TI se dio de alta de nuevo después de eliminarlo, se
+    // prefiere el renglón vigente; si sólo queda el eliminado, se omite para
+    // que SAP no lo reviva (ver migración 029_asset_deletion.sql).
     const [[existing]] = await pool.query(
-      'SELECT id, sap_sync_error, unit_is_manual, unidad FROM activos WHERE center_code = ?',
+      'SELECT id, sap_sync_error, unit_is_manual, unidad, deleted_at FROM activos WHERE center_code = ? ORDER BY deleted_at IS NOT NULL, id LIMIT 1',
       [row.center_code]
     );
     if (existing) {
-      if (existing.sap_sync_error) { skipped += 1; continue; }
+      if (existing.sap_sync_error || existing.deleted_at) { skipped += 1; continue; }
       const plan = planUnitSync(existing, row);
       const columns = Object.keys(row)
         .filter((key) => key !== 'center_code' && key !== 'sap_source_id')

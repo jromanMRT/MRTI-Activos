@@ -235,17 +235,17 @@ assetSuiteRouter.get('/dashboard', async (_req, res, next) => {
           SELECT 1 FROM sap_documentos d WHERE d.archived_at IS NULL
             AND (d.asset_uid = activos.asset_uid OR (d.asset_uid IS NULL AND d.center_code = activos.center_code))
         )) AS con_documentos
-        FROM activos`),
+        FROM activos WHERE deleted_at IS NULL`),
       pool.query(`SELECT COALESCE(NULLIF(tipo, ''), 'Sin tipo') AS label, COUNT(*) AS total
         FROM activos WHERE estado = 'Activo' GROUP BY label ORDER BY total DESC, label LIMIT 8`),
       pool.query(`SELECT COALESCE(NULLIF(unidad, ''), 'Sin unidad') AS label, COUNT(*) AS total
         FROM activos WHERE estado = 'Activo' GROUP BY label ORDER BY total DESC, label LIMIT 8`),
       pool.query(`SELECT id, center_code, tipo, marca, modelo, estado, usuario_asignado, actualizado_en
-        FROM activos ORDER BY actualizado_en DESC, id DESC LIMIT 6`),
+        FROM activos WHERE deleted_at IS NULL ORDER BY actualizado_en DESC, id DESC LIMIT 6`),
       pool.query(`SELECT d.id, d.asset_uid, d.center_code, d.nombre, d.tipo, d.archivo, d.subido_por,
           d.sap_creado_en, d.document_origin, a.id AS asset_id
         FROM sap_documentos d
-        LEFT JOIN activos a ON a.asset_uid = d.asset_uid OR (d.asset_uid IS NULL AND a.center_code = d.center_code)
+        LEFT JOIN activos a ON (a.asset_uid = d.asset_uid OR (d.asset_uid IS NULL AND a.center_code = d.center_code)) AND a.deleted_at IS NULL
         WHERE d.archived_at IS NULL ORDER BY COALESCE(d.sap_creado_en, d.synced_at) DESC, d.id DESC LIMIT 6`),
     ]);
     const inventory = inventoryResult[0][0];
