@@ -1,3 +1,4 @@
+import { PermissionBoundary } from '../vendor/mrti-platform/permission-ui.js';
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getToken, goToPortalLogin } from '../api.js';
@@ -69,7 +70,7 @@ export function Layout({ children }) {
       <div className={`portal-module-workspace transition-all duration-300 ${collapsed ? 'md:pl-16' : 'md:pl-64'}`}>
         <ModuleHeader title={currentRouteLabel(location.pathname)} subtitle="MRTI Activos" mobileMenuOpen={mobileMenuOpen} onMenuClick={() => setMobileMenuOpen(true)} />
         <main className="min-h-[calc(100vh-72px)]">
-          <div className="w-full px-4 py-6 sm:px-6 lg:px-8">{children}</div>
+          <div className="w-full px-4 py-6 sm:px-6 lg:px-8"><PermissionBoundary code="activos">{children}</PermissionBoundary></div>
         </main>
       </div>
     </div>

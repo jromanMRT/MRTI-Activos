@@ -1,3 +1,4 @@
+import { useModulePermissions } from '../vendor/mrti-platform/permission-ui.js';
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme.js';
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
 ];
 
 export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
+  const permissions = useModulePermissions('activos');
   const [theme, setTheme] = useTheme();
   const [logoUrl, setLogoUrl] = useState('/company-logo.svg');
 
@@ -58,7 +60,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
 
       <nav className="portal-module-nav flex-1 py-4 overflow-y-auto">
         <ul className="space-y-1 px-2">
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS.filter((item) => permissions.can(item.to)).map((item) => (
             <li key={item.to}>
               <NavLink
                 to={item.to}
