@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { unitInventoryFilter } from '../unitInventory.js';
 import { randomUUID } from 'node:crypto';
+import { normalizeMicrosoftLicense } from '../domain/microsoftLicense.js';
 import { pool } from '../db.js';
 import { ALL_FIELDS, DATE_FIELDS, FIELD_GROUPS, LIST_COLUMNS, normalizeAssetDates } from '../meta.js';
 import { fetchSapAssetCredentials, pushAssetToSap, updateSapAssetCredentials } from '../integrations/sapClient.js';
@@ -581,7 +582,7 @@ activosRouter.get('/:id', async (req, res, next) => {
 
 activosRouter.post('/', async (req, res, next) => {
   try {
-    const fields = pickAllowedFields(req.body || {});
+    const fields = normalizeMicrosoftLicense(pickAllowedFields(req.body || {}));
     if (!fields.center_code) {
       return res.status(400).json({ error: 'center_code es obligatorio' });
     }
@@ -608,7 +609,12 @@ activosRouter.post('/', async (req, res, next) => {
 
 activosRouter.patch('/:id', async (req, res, next) => {
   try {
-    const fields = pickAllowedFields(req.body || {});
+    let fields = pickAllowedFields(req.body || {});
+    if (['ms_license_mode', 'fecha_suscripcion', 'anos_suscripcion', 'ms_vencimiento'].some((key) => Object.hasOwn(fields, key))) {
+      const [[current]] = await pool.query('SELECT ms_license_mode, fecha_suscripcion, anos_suscripcion, ms_vencimiento FROM activos WHERE id = ? AND deleted_at IS NULL', [req.params.id]);
+      if (!current) return res.status(404).json({ error: 'Activo no encontrado' });
+      fields = normalizeMicrosoftLicense(fields, normalizeAssetDates(current));
+    }
     const columns = Object.keys(fields);
     if (!columns.length) return res.status(400).json({ error: 'Nada que actualizar' });
     // Un cambio de unidad -- venga de la ficha general o de un formulario

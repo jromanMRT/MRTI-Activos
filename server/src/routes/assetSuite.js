@@ -272,7 +272,7 @@ assetSuiteRouter.get('/alerts', async (_req, res, next) => {
             AND (d.asset_uid = a.asset_uid OR (d.asset_uid IS NULL AND d.center_code = a.center_code))
         ) ORDER BY a.center_code LIMIT 500`),
       loadLicenseAlerts(pool),
-      pool.query(`SELECT id, center_code, usuario_asignado, ms_cuenta, ms_usuario, ms_licencia FROM activos WHERE estado = 'Activo' AND anos_suscripcion = 0 ORDER BY center_code`),
+      pool.query(`SELECT id, center_code, usuario_asignado, ms_cuenta, ms_usuario, ms_licencia FROM activos WHERE estado = 'Activo' AND ms_license_mode = 'perpetual' ORDER BY center_code`),
       pool.query(`SELECT id, center_code, tipo, marca, modelo, service_tag, numero_serie, usuario_asignado, unidad, fecha_compra, empresa FROM activos WHERE estado = 'Activo' AND (marca IS NULL OR marca = '' OR modelo IS NULL OR modelo = '' OR service_tag IS NULL OR service_tag = '' OR numero_serie IS NULL OR numero_serie = '' OR usuario_asignado IS NULL OR usuario_asignado = '' OR unidad IS NULL OR unidad = '' OR fecha_compra IS NULL OR empresa IS NULL OR empresa = '') ORDER BY center_code LIMIT 300`),
       pool.query(`SELECT center_code, source_ids_json, detected_at, last_seen_at FROM sap_asset_duplicates WHERE resolved_at IS NULL ORDER BY center_code`),
     ]);

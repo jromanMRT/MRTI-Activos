@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS activos (
   ms_usuario VARCHAR(80) NULL,
   ms_licencia VARCHAR(80) NULL,
   ms_suscripcion VARCHAR(60) NULL,
+  ms_license_mode ENUM('subscription','perpetual') NULL,
   fecha_suscripcion DATETIME NULL,
   anos_suscripcion TINYINT UNSIGNED NULL,
   ms_vencimiento DATE NULL,

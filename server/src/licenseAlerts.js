@@ -26,24 +26,13 @@ export async function loadLicenseAlerts(db) {
     config.antivirus.active ? loadAntivirusLicenseGroups(db) : Promise.resolve([]),
     config.office365.active ? db.query(`SELECT id, asset_uid, center_code, usuario_asignado, ms_cuenta, ms_usuario, ms_licencia,
         fecha_suscripcion, anos_suscripcion,
-        COALESCE(ms_vencimiento,
-          CASE WHEN fecha_suscripcion IS NOT NULL AND COALESCE(anos_suscripcion, 1) > 0
-            THEN DATE_ADD(DATE(fecha_suscripcion), INTERVAL COALESCE(anos_suscripcion, 1) YEAR)
-          END) AS fecha_vence,
-        DATEDIFF(COALESCE(ms_vencimiento,
-          CASE WHEN fecha_suscripcion IS NOT NULL AND COALESCE(anos_suscripcion, 1) > 0
-            THEN DATE_ADD(DATE(fecha_suscripcion), INTERVAL COALESCE(anos_suscripcion, 1) YEAR)
-          END), CURDATE()) AS dias_restantes
+        DATE_ADD(DATE(fecha_suscripcion), INTERVAL anos_suscripcion YEAR) AS fecha_vence,
+        DATEDIFF(DATE_ADD(DATE(fecha_suscripcion), INTERVAL anos_suscripcion YEAR), CURDATE()) AS dias_restantes
       FROM activos
       WHERE estado = 'Activo'
-        AND COALESCE(ms_vencimiento,
-          CASE WHEN fecha_suscripcion IS NOT NULL AND COALESCE(anos_suscripcion, 1) > 0
-            THEN DATE_ADD(DATE(fecha_suscripcion), INTERVAL COALESCE(anos_suscripcion, 1) YEAR)
-          END) IS NOT NULL
-        AND COALESCE(ms_vencimiento,
-          CASE WHEN fecha_suscripcion IS NOT NULL AND COALESCE(anos_suscripcion, 1) > 0
-            THEN DATE_ADD(DATE(fecha_suscripcion), INTERVAL COALESCE(anos_suscripcion, 1) YEAR)
-          END) <= DATE_ADD(CURDATE(), INTERVAL ? DAY)
+        AND ms_license_mode = 'subscription'
+        AND fecha_suscripcion IS NOT NULL AND anos_suscripcion > 0
+        AND DATE_ADD(DATE(fecha_suscripcion), INTERVAL anos_suscripcion YEAR) <= DATE_ADD(CURDATE(), INTERVAL ? DAY)
       ORDER BY fecha_vence, center_code`, [config.office365.days]) : empty,
     config.fortigate.active ? db.query(`SELECT id, asset_uid, software, numero_serie, proyecto,
         DATE(fecha_expira) AS fecha_expira, DATE(fecha_expira) AS fecha_vence,

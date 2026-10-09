@@ -307,7 +307,7 @@ export function AssetFormPage({ mode }) {
                   <section key={group.key} className="mb-7 last:mb-0">
                     <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">{group.label}</h2>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      {group.fields.map((field) => <AssetField key={field.key} field={field} value={values[field.key]} onChange={setField} />)}
+                      {group.fields.filter((field) => !field.showWhen || values[field.showWhen.key] === field.showWhen.value).map((field) => <AssetField key={field.key} field={field} value={field.key === 'ms_vencimiento' ? microsoftExpiration(values.fecha_suscripcion, values.anos_suscripcion) : values[field.key]} onChange={setField} />)}
                       {credentialFields.map((credentialField) => (
                         <CredentialField
                           key={credentialField.key}
@@ -1010,6 +1010,16 @@ function UnitField({ value, onChange }) {
   );
 }
 
+function microsoftExpiration(startDate, years) {
+  const match = String(startDate || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const term = Number(years);
+  if (!match || !Number.isInteger(term) || term < 1) return '';
+  const year = Number(match[1]) + term;
+  const month = Number(match[2]);
+  const day = Math.min(Number(match[3]), new Date(Date.UTC(year, month, 0)).getUTCDate());
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 export function AssetField({ field, value, onChange }) {
   const commonClass = 'w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100';
   const isWide = ['descripcion', 'software_incluido', 'version', 'esp_tec', 'notas'].includes(field.key);
@@ -1025,7 +1035,7 @@ export function AssetField({ field, value, onChange }) {
         <select className={commonClass} value={value ?? ''} onChange={(e) => onChange(field.key, e.target.value)}>
           <option value="">—</option>
           {field.options.map((opt) => (
-            <option key={opt} value={opt}>{opt}</option>
+            <option key={typeof opt === 'string' ? opt : opt.value} value={typeof opt === 'string' ? opt : opt.value}>{typeof opt === 'string' ? opt : opt.label}</option>
           ))}
         </select>
       ) : field.type === 'textarea' ? (
@@ -1040,6 +1050,8 @@ export function AssetField({ field, value, onChange }) {
           type="date"
           className={commonClass}
           value={value ? String(value).slice(0, 10) : ''}
+          readOnly={field.readOnly}
+          disabled={field.readOnly}
           onChange={(e) => onChange(field.key, e.target.value)}
         />
       ) : (
@@ -1047,12 +1059,14 @@ export function AssetField({ field, value, onChange }) {
           type={field.type === 'number' ? 'number' : 'text'}
           className={commonClass}
           value={value ?? ''}
+          min={field.min}
+          max={field.max}
           readOnly={field.readOnly}
           disabled={field.readOnly}
           onChange={(e) => onChange(field.key, e.target.value)}
         />
       )}
-      {field.readOnly && <span className="mt-1 block text-xs text-slate-500">Se actualiza automáticamente al asignar una persona desde RH.</span>}
+      {(field.help || field.readOnly) && <span className="mt-1 block text-xs text-slate-500">{field.help || 'Se actualiza automáticamente al asignar una persona desde RH.'}</span>}
     </label>
   );
 }

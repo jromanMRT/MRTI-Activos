@@ -64,9 +64,13 @@ export const FIELD_GROUPS = [
       { key: 'ms_usuario', label: 'Usuario Microsoft 365', type: 'text' },
       { key: 'ms_licencia', label: 'Licencia Microsoft 365', type: 'text' },
       { key: 'ms_suscripcion', label: 'Suscripción', type: 'text' },
-      { key: 'fecha_suscripcion', label: 'Fecha de suscripción', type: 'date' },
-      { key: 'anos_suscripcion', label: 'Años de suscripción', type: 'number' },
-      { key: 'ms_vencimiento', label: 'Vencimiento Microsoft 365', type: 'date' },
+      { key: 'ms_license_mode', label: 'Modalidad de licencia', type: 'select', options: [
+        { value: 'subscription', label: 'Suscripción por años' },
+        { value: 'perpetual', label: 'Licencia perpetua' },
+      ] },
+      { key: 'fecha_suscripcion', label: 'Fecha de inicio o adquisición', type: 'date' },
+      { key: 'anos_suscripcion', label: 'Años de suscripción', type: 'number', showWhen: { key: 'ms_license_mode', value: 'subscription' }, min: 1, max: 100 },
+      { key: 'ms_vencimiento', label: 'Vencimiento calculado', type: 'date', readOnly: true, showWhen: { key: 'ms_license_mode', value: 'subscription' }, help: 'Se calcula automáticamente con la fecha de inicio y los años de suscripción.' },
     ],
   },
   {
