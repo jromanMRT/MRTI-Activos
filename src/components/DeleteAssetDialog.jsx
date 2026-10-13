@@ -45,17 +45,17 @@ export function DeleteAssetDialog({ asset, onClose, onDeleted }) {
 
   return createPortal(
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={(event) => event.stopPropagation()} onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose(); }}>
-      <form onSubmit={submit} role="alertdialog" aria-modal="true" aria-labelledby="delete-asset-title" aria-describedby="delete-asset-description" className="w-full max-w-md rounded-2xl border border-red-500/30 bg-slate-950 p-6 shadow-2xl">
-        <h2 id="delete-asset-title" className="text-lg font-bold text-red-400">Eliminar activo</h2>
-        <div id="delete-asset-description" className="mt-3 space-y-3 text-sm text-slate-300">
+      <form onSubmit={submit} role="alertdialog" aria-modal="true" aria-labelledby="delete-asset-title" aria-describedby="delete-asset-description" className="w-full max-w-md rounded-2xl border border-mrt-bad/30 bg-stone-900 p-6 shadow-2xl">
+        <h2 id="delete-asset-title" className="text-lg font-bold text-mrt-bad-light">Eliminar activo</h2>
+        <div id="delete-asset-description" className="mt-3 space-y-3 text-sm text-stone-300">
           <p>
-            Vas a eliminar <strong className="text-slate-100">{asset?.center_code}</strong>{description ? <> ({description})</> : null}.
+            Vas a eliminar <strong className="text-stone-100">{asset?.center_code}</strong>{description ? <> ({description})</> : null}.
             Dejará de aparecer en el inventario y en toda la plataforma, y se cerrará su asignación actual.
           </p>
-          <p className="text-xs text-slate-500">El registro en SAP no se modifica. Si fue un error, un administrador de sistemas puede recuperarlo.</p>
+          <p className="text-xs text-stone-500">El registro en SAP no se modifica. Si fue un error, un administrador de sistemas puede recuperarlo.</p>
         </div>
-        <label className="mt-5 block text-sm text-slate-300">
-          Para confirmar, escribe el Código TI del equipo: <strong className="font-mono text-slate-100">{asset?.center_code}</strong>
+        <label className="mt-5 block text-sm text-stone-300">
+          Para confirmar, escribe el Código TI del equipo: <strong className="font-mono text-stone-100">{asset?.center_code}</strong>
           <input
             ref={inputRef}
             value={typed}
@@ -67,14 +67,14 @@ export function DeleteAssetDialog({ asset, onClose, onDeleted }) {
             disabled={busy}
             placeholder={asset?.center_code}
             aria-invalid={typed !== '' && !matches}
-            className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 font-mono text-sm text-slate-100 outline-none focus:border-red-500"
+            className="mt-2 w-full rounded-lg border border-stone-600 bg-stone-800 px-3 py-2 font-mono text-sm text-stone-100 outline-none focus:border-mrt-bad"
           />
         </label>
-        {typed !== '' && !matches && <p className="mt-2 text-xs text-amber-400">El código todavía no coincide.</p>}
-        {error && <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</div>}
+        {typed !== '' && !matches && <p className="mt-2 text-xs text-mrt-warn-light">El código todavía no coincide.</p>}
+        {error && <div className="mt-4 rounded-lg border border-mrt-bad/30 bg-mrt-bad/10 px-3 py-2 text-sm text-mrt-bad-light">{error}</div>}
         <div className="mt-6 flex justify-end gap-2">
-          <button type="button" onClick={onClose} disabled={busy} className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50">Cancelar</button>
-          <button type="submit" disabled={!matches || busy} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40">{busy ? 'Eliminando…' : 'Eliminar activo'}</button>
+          <button type="button" onClick={onClose} disabled={busy} className="rounded-lg border border-stone-600 px-4 py-2 text-sm text-stone-300 hover:bg-stone-700 disabled:opacity-50">Cancelar</button>
+          <button type="submit" disabled={!matches || busy} className="rounded-lg bg-mrt-bad px-4 py-2 text-sm font-semibold text-white hover:bg-mrt-bad disabled:cursor-not-allowed disabled:opacity-40">{busy ? 'Eliminando…' : 'Eliminar activo'}</button>
         </div>
       </form>
     </div>,

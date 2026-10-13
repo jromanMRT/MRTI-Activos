@@ -53,18 +53,18 @@ export function AssignmentHistory({ assetId, revision, isAdministrator = false, 
       setDeletingId(null);
     }
   }
-  return <section className="mt-6 border-t border-slate-800 pt-4" aria-label="Historial de asignaciones">
-    <h3 className="text-sm font-semibold text-slate-200">Historial de asignaciones</h3>
-    <p className="mt-1 text-xs text-slate-500">Personas que han tenido este activo, según los movimientos registrados. Los nombres se consultan en RH.</p>
-    {error ? <div role="alert" className="mt-3 text-sm text-red-400">{error} <button type="button" className="underline" onClick={() => setRetry(n => n + 1)}>Reintentar</button></div>
-      : rows === null ? <p className="mt-3 text-sm text-slate-500">Consultando historial…</p>
-      : rows.length === 0 ? <p className="mt-3 text-sm text-slate-500">No hay movimientos de asignación registrados.</p>
-      : <ol className="mt-3 space-y-3">{rows.map(row => <li key={row.id} className="rounded-lg border border-slate-800 p-3 text-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2"><strong className="min-w-0 break-words text-slate-200">{assignmentPerson(row, profiles)}</strong><span className="text-xs text-slate-500">{row.unassigned_at ? 'Finalizada' : 'Vigente'}</span></div>
-        <dl className="mt-2 grid gap-2 text-xs sm:grid-cols-2"><div><dt className="text-slate-500">Asignado desde</dt><dd>{date(row.assigned_at)}</dd></div><div><dt className="text-slate-500">Fin de asignación</dt><dd>{row.unassigned_at ? date(row.unassigned_at) : 'Asignación abierta'}</dd></div></dl>
-        {row.notes && <p className="mt-2 whitespace-pre-wrap break-words text-xs text-slate-400">{row.notes}</p>}
-        {isAdministrator && row.unassigned_at && <button type="button" disabled={deletingId === row.id} onClick={() => remove(row)} className="mt-3 text-xs text-red-400 hover:underline disabled:opacity-50">{deletingId === row.id ? 'Retirando…' : 'Retirar registro equivocado'}</button>}
+  return <section className="mt-6 border-t border-stone-700 pt-4" aria-label="Historial de asignaciones">
+    <h3 className="text-sm font-semibold text-stone-200">Historial de asignaciones</h3>
+    <p className="mt-1 text-xs text-stone-500">Personas que han tenido este activo, según los movimientos registrados. Los nombres se consultan en RH.</p>
+    {error ? <div role="alert" className="mt-3 text-sm text-mrt-bad-light">{error} <button type="button" className="underline" onClick={() => setRetry(n => n + 1)}>Reintentar</button></div>
+      : rows === null ? <p className="mt-3 text-sm text-stone-500">Consultando historial…</p>
+      : rows.length === 0 ? <p className="mt-3 text-sm text-stone-500">No hay movimientos de asignación registrados.</p>
+      : <ol className="mt-3 space-y-3">{rows.map(row => <li key={row.id} className="rounded-lg border border-stone-700 p-3 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2"><strong className="min-w-0 break-words text-stone-200">{assignmentPerson(row, profiles)}</strong><span className="text-xs text-stone-500">{row.unassigned_at ? 'Finalizada' : 'Vigente'}</span></div>
+        <dl className="mt-2 grid gap-2 text-xs sm:grid-cols-2"><div><dt className="text-stone-500">Asignado desde</dt><dd>{date(row.assigned_at)}</dd></div><div><dt className="text-stone-500">Fin de asignación</dt><dd>{row.unassigned_at ? date(row.unassigned_at) : 'Asignación abierta'}</dd></div></dl>
+        {row.notes && <p className="mt-2 whitespace-pre-wrap break-words text-xs text-stone-400">{row.notes}</p>}
+        {isAdministrator && row.unassigned_at && <button type="button" disabled={deletingId === row.id} onClick={() => remove(row)} className="mt-3 text-xs text-mrt-bad-light hover:underline disabled:opacity-50">{deletingId === row.id ? 'Retirando…' : 'Retirar registro equivocado'}</button>}
       </li>)}</ol>}
-    {warning && <p role="status" className="mt-3 text-xs text-amber-400">{warning}</p>}
+    {warning && <p role="status" className="mt-3 text-xs text-mrt-warn-light">{warning}</p>}
   </section>;
 }

@@ -73,4 +73,5 @@ test('el PATCH genérico de nvr nunca puede tocar las contraseñas (normalizeRes
 test('sólo fortigate está marcado con linksMonitor (asset_uid es exclusivo del enlace con Monitor)', () => {
   const linked = Object.entries(RESOURCE_CONFIG).filter(([, config]) => config.linksMonitor).map(([name]) => name);
   assert.deepEqual(linked, ['fortigate']);
+  assert.ok(RESOURCE_CONFIG.fortigate.search.includes('ip_address'));
 });

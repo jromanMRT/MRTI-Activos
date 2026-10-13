@@ -40,11 +40,11 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
 
   return (
     <aside
-      className={`portal-module-sidebar activos-sidebar fixed left-0 top-0 h-full bg-slate-900 border-r border-slate-800 transition-all duration-300 z-40 flex flex-col ${
+      className={`portal-module-sidebar activos-sidebar fixed left-0 top-0 h-full bg-stone-800 border-r border-stone-700 transition-all duration-300 z-40 flex flex-col ${
         collapsed ? 'w-16' : 'w-64'
       }`}
     >
-      <div className={`portal-module-brand portal-module-brand-row flex items-center gap-3 p-4 border-b border-slate-800 ${collapsed ? 'justify-center' : ''}`}>
+      <div className={`portal-module-brand portal-module-brand-row flex items-center gap-3 p-4 border-b border-stone-700 ${collapsed ? 'justify-center' : ''}`}>
         <a href="/" title="Ir al home" aria-label="Ir al home" className={`portal-module-brand-home flex w-full items-center gap-3 rounded-xl ${collapsed ? 'justify-center' : ''}`}>
           <span className="portal-module-brand-link grid h-[42px] w-[42px] shrink-0 place-items-center rounded-xl">
           <img src={logoUrl} alt="" className="h-[34px] w-[34px]" />
@@ -68,7 +68,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
                 onClick={onNavigate}
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                    isActive ? 'border-l-2 border-sky-400 bg-sky-500/15 text-sky-400' : 'border-l-2 border-transparent text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+                    isActive ? 'border-l-2 border-ore-300 bg-ore-500/15 text-ore-300' : 'border-l-2 border-transparent text-stone-400 hover:bg-stone-700 hover:text-stone-100'
                   } ${collapsed ? 'justify-center' : ''}`
                 }
                 title={collapsed ? item.label : undefined}
@@ -81,11 +81,11 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
         </ul>
       </nav>
 
-      <div className={`portal-module-footer border-t border-slate-800 p-4 flex items-center ${collapsed ? 'flex-col gap-2' : 'justify-between'}`}>
+      <div className={`portal-module-footer border-t border-stone-700 p-4 flex items-center ${collapsed ? 'flex-col gap-2' : 'justify-between'}`}>
         <button
           type="button"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="portal-sidebar-collapse-action p-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-colors"
+          className="portal-sidebar-collapse-action p-2 rounded-lg text-stone-400 hover:bg-stone-700 hover:text-stone-100 transition-colors"
           title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
           aria-label="Cambiar tema"
           aria-pressed={theme === 'dark'}
@@ -95,7 +95,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="p-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-colors"
+          className="p-2 rounded-lg text-stone-400 hover:bg-stone-700 hover:text-stone-100 transition-colors"
           title={collapsed ? 'Expandir' : 'Colapsar'}
           aria-label={collapsed ? 'Expandir menú lateral' : 'Colapsar menú lateral'}
         >

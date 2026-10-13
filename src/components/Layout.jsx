@@ -53,7 +53,7 @@ export function Layout({ children }) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-stone-50 text-stone-900 dark:bg-stone-900 dark:text-stone-100">
       <div className="hidden md:block">
         <Sidebar collapsed={collapsed} onToggleCollapse={toggleCollapse} />
       </div>

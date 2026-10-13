@@ -269,31 +269,31 @@ export function AssetFormPage({ mode }) {
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/65 p-0 backdrop-blur-sm sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) closeModal(); }}>
-      <form onSubmit={handleSubmit} role="dialog" aria-modal="true" aria-labelledby="asset-dialog-title" className={`flex h-full w-full flex-col overflow-hidden bg-slate-950 shadow-2xl sm:h-[85dvh] sm:max-h-[880px] sm:rounded-2xl sm:border sm:border-slate-800 ${previewPanelVisible ? 'sm:max-w-[104rem]' : 'sm:max-w-6xl'}`}>
-        <header className="flex items-start justify-between gap-4 border-b border-slate-800 px-5 py-4 sm:px-7">
+      <form onSubmit={handleSubmit} role="dialog" aria-modal="true" aria-labelledby="asset-dialog-title" className={`flex h-full w-full flex-col overflow-hidden bg-stone-900 shadow-2xl sm:h-[85dvh] sm:max-h-[880px] sm:rounded-2xl sm:border sm:border-stone-700 ${previewPanelVisible ? 'sm:max-w-[104rem]' : 'sm:max-w-6xl'}`}>
+        <header className="flex items-start justify-between gap-4 border-b border-stone-700 px-5 py-4 sm:px-7">
           <div>
             <h1 id="asset-dialog-title" className="text-xl font-bold sm:text-2xl">{mode === 'create' ? 'Nuevo activo' : 'Editar activo'}</h1>
-            {mode === 'edit' && <p className="mt-1 text-sm text-slate-500">{values.center_code || 'Cargando información…'}{values.descripcion ? ` · ${values.descripcion}` : ''}</p>}
+            {mode === 'edit' && <p className="mt-1 text-sm text-stone-500">{values.center_code || 'Cargando información…'}{values.descripcion ? ` · ${values.descripcion}` : ''}</p>}
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {mode === 'edit' && <button type="button" onClick={togglePreview} className={`rounded-lg border px-3 py-2 text-sm font-medium hover:bg-slate-900 ${previewOpen ? 'border-sky-500/60 bg-sky-500/10 text-sky-400' : 'border-slate-700 text-slate-300'}`}>{previewOpen ? 'Ocultar vista previa' : 'Vista previa'}</button>}
-            {mode === 'edit' && <button type="button" onClick={printRemission} disabled={loading} className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-900 disabled:opacity-50">Imprimir remisión</button>}
-            {createTicketUrl && <a href={createTicketUrl} className="rounded-lg border border-sky-500/40 px-3 py-2 text-sm font-medium text-sky-400 hover:bg-sky-500/10">Crear ticket</a>}
-            <button type="button" onClick={closeModal} disabled={saving} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-800 text-slate-400 hover:bg-slate-900 hover:text-slate-100 disabled:opacity-50" aria-label="Cerrar">×</button>
+            {mode === 'edit' && <button type="button" onClick={togglePreview} className={`rounded-lg border px-3 py-2 text-sm font-medium hover:bg-stone-800 ${previewOpen ? 'border-ore-500/60 bg-ore-500/10 text-ore-300' : 'border-stone-600 text-stone-300'}`}>{previewOpen ? 'Ocultar vista previa' : 'Vista previa'}</button>}
+            {mode === 'edit' && <button type="button" onClick={printRemission} disabled={loading} className="rounded-lg border border-stone-600 px-3 py-2 text-sm font-medium text-stone-300 hover:bg-stone-800 disabled:opacity-50">Imprimir remisión</button>}
+            {createTicketUrl && <a href={createTicketUrl} className="rounded-lg border border-ore-500/40 px-3 py-2 text-sm font-medium text-ore-300 hover:bg-ore-500/10">Crear ticket</a>}
+            <button type="button" onClick={closeModal} disabled={saving} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-stone-700 text-stone-400 hover:bg-stone-800 hover:text-stone-100 disabled:opacity-50" aria-label="Cerrar">×</button>
           </div>
         </header>
 
-        <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-slate-800 px-4 pt-2 sm:px-7" aria-label="Secciones del activo">
-          {tabs.map((tab) => <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)} className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm transition ${activeTab === tab.key ? 'border-sky-400 text-sky-400' : 'border-transparent text-slate-500 hover:text-slate-200'}`}>{tab.label}{Number.isInteger(tab.count) && <span className="ml-1.5 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px]">{tab.count}</span>}</button>)}
+        <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-stone-700 px-4 pt-2 sm:px-7" aria-label="Secciones del activo">
+          {tabs.map((tab) => <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)} className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm transition ${activeTab === tab.key ? 'border-ore-300 text-ore-300' : 'border-transparent text-stone-500 hover:text-stone-200'}`}>{tab.label}{Number.isInteger(tab.count) && <span className="ml-1.5 rounded-full bg-stone-700 px-1.5 py-0.5 text-[10px]">{tab.count}</span>}</button>)}
         </nav>
 
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
-            {error && <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300">{error}</div>}
-            {loading ? <p className="py-12 text-center text-slate-500">Cargando activo…</p> : <>
+            {error && <div className="mb-4 rounded-lg border border-mrt-bad/30 bg-mrt-bad/10 px-4 py-3 text-mrt-bad-light">{error}</div>}
+            {loading ? <p className="py-12 text-center text-stone-500">Cargando activo…</p> : <>
               {showCredentialToggle && (
                 <div className="mb-4 flex justify-end">
-                  <button type="button" onClick={() => setShowCredentials((v) => !v)} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-900">
+                  <button type="button" onClick={() => setShowCredentials((v) => !v)} className="rounded-lg border border-stone-600 px-3 py-1.5 text-xs font-medium text-stone-300 hover:bg-stone-800">
                     {showCredentials ? 'Ocultar contraseñas mientras escribo' : 'Mostrar contraseñas mientras escribo'}
                   </button>
                 </div>
@@ -305,7 +305,7 @@ export function AssetFormPage({ mode }) {
                 const credentialFields = mode === 'edit' && isAdministrator ? CREDENTIAL_FIELDS_BY_GROUP[group.key] || [] : [];
                 return (
                   <section key={group.key} className="mb-7 last:mb-0">
-                    <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">{group.label}</h2>
+                    <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-stone-500">{group.label}</h2>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       {group.fields.filter((field) => !field.showWhen || values[field.showWhen.key] === field.showWhen.value).map((field) => <AssetField key={field.key} field={field} value={field.key === 'ms_vencimiento' ? microsoftExpiration(values.fecha_suscripcion, values.anos_suscripcion) : values[field.key]} onChange={setField} />)}
                       {credentialFields.map((credentialField) => (
@@ -335,27 +335,27 @@ export function AssetFormPage({ mode }) {
           </div>
 
           {previewPanelVisible && (
-            <aside className="w-[540px] shrink-0 overflow-y-auto border-l border-slate-800 bg-slate-900/40 p-4">
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Vista previa de la remisión</h2>
-              <div className="mx-auto overflow-hidden rounded-lg border border-slate-800 bg-slate-800" style={{ position: 'relative', width: PREVIEW_WIDTH * PREVIEW_SCALE, height: PREVIEW_HEIGHT * PREVIEW_SCALE }}>
+            <aside className="w-[540px] shrink-0 overflow-y-auto border-l border-stone-700 bg-stone-800/40 p-4">
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-stone-500">Vista previa de la remisión</h2>
+              <div className="mx-auto overflow-hidden rounded-lg border border-stone-700 bg-stone-700" style={{ position: 'relative', width: PREVIEW_WIDTH * PREVIEW_SCALE, height: PREVIEW_HEIGHT * PREVIEW_SCALE }}>
                 <iframe
                   title="Vista previa de la remisión"
                   srcDoc={previewHtml}
                   style={{ position: 'absolute', top: 0, left: 0, width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT, border: 'none', transform: `scale(${PREVIEW_SCALE})`, transformOrigin: 'top left', pointerEvents: 'none' }}
                 />
               </div>
-              <p className="mt-3 text-xs text-slate-500">Se actualiza mientras editas. Las contraseñas se muestran tal como las escribes aquí, no las que ya estaban guardadas.</p>
+              <p className="mt-3 text-xs text-stone-500">Se actualiza mientras editas. Las contraseñas se muestran tal como las escribes aquí, no las que ya estaban guardadas.</p>
             </aside>
           )}
         </div>
 
         {previewCompactVisible && (
-          <div className="fixed bottom-4 right-4 z-[80] w-40 overflow-hidden rounded-lg border border-slate-700 bg-slate-900 shadow-2xl">
-            <div className="flex items-center justify-between gap-2 border-b border-slate-800 px-2 py-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Vista previa</span>
-              <button type="button" onClick={togglePreview} className="text-slate-500 hover:text-slate-200" aria-label="Cerrar vista previa">×</button>
+          <div className="fixed bottom-4 right-4 z-[80] w-40 overflow-hidden rounded-lg border border-stone-600 bg-stone-800 shadow-2xl">
+            <div className="flex items-center justify-between gap-2 border-b border-stone-700 px-2 py-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-stone-400">Vista previa</span>
+              <button type="button" onClick={togglePreview} className="text-stone-500 hover:text-stone-200" aria-label="Cerrar vista previa">×</button>
             </div>
-            <div className="bg-slate-800" style={{ position: 'relative', width: PREVIEW_WIDTH * PREVIEW_COMPACT_SCALE, height: PREVIEW_HEIGHT * PREVIEW_COMPACT_SCALE, overflow: 'hidden' }}>
+            <div className="bg-stone-700" style={{ position: 'relative', width: PREVIEW_WIDTH * PREVIEW_COMPACT_SCALE, height: PREVIEW_HEIGHT * PREVIEW_COMPACT_SCALE, overflow: 'hidden' }}>
               <iframe
                 title="Vista previa de la remisión"
                 srcDoc={previewHtml}
@@ -365,14 +365,14 @@ export function AssetFormPage({ mode }) {
           </div>
         )}
 
-        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-800 bg-slate-900/50 px-5 py-4 sm:px-7">
+        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-stone-700 bg-stone-800/50 px-5 py-4 sm:px-7">
           <div className="flex flex-wrap gap-2">
-            {mode === 'edit' && <button type="button" onClick={handleDelete} disabled={saving || loading} className="rounded-lg border border-red-500/40 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 disabled:opacity-50">Retirar activo</button>}
-            {mode === 'edit' && isAdministrator && <button type="button" onClick={() => setDeleteOpen(true)} disabled={saving || loading} className="rounded-lg bg-red-600/90 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50">Eliminar activo</button>}
+            {mode === 'edit' && <button type="button" onClick={handleDelete} disabled={saving || loading} className="rounded-lg border border-mrt-bad/40 px-4 py-2 text-sm text-mrt-bad-light hover:bg-mrt-bad/10 disabled:opacity-50">Retirar activo</button>}
+            {mode === 'edit' && isAdministrator && <button type="button" onClick={() => setDeleteOpen(true)} disabled={saving || loading} className="rounded-lg bg-mrt-bad/90 px-4 py-2 text-sm font-semibold text-white hover:bg-mrt-bad disabled:opacity-50">Eliminar activo</button>}
           </div>
           <div className="flex flex-wrap justify-end gap-2">
-            <button type="button" onClick={closeModal} disabled={saving} className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50">Cancelar</button>
-            <button type="submit" disabled={saving || loading} className="rounded-lg border border-sky-500/50 px-5 py-2 text-sm font-semibold text-sky-300 hover:bg-sky-500/10 disabled:opacity-50">{saving ? 'Guardando…' : 'Guardar activo'}</button>
+            <button type="button" onClick={closeModal} disabled={saving} className="rounded-lg border border-stone-600 px-4 py-2 text-sm text-stone-300 hover:bg-stone-700 disabled:opacity-50">Cancelar</button>
+            <button type="submit" disabled={saving || loading} className="rounded-lg border border-ore-500/50 px-5 py-2 text-sm font-semibold text-ore-300 hover:bg-ore-500/10 disabled:opacity-50">{saving ? 'Guardando…' : 'Guardar activo'}</button>
           </div>
         </footer>
         {deleteOpen && <DeleteAssetDialog asset={{ ...values, id }} onClose={() => setDeleteOpen(false)} onDeleted={() => navigate(returnHref)} />}
@@ -392,13 +392,13 @@ function AntivirusAssignmentPanel({ mode, assetUid, legacy }) {
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
   }, [mode, assetUid]);
-  return <section className="mb-7 rounded-xl border border-slate-800 bg-slate-900/40 p-5">
-    <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500">Antivirus</h2>
-    {mode === 'create' ? <p className="mt-4 text-sm text-slate-400">Guarda primero el activo y después vincúlalo desde Seguridad y acceso. Así la compra, caducidad y capacidad se administran una sola vez.</p>
-      : loading ? <p className="mt-4 text-sm text-slate-500">Consultando licencia…</p>
-      : error ? <p className="mt-4 text-sm text-red-300">{error}</p>
-      : record?.license_id ? <div className="mt-4 flex flex-wrap items-center justify-between gap-4"><div><p className="font-medium text-slate-100">{record.license_name || record.product_name}</p><p className="mt-1 break-all text-xs text-slate-500">{record.product_name} · {record.license_key}</p></div><Link to="/seguridad-acceso?tab=antivirus" className="rounded-lg border border-sky-500/40 px-4 py-2 text-sm text-sky-300 hover:bg-sky-500/10">Administrar licencia</Link></div>
-      : <div className="mt-4 flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm text-amber-300">Este activo no está vinculado a una licencia canónica.</p>{legacy.av_licencia && <p className="mt-1 break-all text-xs text-slate-500">Dato anterior: {legacy.av_licencia}</p>}</div><Link to="/seguridad-acceso?tab=antivirus" className="rounded-lg border border-sky-500/40 px-4 py-2 text-sm text-sky-300 hover:bg-sky-500/10">Vincular licencia</Link></div>}
+  return <section className="mb-7 rounded-xl border border-stone-700 bg-stone-800/40 p-5">
+    <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-500">Antivirus</h2>
+    {mode === 'create' ? <p className="mt-4 text-sm text-stone-400">Guarda primero el activo y después vincúlalo desde Seguridad y acceso. Así la compra, caducidad y capacidad se administran una sola vez.</p>
+      : loading ? <p className="mt-4 text-sm text-stone-500">Consultando licencia…</p>
+      : error ? <p className="mt-4 text-sm text-mrt-bad-light">{error}</p>
+      : record?.license_id ? <div className="mt-4 flex flex-wrap items-center justify-between gap-4"><div><p className="font-medium text-stone-100">{record.license_name || record.product_name}</p><p className="mt-1 break-all text-xs text-stone-500">{record.product_name} · {record.license_key}</p></div><Link to="/seguridad-acceso?tab=antivirus" className="rounded-lg border border-ore-500/40 px-4 py-2 text-sm text-ore-300 hover:bg-ore-500/10">Administrar licencia</Link></div>
+      : <div className="mt-4 flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm text-mrt-warn-light">Este activo no está vinculado a una licencia canónica.</p>{legacy.av_licencia && <p className="mt-1 break-all text-xs text-stone-500">Dato anterior: {legacy.av_licencia}</p>}</div><Link to="/seguridad-acceso?tab=antivirus" className="rounded-lg border border-ore-500/40 px-4 py-2 text-sm text-ore-300 hover:bg-ore-500/10">Vincular licencia</Link></div>}
   </section>;
 }
 
@@ -486,55 +486,55 @@ function DocumentsPanel({ assetId, documents, error, onError, onUploaded, onDele
   }
 
   return (
-    <fieldset className="border border-slate-800 rounded-xl p-4">
-      <legend className="text-sm font-semibold text-slate-300 px-1">Facturas, remisiones y documentos</legend>
-      {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
-      {message && <p className="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300" role="status" aria-live="polite">{message}</p>}
-      <section className="mb-5 rounded-xl border border-dashed border-sky-500/30 bg-sky-500/5 p-4" aria-label="Subir documento">
+    <fieldset className="border border-stone-700 rounded-xl p-4">
+      <legend className="text-sm font-semibold text-stone-300 px-1">Facturas, remisiones y documentos</legend>
+      {error && <p className="mb-3 text-sm text-mrt-bad-light">{error}</p>}
+      {message && <p className="mb-3 rounded-lg border border-mrt-good/30 bg-mrt-good/10 px-4 py-3 text-sm text-mrt-good-light" role="status" aria-live="polite">{message}</p>}
+      <section className="mb-5 rounded-xl border border-dashed border-ore-500/30 bg-ore-500/5 p-4" aria-label="Subir documento">
         <div className="mb-3 flex items-start justify-between gap-3">
-          <div><h3 className="font-medium text-slate-100">Subir documento</h3><p className="mt-1 text-xs text-slate-500">PDF, JPG o PNG · máximo 25 MB. El archivo queda privado dentro de MRTI Activos.</p></div>
-          <span className="rounded-full bg-sky-500/15 px-2 py-1 text-xs text-sky-400">Nuevo</span>
+          <div><h3 className="font-medium text-stone-100">Subir documento</h3><p className="mt-1 text-xs text-stone-500">PDF, JPG o PNG · máximo 25 MB. El archivo queda privado dentro de MRTI Activos.</p></div>
+          <span className="rounded-full bg-ore-500/15 px-2 py-1 text-xs text-ore-300">Nuevo</span>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
-          <label className="text-xs text-slate-400">Nombre del documento
-            <input value={documentName} onChange={(event) => setDocumentName(event.target.value)} placeholder="Ej. Remisión firmada" maxLength={255} className="mt-1 block w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100" />
+          <label className="text-xs text-stone-400">Nombre del documento
+            <input value={documentName} onChange={(event) => setDocumentName(event.target.value)} placeholder="Ej. Remisión firmada" maxLength={255} className="mt-1 block w-full rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-sm text-stone-100" />
           </label>
-          <label className="text-xs text-slate-400">Tipo
-            <select value={documentType} onChange={(event) => setDocumentType(event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100">
+          <label className="text-xs text-stone-400">Tipo
+            <select value={documentType} onChange={(event) => setDocumentType(event.target.value)} className="mt-1 block w-full rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-sm text-stone-100">
               <option value="Remision">Remisión de resguardo</option><option value="Factura">Factura</option><option value="Garantia">Garantía</option><option value="Otro">Otro</option>
             </select>
           </label>
-          <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required onChange={() => { setMessage(''); onError(''); }} className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-300 file:mr-3 file:rounded file:border-0 file:bg-sky-500/15 file:px-3 file:py-1 file:text-sky-400" />
-          <button type="button" onClick={upload} disabled={uploading} className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-sky-400 disabled:opacity-50">{uploading ? 'Subiendo…' : 'Subir archivo'}</button>
+          <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required onChange={() => { setMessage(''); onError(''); }} className="rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-sm text-stone-300 file:mr-3 file:rounded file:border-0 file:bg-ore-500/15 file:px-3 file:py-1 file:text-ore-300" />
+          <button type="button" onClick={upload} disabled={uploading} className="rounded-lg bg-ore-500 px-4 py-2 text-sm font-semibold text-[#2a1c05] hover:bg-ore-300 disabled:opacity-50">{uploading ? 'Subiendo…' : 'Subir archivo'}</button>
         </div>
       </section>
       {documents.length === 0 ? (
-        <p className="text-sm text-slate-500">Este activo todavía no tiene documentos.</p>
+        <p className="text-sm text-stone-500">Este activo todavía no tiene documentos.</p>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {documents.map((document) => (
-            <article key={document.id} className="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+            <article key={document.id} className="rounded-lg border border-stone-700 bg-stone-800/60 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <span className="inline-flex rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-300">{document.tipo || 'Documento'}</span>
-                  <h3 className="mt-2 truncate font-medium text-slate-100" title={document.nombre || document.archivo}>{document.nombre || document.archivo}</h3>
+                  <span className="inline-flex rounded-full bg-mrt-warn/15 px-2 py-0.5 text-xs font-medium text-mrt-warn-light">{document.tipo || 'Documento'}</span>
+                  <h3 className="mt-2 truncate font-medium text-stone-100" title={document.nombre || document.archivo}>{document.nombre || document.archivo}</h3>
                 </div>
                 <DocumentIcon />
               </div>
-              <div className="mt-3 space-y-1 text-xs text-slate-500">
+              <div className="mt-3 space-y-1 text-xs text-stone-500">
                 <p className="truncate" title={document.archivo}>{document.archivo}</p>
                 {document.sap_creado_en && <p>{new Date(document.sap_creado_en).toLocaleString('es-MX')}</p>}
                 {document.subido_por && <p>Subido por {document.subido_por}</p>}
-                {document.document_origin === 'local' && <p className="text-emerald-400">Agregado en MRTI Activos</p>}
+                {document.document_origin === 'local' && <p className="text-mrt-good-light">Agregado en MRTI Activos</p>}
               </div>
               <div className="mt-4 flex gap-2">
-                <button type="button" onClick={() => preview(document)} disabled={!document.archivo_disponible || previewingId === document.id} title="Abrir documento en otra pestaña" className="flex-1 rounded-lg border border-sky-500/40 px-3 py-2 text-sm font-medium text-sky-400 hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-50">
+                <button type="button" onClick={() => preview(document)} disabled={!document.archivo_disponible || previewingId === document.id} title="Abrir documento en otra pestaña" className="flex-1 rounded-lg border border-ore-500/40 px-3 py-2 text-sm font-medium text-ore-300 hover:bg-ore-500/10 disabled:cursor-not-allowed disabled:opacity-50">
                   {previewingId === document.id ? 'Abriendo…' : 'Ver'}
                 </button>
-                <button type="button" onClick={() => download(document)} disabled={!document.archivo_disponible || downloadingId === document.id} className="flex-1 rounded-lg border border-sky-500/40 px-3 py-2 text-sm font-medium text-sky-400 hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-50">
+                <button type="button" onClick={() => download(document)} disabled={!document.archivo_disponible || downloadingId === document.id} className="flex-1 rounded-lg border border-ore-500/40 px-3 py-2 text-sm font-medium text-ore-300 hover:bg-ore-500/10 disabled:cursor-not-allowed disabled:opacity-50">
                   {!document.archivo_disponible ? 'Archivo no disponible' : downloadingId === document.id ? 'Descargando…' : 'Descargar'}
                 </button>
-                {document.can_delete && <button type="button" onClick={() => remove(document)} disabled={deletingId === document.id} className="rounded-lg border border-red-500/40 px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 disabled:opacity-50">{deletingId === document.id ? 'Eliminando…' : document.document_origin !== 'local' ? document.archivo_disponible ? 'Retirar archivo' : 'Eliminar registro' : 'Eliminar'}</button>}
+                {document.can_delete && <button type="button" onClick={() => remove(document)} disabled={deletingId === document.id} className="rounded-lg border border-mrt-bad/40 px-3 py-2 text-sm font-medium text-mrt-bad-light hover:bg-mrt-bad/10 disabled:opacity-50">{deletingId === document.id ? 'Eliminando…' : document.document_origin !== 'local' ? document.archivo_disponible ? 'Retirar archivo' : 'Eliminar registro' : 'Eliminar'}</button>}
               </div>
             </article>
           ))}
@@ -545,7 +545,7 @@ function DocumentsPanel({ assetId, documents, error, onError, onUploaded, onDele
 }
 
 function DocumentIcon() {
-  return <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0 text-sky-400" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 2h8l4 4v16H6z" /><path d="M14 2v5h5M9 13h6M9 17h6" /></svg>;
+  return <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0 text-ore-300" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 2h8l4 4v16H6z" /><path d="M14 2v5h5M9 13h6M9 17h6" /></svg>;
 }
 
 // Toda persona asignable se registra primero en RH, venga o no de CONTPAQi.
@@ -660,48 +660,48 @@ export function AssignmentPanel({ assetId, assetUnit, portalUserId, terceroId, r
   }
 
   return (
-    <fieldset className="border border-slate-800 rounded-xl p-4">
-      <legend className="text-sm font-semibold text-slate-300 px-1">Asignación</legend>
-      {error && <p className="text-sm text-red-400 mb-2">{error}</p>}
+    <fieldset className="border border-stone-700 rounded-xl p-4">
+      <legend className="text-sm font-semibold text-stone-300 px-1">Asignación</legend>
+      {error && <p className="text-sm text-mrt-bad-light mb-2">{error}</p>}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="text-sm">
           {portalUserId ? (
-            <span><span className="text-slate-500">Empleado (Core):</span> <span className="text-slate-200">{usuarioAsignado || portalUserId}</span></span>
+            <span><span className="text-stone-500">Empleado (Core):</span> <span className="text-stone-200">{usuarioAsignado || portalUserId}</span></span>
           ) : terceroId ? (
-            <span><span className="text-slate-500">Asignación heredada:</span> <span className="text-slate-200">{usuarioAsignado}</span></span>
+            <span><span className="text-stone-500">Asignación heredada:</span> <span className="text-stone-200">{usuarioAsignado}</span></span>
           ) : rhEmployeeId ? (
-            <span><span className="text-slate-500">Empleado (RH, sin cuenta de Core aún):</span> <span className="text-slate-200">{usuarioAsignado}</span></span>
+            <span><span className="text-stone-500">Empleado (RH, sin cuenta de Core aún):</span> <span className="text-stone-200">{usuarioAsignado}</span></span>
           ) : (
-            <span className="text-slate-500">Sin asignar</span>
+            <span className="text-stone-500">Sin asignar</span>
           )}
         </div>
         {(portalUserId || terceroId || rhEmployeeId) && (
-          <button type="button" disabled={busy} onClick={unassign} className="text-amber-400 hover:underline text-sm disabled:opacity-50">
+          <button type="button" disabled={busy} onClick={unassign} className="text-mrt-warn-light hover:underline text-sm disabled:opacity-50">
             Quitar asignación
           </button>
         )}
       </div>
       <div className="mt-4 max-w-md">
-        <label className="mb-1 block text-xs text-slate-400">Unidad asignada al activo</label>
+        <label className="mb-1 block text-xs text-stone-400">Unidad asignada al activo</label>
         <UnitField value={assetUnit} onChange={changeUnit} />
-        <p className="mt-1 text-xs text-slate-500">Se guarda al elegirla. Valor actual: {assignedUnit(assetUnit)}{unitBusy ? ' · Guardando…' : ''}</p>
+        <p className="mt-1 text-xs text-stone-500">Se guarda al elegirla. Valor actual: {assignedUnit(assetUnit)}{unitBusy ? ' · Guardando…' : ''}</p>
       </div>
       {(profileLoading || holderProfile) && (
         <div className="mt-4">
-          {profileLoading ? <p className="text-sm text-slate-500">Consultando ficha vigente en RH…</p> : <EmployeeAssignmentDetails profile={holderProfile} />}
+          {profileLoading ? <p className="text-sm text-stone-500">Consultando ficha vigente en RH…</p> : <EmployeeAssignmentDetails profile={holderProfile} />}
         </div>
       )}
       <div className="mt-4">
-        <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2">Empleado registrado en RH</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-stone-500 mb-2">Empleado registrado en RH</p>
         <div className="flex flex-col md:flex-row gap-2">
           <input
             type="text"
             placeholder="Buscar por nombre o número de empleado…"
-            className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm"
+            className="flex-1 bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-sm"
             value={employeeSearch}
             onChange={(e) => setEmployeeSearch(e.target.value)}
           />
-          <select className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm" value={selectedEmployeeId} onChange={(e) => setSelectedEmployeeId(e.target.value)}>
+          <select className="flex-1 bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-sm" value={selectedEmployeeId} onChange={(e) => setSelectedEmployeeId(e.target.value)}>
             <option value="">Selecciona un empleado…</option>
             {activeEmployees.length > 0 && (
               <optgroup label="Personal activo">
@@ -714,16 +714,16 @@ export function AssignmentPanel({ assetId, assetUnit, portalUserId, terceroId, r
               </optgroup>
             )}
           </select>
-          <button type="button" disabled={!selectedEmployee || busy} onClick={assignEmployee} className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-[#2a1c05] font-semibold px-4 py-2 rounded-lg whitespace-nowrap">
+          <button type="button" disabled={!selectedEmployee || busy} onClick={assignEmployee} className="bg-ore-500 hover:bg-ore-300 disabled:opacity-50 text-[#2a1c05] font-semibold px-4 py-2 rounded-lg whitespace-nowrap">
             {busy ? 'Asignando…' : 'Asignar'}
           </button>
         </div>
         {selectedEmployee && !selectedEmployee.portal_user_id && (
-          <p className="text-xs text-slate-500 mt-2">Este empleado todavía no tiene una cuenta de Core vinculada — el equipo quedará asignado a su ficha de RH y se enlazará a Core automáticamente cuando la tenga.</p>
+          <p className="text-xs text-stone-500 mt-2">Este empleado todavía no tiene una cuenta de Core vinculada — el equipo quedará asignado a su ficha de RH y se enlazará a Core automáticamente cuando la tenga.</p>
         )}
         {selectedProfile && <div className="mt-3"><EmployeeAssignmentDetails profile={selectedProfile} title="Datos que se mostrarán desde RH" /></div>}
-        <p className="mt-3 text-xs text-slate-500">
-          Si la persona no viene de CONTPAQi, regístrala como colaborador en <a href="/rh/empleados/nuevo" className="text-sky-400 hover:underline">MRTI RH</a> y después selecciónala aquí.
+        <p className="mt-3 text-xs text-stone-500">
+          Si la persona no viene de CONTPAQi, regístrala como colaborador en <a href="/rh/empleados/nuevo" className="text-ore-300 hover:underline">MRTI RH</a> y después selecciónala aquí.
         </p>
       </div>
       <AssignmentHistory assetId={assetId} revision={historyRevision} isAdministrator={isAdministrator} onChanged={() => setHistoryRevision(n => n + 1)} />
@@ -766,35 +766,35 @@ function UnitHistoryPanel({ assetId, isAdministrator, onReverted }) {
   }
 
   return (
-    <fieldset className="border border-slate-800 rounded-xl p-4">
-      <legend className="text-sm font-semibold text-slate-300 px-1">Historial de unidad</legend>
-      {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
+    <fieldset className="border border-stone-700 rounded-xl p-4">
+      <legend className="text-sm font-semibold text-stone-300 px-1">Historial de unidad</legend>
+      {error && <p className="mb-3 text-sm text-mrt-bad-light">{error}</p>}
       {history === null ? (
-        <p className="text-sm text-slate-500">Consultando historial…</p>
+        <p className="text-sm text-stone-500">Consultando historial…</p>
       ) : history.length === 0 ? (
-        <p className="text-sm text-slate-500">Este activo no tiene correcciones registradas de unidad.</p>
+        <p className="text-sm text-stone-500">Este activo no tiene correcciones registradas de unidad.</p>
       ) : (
         <div className="space-y-2">
           {history.map((change, index) => {
             const before = unitHistoryLabel(change.before_json);
             const after = unitHistoryLabel(change.after_json);
             return (
-              <div key={change.id} className="rounded-lg bg-slate-900 p-3 text-sm">
+              <div key={change.id} className="rounded-lg bg-stone-800 p-3 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span>
-                    <span className="text-slate-500">{before}</span>
-                    <span className="mx-2 text-slate-600">→</span>
-                    <span className="text-slate-100">{after}</span>
-                    {change.reverses_id && <span className="ml-2 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-300">Reversión</span>}
+                    <span className="text-stone-500">{before}</span>
+                    <span className="mx-2 text-stone-600">→</span>
+                    <span className="text-stone-100">{after}</span>
+                    {change.reverses_id && <span className="ml-2 rounded-full bg-mrt-warn/15 px-2 py-0.5 text-[10px] text-mrt-warn-light">Reversión</span>}
                   </span>
                   {isAdministrator && index === 0 && (
-                    <button type="button" disabled={revertingId === change.id} onClick={() => revert(change)} className="text-xs text-amber-400 hover:underline disabled:opacity-50">
+                    <button type="button" disabled={revertingId === change.id} onClick={() => revert(change)} className="text-xs text-mrt-warn-light hover:underline disabled:opacity-50">
                       {revertingId === change.id ? 'Revirtiendo…' : 'Revertir'}
                     </button>
                   )}
                 </div>
-                <p className="mt-1 text-xs text-slate-500">{change.reason}</p>
-                <p className="mt-1 text-xs text-slate-600">{change.actor_name || 'Sistema'} · {new Date(change.created_at).toLocaleString('es-MX')}</p>
+                <p className="mt-1 text-xs text-stone-500">{change.reason}</p>
+                <p className="mt-1 text-xs text-stone-600">{change.actor_name || 'Sistema'} · {new Date(change.created_at).toLocaleString('es-MX')}</p>
               </div>
             );
           })}
@@ -813,32 +813,61 @@ function EmployeeAssignmentDetails({ profile, title = 'Datos vigentes en RH' }) 
     ['Celular', profile.phone],
   ];
   return (
-    <section className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-4">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-sky-400">{title}</p>
+    <section className="rounded-xl border border-ore-500/20 bg-ore-500/5 p-4">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-ore-300">{title}</p>
       <dl className="grid grid-cols-1 gap-x-5 gap-y-3 md:grid-cols-2">
         {details.map(([label, value]) => (
           <div key={label}>
-            <dt className="text-xs text-slate-500">{label}</dt>
-            <dd className="mt-0.5 text-sm text-slate-200">{value || 'Sin registrar'}</dd>
+            <dt className="text-xs text-stone-500">{label}</dt>
+            <dd className="mt-0.5 text-sm text-stone-200">{value || 'Sin registrar'}</dd>
           </div>
         ))}
       </dl>
-      {profile.job_title && <p className="mt-3 border-t border-slate-800 pt-3 text-xs text-slate-500">Puesto: <span className="text-slate-300">{profile.job_title}</span></p>}
+      {profile.job_title && <p className="mt-3 border-t border-stone-700 pt-3 text-xs text-stone-500">Puesto: <span className="text-stone-300">{profile.job_title}</span></p>}
     </section>
   );
 }
 
-export function ObservabilityPanel({ assetUid, data, error, onChange }) {
+function normalizeIpv4(address) {
+  const octets = String(address || '').trim().split('.');
+  if (octets.length !== 4 || octets.some((octet) => !/^\d{1,3}$/.test(octet) || Number(octet) > 255)) return '';
+  return octets.map(Number).join('.');
+}
+
+export function ObservabilityPanel({ assetUid, data, error, referenceIpAddress, onChange }) {
   const [available, setAvailable] = useState([]);
   const [selected, setSelected] = useState('');
+  const [search, setSearch] = useState('');
+  const [availableError, setAvailableError] = useState('');
   const [linking, setLinking] = useState(false);
   const [actionError, setActionError] = useState('');
 
   useEffect(() => {
     if (data?.devices?.length === 0) {
-      obsUnlinkedDevices().then(setAvailable).catch(() => setAvailable([]));
+      obsUnlinkedDevices()
+        .then((devices) => {
+          setAvailable(devices);
+          setAvailableError('');
+        })
+        .catch((err) => setAvailableError(err.message));
     }
   }, [data?.devices?.length]);
+
+  const normalizedReferenceIp = normalizeIpv4(referenceIpAddress);
+  const filteredAvailable = useMemo(() => available
+    .filter((device) => [device.internal_id, device.name, device.ip_address]
+      .some((value) => String(value || '').toLowerCase().includes(search.trim().toLowerCase())))
+    .sort((left, right) => {
+      const leftIp = normalizeIpv4(left.ip_address);
+      const rightIp = normalizeIpv4(right.ip_address);
+      const leftExactMatch = normalizedReferenceIp && leftIp === normalizedReferenceIp;
+      const rightExactMatch = normalizedReferenceIp && rightIp === normalizedReferenceIp;
+      if (leftExactMatch !== rightExactMatch) return leftExactMatch ? -1 : 1;
+      const leftPossibleFortiGate = leftIp.endsWith('.1');
+      const rightPossibleFortiGate = rightIp.endsWith('.1');
+      if (leftPossibleFortiGate !== rightPossibleFortiGate) return leftPossibleFortiGate ? -1 : 1;
+      return String(left.internal_id || '').localeCompare(String(right.internal_id || ''));
+    }), [available, normalizedReferenceIp, search]);
 
   async function linkDevice() {
     if (!selected || !assetUid) return;
@@ -868,47 +897,67 @@ export function ObservabilityPanel({ assetUid, data, error, onChange }) {
   }
 
   return (
-    <fieldset className="border border-slate-800 rounded-xl p-4">
-      <legend className="text-sm font-semibold text-slate-300 px-1">MRTI Monitor · Estado operacional</legend>
+    <fieldset className="border border-stone-700 rounded-xl p-4">
+      <legend className="text-sm font-semibold text-stone-300 px-1">MRTI Monitor · Estado operacional</legend>
       {error ? (
-        <p className="text-sm text-amber-400">No fue posible consultar MRTI Monitor: {error}</p>
+        <p className="text-sm text-mrt-warn-light">No fue posible consultar MRTI Monitor: {error}</p>
       ) : !data ? (
-        <p className="text-sm text-slate-500">Consultando observabilidad…</p>
+        <p className="text-sm text-stone-500">Consultando observabilidad…</p>
       ) : data.devices.length === 0 ? (
         <div className="space-y-3">
-          <p className="text-sm text-slate-500">Este activo todavía no tiene un dispositivo monitoreado vinculado.</p>
+          <p className="text-sm text-stone-500">Este activo todavía no tiene un dispositivo monitoreado vinculado.</p>
+          {referenceIpAddress && <p className="text-xs text-stone-400">
+            IP registrada en Activos: <span className="font-mono text-stone-200">{referenceIpAddress}</span>.
+            La coincidencia por IP y las direcciones terminadas en .1 son sugerencias; confirma el equipo antes de vincularlo.
+          </p>}
           <div className="flex flex-col md:flex-row gap-2">
-            <select className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm" value={selected} onChange={(event) => setSelected(event.target.value)}>
+            <input
+              className="flex-1 bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-sm"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar por IP, nombre o ID de Monitor…"
+              aria-label="Buscar dispositivo de Monitor"
+            />
+            <select className="flex-1 bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-sm" value={selected} onChange={(event) => setSelected(event.target.value)}>
               <option value="">Selecciona un dispositivo sin vincular…</option>
-              {available.map((device) => (
+              {filteredAvailable.map((device) => {
+                const deviceIp = normalizeIpv4(device.ip_address);
+                const exactMatch = normalizedReferenceIp && deviceIp === normalizedReferenceIp;
+                const possibleFortiGate = deviceIp.endsWith('.1');
+                return (
                 <option key={device.id} value={device.id}>
+                  {exactMatch ? 'Coincidencia IP · ' : possibleFortiGate ? 'Posible FortiGate · ' : ''}
                   {device.internal_id} · {device.name}{device.ip_address ? ` · ${device.ip_address}` : ''}
                 </option>
-              ))}
+                );
+              })}
             </select>
-            <button type="button" disabled={!selected || linking} onClick={linkDevice} className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-[#2a1c05] font-semibold px-4 py-2 rounded-lg">
+            <button type="button" disabled={!selected || linking} onClick={linkDevice} className="bg-ore-500 hover:bg-ore-300 disabled:opacity-50 text-[#2a1c05] font-semibold px-4 py-2 rounded-lg">
               {linking ? 'Vinculando…' : 'Vincular con este activo'}
             </button>
           </div>
+          {availableError && <p className="text-sm text-mrt-bad-light">No fue posible cargar dispositivos sin vincular: {availableError}</p>}
+          {!availableError && available.length === 0 && <p className="text-sm text-stone-500">No hay dispositivos de Monitor disponibles para vincular.</p>}
+          {!availableError && available.length > 0 && filteredAvailable.length === 0 && <p className="text-sm text-stone-500">No hay coincidencias con esa búsqueda.</p>}
         </div>
       ) : (
         <div className="space-y-3">
           {data.devices.map((device) => (
-            <div key={device.id} className="grid grid-cols-2 md:grid-cols-5 gap-3 rounded-lg bg-slate-900 p-3 text-sm">
+            <div key={device.id} className="grid grid-cols-2 md:grid-cols-5 gap-3 rounded-lg bg-stone-800 p-3 text-sm">
               <OperationalValue label="Dispositivo" value={`${device.name} (${device.internal_id})`} />
               <OperationalValue label="Estado" value={device.status_name || 'Sin estado'} />
               <OperationalValue label="IP" value={device.ip_address || '—'} />
               <OperationalValue label="Último ping" value={device.last_ping_at ? new Date(device.last_ping_at).toLocaleString() : 'Nunca'} />
-              <button type="button" disabled={linking} onClick={() => unlinkDevice(device.id)} className="text-xs text-amber-400 hover:underline disabled:opacity-50">Desvincular monitoreo</button>
+              <button type="button" disabled={linking} onClick={() => unlinkDevice(device.id)} className="text-xs text-mrt-warn-light hover:underline disabled:opacity-50">Desvincular monitoreo</button>
             </div>
           ))}
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-stone-500">
             {data.alerts.length} alerta{data.alerts.length === 1 ? '' : 's'} activa{data.alerts.length === 1 ? '' : 's'}.
-            Los datos técnicos se administran en <a className="text-sky-400 hover:underline" href="/mrti-obs/">MRTI Monitor</a>.
+            Los datos técnicos se administran en <a className="text-ore-300 hover:underline" href="/mrti-obs/">MRTI Monitor</a>.
           </p>
         </div>
       )}
-      {actionError && <p className="mt-3 text-sm text-red-400">{actionError}</p>}
+      {actionError && <p className="mt-3 text-sm text-mrt-bad-light">{actionError}</p>}
     </fieldset>
   );
 }
@@ -925,17 +974,17 @@ function TicketsPanel({ assetUid, createTicketUrl }) {
     ticketsFetch(assetUid).then(setTickets).catch((err) => setError(err.message));
   }, [assetUid]);
 
-  if (!assetUid) return <p className="text-sm text-slate-500">Guarda el activo primero para poder relacionar tickets.</p>;
-  if (error) return <p className="text-sm text-amber-400">No fue posible consultar MRTI Tickets: {error}</p>;
-  if (!tickets) return <p className="text-sm text-slate-500">Consultando tickets…</p>;
+  if (!assetUid) return <p className="text-sm text-stone-500">Guarda el activo primero para poder relacionar tickets.</p>;
+  if (error) return <p className="text-sm text-mrt-warn-light">No fue posible consultar MRTI Tickets: {error}</p>;
+  if (!tickets) return <p className="text-sm text-stone-500">Consultando tickets…</p>;
 
   const open = tickets.filter((ticket) => TICKET_OPEN_STATUSES.includes(ticket.status_code));
   const closed = tickets.filter((ticket) => !TICKET_OPEN_STATUSES.includes(ticket.status_code));
 
   return (
-    <fieldset className="border border-slate-800 rounded-xl p-4">
-      <legend className="text-sm font-semibold text-slate-300 px-1">Tickets relacionados</legend>
-      {createTicketUrl && <a href={createTicketUrl} className="mb-4 inline-block text-sm text-sky-400 hover:underline">+ Crear ticket para este activo</a>}
+    <fieldset className="border border-stone-700 rounded-xl p-4">
+      <legend className="text-sm font-semibold text-stone-300 px-1">Tickets relacionados</legend>
+      {createTicketUrl && <a href={createTicketUrl} className="mb-4 inline-block text-sm text-ore-300 hover:underline">+ Crear ticket para este activo</a>}
       <TicketGroup title="Abiertos" tickets={open} empty="Sin tickets abiertos." />
       <TicketGroup title="Cerrados" tickets={closed} empty="Sin tickets cerrados." className="mt-5" />
     </fieldset>
@@ -945,18 +994,18 @@ function TicketsPanel({ assetUid, createTicketUrl }) {
 function TicketGroup({ title, tickets, empty, className = '' }) {
   return (
     <div className={className}>
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">{title} ({tickets.length})</h3>
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-widest text-stone-500">{title} ({tickets.length})</h3>
       {tickets.length === 0 ? (
-        <p className="text-sm text-slate-500">{empty}</p>
+        <p className="text-sm text-stone-500">{empty}</p>
       ) : (
         <div className="space-y-2">
           {tickets.map((ticket) => (
-            <a key={ticket.id} href={`/tickets/${ticket.id}`} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-3 rounded-lg bg-slate-900 p-3 text-sm hover:bg-slate-800">
+            <a key={ticket.id} href={`/tickets/${ticket.id}`} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-3 rounded-lg bg-stone-800 p-3 text-sm hover:bg-stone-700">
               <div className="min-w-0">
-                <span className="font-medium text-slate-100">{ticket.folio}</span>
-                <span className="ml-2 text-slate-400">{ticket.title}</span>
+                <span className="font-medium text-stone-100">{ticket.folio}</span>
+                <span className="ml-2 text-stone-400">{ticket.title}</span>
               </div>
-              <div className="flex shrink-0 items-center gap-2 text-xs text-slate-500">
+              <div className="flex shrink-0 items-center gap-2 text-xs text-stone-500">
                 <span className={`priority priority-${(ticket.priority_code || '').toLowerCase()}`}>{ticket.priority_code}</span>
                 <span>{ticket.status_name}</span>
                 <span>{new Date(ticket.created_at).toLocaleDateString('es-MX')}</span>
@@ -970,7 +1019,7 @@ function TicketGroup({ title, tickets, empty, className = '' }) {
 }
 
 export function OperationalValue({ label, value }) {
-  return <div><span className="block text-xs text-slate-500">{label}</span><span className="text-slate-200">{value}</span></div>;
+  return <div><span className="block text-xs text-stone-500">{label}</span><span className="text-stone-200">{value}</span></div>;
 }
 
 // Catálogo de unidades vigentes para el selector guiado -- se carga una sola
@@ -994,7 +1043,7 @@ function loadUnitCatalogOptions() {
 function UnitField({ value, onChange }) {
   const [options, setOptions] = useState(null);
   useEffect(() => { let current = true; loadUnitCatalogOptions().then((result) => { if (current) setOptions(result); }); return () => { current = false; }; }, []);
-  const commonClass = 'w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100';
+  const commonClass = 'w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-100';
   const current = value || '';
   if (!options) return <input className={commonClass} value={current} disabled placeholder="Cargando catálogo…" />;
   const inCatalog = !current || options.includes(current);
@@ -1005,7 +1054,7 @@ function UnitField({ value, onChange }) {
         {!inCatalog && <option value="__keep__">{current} (etiqueta histórica, se conserva)</option>}
         {options.map((name) => <option key={name} value={name}>{name}</option>)}
       </select>
-      {!inCatalog && <p className="mt-1 text-xs text-amber-400">Esta etiqueta no está en el catálogo vigente. Se conserva sin cambios hasta revisarla en “Por revisar”.</p>}
+      {!inCatalog && <p className="mt-1 text-xs text-mrt-warn-light">Esta etiqueta no está en el catálogo vigente. Se conserva sin cambios hasta revisarla en “Por revisar”.</p>}
     </div>
   );
 }
@@ -1021,12 +1070,12 @@ function microsoftExpiration(startDate, years) {
 }
 
 export function AssetField({ field, value, onChange }) {
-  const commonClass = 'w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100';
+  const commonClass = 'w-full bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 text-sm text-stone-100';
   const isWide = ['descripcion', 'software_incluido', 'version', 'esp_tec', 'notas'].includes(field.key);
 
   return (
     <label className={`block ${isWide ? 'md:col-span-2' : ''}`}>
-      <span className="block text-xs text-slate-400 mb-1">
+      <span className="block text-xs text-stone-400 mb-1">
         {field.label}{field.required ? ' *' : ''}
       </span>
       {field.type === 'unit' ? (
@@ -1066,7 +1115,7 @@ export function AssetField({ field, value, onChange }) {
           onChange={(e) => onChange(field.key, e.target.value)}
         />
       )}
-      {(field.help || field.readOnly) && <span className="mt-1 block text-xs text-slate-500">{field.help || 'Se actualiza automáticamente al asignar una persona desde RH.'}</span>}
+      {(field.help || field.readOnly) && <span className="mt-1 block text-xs text-stone-500">{field.help || 'Se actualiza automáticamente al asignar una persona desde RH.'}</span>}
     </label>
   );
 }
@@ -1078,8 +1127,8 @@ function CredentialField({ field, value, configured, clear, show, onChange, onTo
   return (
     <label className="block">
       <span className="mb-1 flex items-center justify-between gap-2">
-        <span className="text-xs text-slate-400">{field.label}</span>
-        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${configured ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-800 text-slate-500'}`}>
+        <span className="text-xs text-stone-400">{field.label}</span>
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${configured ? 'bg-mrt-good/15 text-mrt-good-light' : 'bg-stone-700 text-stone-500'}`}>
           {configured ? 'Configurada' : 'Sin configurar'}
         </span>
       </span>
@@ -1091,10 +1140,10 @@ function CredentialField({ field, value, configured, clear, show, onChange, onTo
         maxLength={255}
         autoComplete="new-password"
         placeholder={configured ? 'Dejar vacío para conservar' : 'Escribir contraseña'}
-        className="w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 disabled:opacity-50"
+        className="w-full rounded-lg border border-stone-700 bg-stone-800 px-3 py-2 text-sm text-stone-100 placeholder:text-stone-600 disabled:opacity-50"
       />
-      <span className="mt-1.5 flex cursor-pointer items-center gap-2 text-[11px] text-slate-500">
-        <input type="checkbox" checked={clear} onChange={(e) => onToggleClear(e.target.checked)} className="rounded border-slate-700 bg-slate-950 text-sky-500" />
+      <span className="mt-1.5 flex cursor-pointer items-center gap-2 text-[11px] text-stone-500">
+        <input type="checkbox" checked={clear} onChange={(e) => onToggleClear(e.target.checked)} className="rounded border-stone-600 bg-stone-900 text-ore-500" />
         Quitar esta contraseña guardada
       </span>
     </label>

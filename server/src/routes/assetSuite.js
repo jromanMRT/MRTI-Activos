@@ -56,7 +56,7 @@ export const RESOURCE_CONFIG = Object.freeze({
   fortigate: {
     table: 'sap_fortigate', editable: true, linksMonitor: true,
     columns: ['id', 'sap_id', 'asset_uid', 'software', 'numero_serie', 'proyecto', 'fecha_expira', 'ip_address', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'],
-    search: ['software', 'numero_serie', 'proyecto', 'comentario'],
+    search: ['software', 'numero_serie', 'proyecto', 'ip_address', 'comentario'],
     create: { fields: ['software', 'numero_serie', 'proyecto', 'fecha_expira', 'ip_address', 'comentario'], required: ['numero_serie'], dates: ['fecha_expira'] },
   },
   dominios: { table: 'sap_dominios', editable: true, columns: ['id', 'sap_id', 'dominio', 'servicios', 'fecha_expira', 'status', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at', 'sap_synced_at', 'sap_sync_error'], search: ['dominio', 'servicios', 'status', 'comentario'], create: { fields: ['dominio', 'servicios', 'fecha_expira', 'status', 'comentario'], required: ['dominio'], dates: ['fecha_expira'] } },
