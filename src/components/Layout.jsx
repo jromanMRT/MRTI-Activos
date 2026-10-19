@@ -5,20 +5,6 @@ import { getToken, goToPortalLogin } from '../api.js';
 import { Sidebar } from './Sidebar.jsx';
 import { ModuleHeader } from './ModuleHeader.jsx';
 
-function currentRouteLabel(pathname) {
-  if (pathname === '/nuevo') return 'Nuevo activo';
-  if (pathname === '/' || pathname === '/operacion') return 'Dashboard de activos';
-  if (pathname === '/inventario/unidades') return 'Inventario por unidad';
-  if (pathname === '/inventario') return 'Inventario';
-  if (['/notas-tecnicas', '/referencias-tecnicas'].includes(pathname)) return 'Referencias técnicas';
-  if (pathname === '/alertas') return 'Alertas';
-  if (pathname === '/seguridad-acceso') return 'Seguridad y acceso';
-  if (pathname === '/checklist-equipos') return 'Checklist de equipos';
-  if (pathname === '/bajas-personal') return 'Bajas de personal';
-  if (pathname.startsWith('/catalogos/')) return 'Catálogos de activos';
-  return 'Detalle del activo';
-}
-
 export function Layout({ children }) {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -54,21 +40,21 @@ export function Layout({ children }) {
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 dark:bg-stone-900 dark:text-stone-100">
-      <div className="hidden md:block">
+      <div className="hidden min-[901px]:block">
         <Sidebar collapsed={collapsed} onToggleCollapse={toggleCollapse} />
       </div>
 
       {mobileMenuOpen && (
-        <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setMobileMenuOpen(false)} aria-hidden="true" />
+        <div className="fixed inset-0 bg-black/50 z-30 min-[901px]:hidden" onClick={() => setMobileMenuOpen(false)} aria-hidden="true" />
       )}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-y-0 left-0 w-64 z-40">
+        <div className="min-[901px]:hidden fixed inset-y-0 left-0 w-64 z-40">
           <Sidebar collapsed={false} onToggleCollapse={() => setMobileMenuOpen(false)} onNavigate={() => setMobileMenuOpen(false)} />
         </div>
       )}
 
-      <div className={`portal-module-workspace transition-all duration-300 ${collapsed ? 'md:pl-16' : 'md:pl-64'}`}>
-        <ModuleHeader title={currentRouteLabel(location.pathname)} subtitle="MRTI Activos" mobileMenuOpen={mobileMenuOpen} onMenuClick={() => setMobileMenuOpen(true)} />
+      <div className={`portal-module-workspace transition-all duration-300 ${collapsed ? 'min-[901px]:pl-16' : 'min-[901px]:pl-64'}`}>
+        <ModuleHeader mobileMenuOpen={mobileMenuOpen} onMenuClick={() => setMobileMenuOpen(true)} />
         <main className="min-h-[calc(100vh-72px)]">
           <div className="w-full px-4 py-6 sm:px-6 lg:px-8"><PermissionBoundary code="activos">{children}</PermissionBoundary></div>
         </main>

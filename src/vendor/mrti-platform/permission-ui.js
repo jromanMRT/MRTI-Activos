@@ -1,8 +1,8 @@
-// GENERADO desde MRTI-Platform@7f88163 (src/permission-ui.js).
+// GENERADO desde MRTI-Platform@8ce8362 (src/permission-ui.js).
 // No editar aquí: cambiar en MRTI-Platform y ejecutar bin/sync.mjs.
 import { createElement, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { PERMISSION_CATALOG, routeSection, permissionFor, levelAllows } from './permissions.js';
+import { PERMISSION_CATALOG, routeSection, permissionFor, levelAllows, requestAllowed } from './permissions.js';
 let snapshot = { profile: null, error: '', loading: true };
 let pending = null;
 const listeners = new Set();
@@ -38,7 +38,7 @@ export function useModulePermissions(code) {
   const module = PERMISSION_CATALOG.find((m) => m.code === code);
   const fullPath = (path) => module.base + (path === '/' ? '' : path);
   const level = (path) => permissionFor(value.profile, code, routeSection(code, fullPath(path), true));
-  return { ...value, module, level, can: (path, method = 'GET') => levelAllows(level(path), method), refresh };
+  return { ...value, module, level, sectionLevel: (id) => permissionFor(value.profile, code, id), can: (path, method = 'GET') => levelAllows(level(path), method), canApi: (path, method = 'GET') => requestAllowed(value.profile, code, method, module.api + (path === '/' ? '' : path)), refresh };
 }
 export function PermissionBoundary({ code, children }) {
   const permissions = useModulePermissions(code);

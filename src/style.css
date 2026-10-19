@@ -125,6 +125,19 @@
 [data-theme='dark'] { color-scheme: dark; }
 [data-theme='light'] { color-scheme: light; }
 
+/* Muchos componentes heredados usan stone-700/800/900 como superficies.
+   La escala de Tailwind es estática; sin este puente seguían oscuros aun con
+   el tema claro activo. Se limita a clases base (no dark:/hover:) para que
+   las variantes del tema oscuro sigan siendo responsables de sí mismas. */
+:root[data-theme='light'] :is([class^='bg-stone-800'], [class*=' bg-stone-800']) { background-color: var(--surface) !important; }
+:root[data-theme='light'] :is([class^='bg-stone-900'], [class*=' bg-stone-900']) { background-color: var(--bg) !important; }
+:root[data-theme='light'] :is([class^='bg-stone-700'], [class*=' bg-stone-700']) { background-color: var(--surface-soft) !important; }
+:root[data-theme='light'] :is([class^='border-stone-600'], [class*=' border-stone-600'], [class^='border-stone-700'], [class*=' border-stone-700'], [class^='border-stone-800'], [class*=' border-stone-800']) { border-color: var(--line) !important; }
+:root[data-theme='light'] :is([class^='text-stone-50'], [class*=' text-stone-50'], [class^='text-stone-100'], [class*=' text-stone-100'], [class^='text-stone-200'], [class*=' text-stone-200']) { color: var(--ink) !important; }
+:root[data-theme='light'] :is([class^='text-stone-300'], [class*=' text-stone-300']) { color: var(--ink-soft) !important; }
+:root[data-theme='light'] :is([class^='hover:bg-stone-700'], [class*=' hover:bg-stone-700'], [class^='hover:bg-stone-800'], [class*=' hover:bg-stone-800']):hover { background-color: var(--surface-soft) !important; }
+:root[data-theme='light'] :is([class^='hover:text-stone-100'], [class*=' hover:text-stone-100'], [class^='hover:text-stone-200'], [class*=' hover:text-stone-200']):hover { color: var(--ink) !important; }
+
 select option,
 select optgroup { color: var(--ink); background: var(--surface); }
 
