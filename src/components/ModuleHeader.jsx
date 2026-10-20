@@ -1,5 +1,5 @@
+import { ModuleHeader as SharedModuleHeader } from './layout/ModuleHeader.jsx';
 import { PortalNotifications } from './PortalNotifications.jsx';
-import { ModuleSwitcher } from './ModuleSwitcher.jsx';
 import { AccountMenu } from './AccountMenu.jsx';
 
 function readProfile() {
@@ -9,12 +9,10 @@ function readProfile() {
 export function ModuleHeader({ mobileMenuOpen, onMenuClick }) {
   const profile = readProfile();
 
-  return <header className="portal-module-topbar">
-    <button type="button" className="portal-module-menu" onClick={onMenuClick} aria-label="Abrir navegación" aria-expanded={mobileMenuOpen}>☰</button>
-    <ModuleSwitcher />
-    <div className="portal-module-actions">
+  return (
+    <SharedModuleHeader moduleCode="activos" moduleName="Activos" mobileMenuOpen={mobileMenuOpen} onMenuClick={onMenuClick}>
       <PortalNotifications />
       <AccountMenu profile={profile} />
-    </div>
-  </header>;
+    </SharedModuleHeader>
+  );
 }
