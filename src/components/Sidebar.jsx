@@ -2,7 +2,7 @@ import { useModulePermissions } from '../vendor/mrti-platform/permission-ui.js';
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme.js';
-import { ModuleSidebar, SidebarGroup } from './layout/ModuleSidebar.jsx';
+import { ModuleSidebar, SidebarGroup, SidebarNavIcon } from './layout/ModuleSidebar.jsx';
 
 const NAV_SECTIONS = [
   {
@@ -77,8 +77,13 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate }) {
                   className={({ isActive }) => `portal-module-nav-item${isActive ? ' is-active' : ''}`}
                   title={collapsed ? item.label : undefined}
                 >
-                  <NavIcon name={item.icon} />
-                  <span className="portal-module-nav-label">{item.label}</span>
+                  {({ isActive }) => (
+                    <>
+                      <NavIcon name={item.icon} />
+                      <span className="portal-module-nav-label">{item.label}</span>
+                      {isActive && <span className="portal-module-nav-dot" />}
+                    </>
+                  )}
                 </NavLink>
               </li>
             ))}
@@ -110,11 +115,5 @@ function NavIcon({ name }) {
     fileText: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" /></>,
     phone: <><rect x="6" y="2" width="12" height="20" rx="2" ry="2" /><path d="M12 18h.01" /></>,
   };
-  return (
-    <span className="portal-module-nav-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        {paths[name] || paths.catalog}
-      </svg>
-    </span>
-  );
+  return <SidebarNavIcon>{paths[name] || paths.catalog}</SidebarNavIcon>;
 }
