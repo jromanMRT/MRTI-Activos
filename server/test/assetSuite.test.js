@@ -43,9 +43,9 @@ test('las contraseñas locales se separan de los valores públicos y se exigen',
   assert.throws(() => normalizeResourceCreateInput(RESOURCE_CONFIG.passwords, { categoria: 'Red' }), /password/);
 });
 
-test('fortigate, impresoras, starlink, dominios, componentes, mantenimientos, nvr y config-alertas admiten edición manual; unidades y passwords no', () => {
+test('fortigate, impresoras, starlink, dominios, componentes, mantenimientos, nvr, config-alertas y celulares admiten edición manual; unidades y passwords no', () => {
   const editableResources = Object.entries(RESOURCE_CONFIG).filter(([, config]) => config.editable).map(([name]) => name);
-  assert.deepEqual(new Set(editableResources), new Set(['impresoras', 'starlink', 'fortigate', 'dominios', 'componentes', 'mantenimientos', 'nvr', 'config-alertas']));
+  assert.deepEqual(new Set(editableResources), new Set(['impresoras', 'starlink', 'fortigate', 'dominios', 'componentes', 'mantenimientos', 'nvr', 'config-alertas', 'celulares']));
   assert.equal(RESOURCE_CONFIG.unidades.editable, undefined);
   // passwords exige la contraseña como campo obligatorio en create.required;
   // permitir `editable` forzaría re-enviarla en cada PATCH aunque el edit
@@ -55,6 +55,26 @@ test('fortigate, impresoras, starlink, dominios, componentes, mantenimientos, nv
   const { values } = normalizeResourceCreateInput(RESOURCE_CONFIG.fortigate, { numero_serie: 'FGT60ETK19060496', ip_address: '192.168.10.1', sap_id: 999 });
   assert.deepEqual(values, { numero_serie: 'FGT60ETK19060496', ip_address: '192.168.10.1' });
   assert.equal(Object.prototype.hasOwnProperty.call(values, 'sap_id'), false);
+});
+
+test('celulares valida modelo obligatorio, importe_mes numérico y fecha_entrega con formato', () => {
+  const { values } = normalizeResourceCreateInput(RESOURCE_CONFIG.celulares, {
+    modelo: 'Galaxy A54',
+    numero_linea: '8112345678',
+    importe_mes: '599.50',
+    fecha_entrega: '2026-05-10',
+    estado: 'Asignado',
+  });
+  assert.deepEqual(values, {
+    modelo: 'Galaxy A54',
+    numero_linea: '8112345678',
+    importe_mes: 599.5,
+    fecha_entrega: '2026-05-10',
+    estado: 'Asignado',
+  });
+  assert.throws(() => normalizeResourceCreateInput(RESOURCE_CONFIG.celulares, { numero_linea: '8112345678' }), /modelo/);
+  assert.throws(() => normalizeResourceCreateInput(RESOURCE_CONFIG.celulares, { modelo: 'iPhone 15', importe_mes: 'no-numero' }), /importe_mes/);
+  assert.throws(() => normalizeResourceCreateInput(RESOURCE_CONFIG.celulares, { modelo: 'iPhone 15', fecha_entrega: '10/05/2026' }), /fecha_entrega/);
 });
 
 test('config-alertas no admite altas (creatable:false): las claves las define la lógica de alertas de SAP', () => {

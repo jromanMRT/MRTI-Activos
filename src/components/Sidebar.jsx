@@ -15,6 +15,7 @@ const NAV_SECTIONS = [
     title: 'Equipos y Dispositivos',
     items: [
       { to: '/inventario', label: 'Equipos de cómputo', icon: 'inventory' },
+      { to: '/catalogos/celulares', label: 'Teléfonos celulares', icon: 'phone' },
       { to: '/catalogos/impresoras', label: 'Impresoras', icon: 'printer' },
       { to: '/catalogos/nvr', label: 'NVR / CCTV', icon: 'cctv' },
       { to: '/catalogos/componentes', label: 'Componentes y partes', icon: 'cpu' },

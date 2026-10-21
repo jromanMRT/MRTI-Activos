@@ -78,6 +78,17 @@ export const RESOURCE_CONFIG = Object.freeze({
     search: ['clave', 'nombre'],
     create: { fields: ['nombre', 'dias_aviso', 'activo'], required: [], numbers: ['dias_aviso'], booleans: ['activo'] },
   },
+  celulares: {
+    table: 'telefonos_celulares', editable: true,
+    columns: ['id', 'numero_linea', 'usuario', 'marca', 'modelo', 'imei', 'numero_serie', 'operador', 'plan_datos', 'importe_mes', 'estado', 'unidad', 'departamento', 'fecha_entrega', 'comentario', 'record_origin', 'synced_at', 'archived_at', 'locally_edited_at'],
+    search: ['numero_linea', 'usuario', 'marca', 'modelo', 'imei', 'numero_serie', 'operador', 'plan_datos', 'estado', 'unidad', 'departamento'],
+    create: {
+      fields: ['numero_linea', 'usuario', 'marca', 'modelo', 'imei', 'numero_serie', 'operador', 'plan_datos', 'importe_mes', 'estado', 'unidad', 'departamento', 'fecha_entrega', 'comentario'],
+      required: ['modelo'],
+      numbers: ['importe_mes'],
+      dates: ['fecha_entrega'],
+    },
+  },
 });
 
 // Empuja un catálogo sap_* hacia SAP en segundo plano -- mismo patrón
