@@ -1,19 +1,23 @@
-// GENERADO desde MRTI-Platform@cc7ffc2 (src/layout/ModuleSwitcher.jsx).
+// GENERADO desde MRTI-Platform@00d7fb5 (src/layout/ModuleSwitcher.jsx).
 // No editar aquí: cambiar en MRTI-Platform y ejecutar bin/sync.mjs.
 import './header-navigation.css';
 import { useEffect, useState } from 'react';
 
-let _request = null;
-function loadApplications() {
-  const token = localStorage.getItem('auth_token');
+// Compartir únicamente solicitudes en vuelo de la misma sesión, nunca permisos
+// indefinidamente ni entre usuarios distintos.
+let pending = null;
+let pendingToken = null;
+function loadApplications(token) {
   if (!token) return Promise.resolve([]);
-  if (!_request) {
-    _request = fetch('/api/portal/v1/applications', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(({ data }) => (Array.isArray(data) ? data : []))
-      .catch(() => { _request = null; return []; });
-  }
-  return _request;
+  if (pending && pendingToken === token) return pending;
+  pendingToken = token;
+  const request = fetch('/api/portal/v1/applications', { cache: 'no-store', headers: { Authorization: `Bearer ${token}` } })
+    .then((r) => (r.ok ? r.json() : Promise.reject()))
+    .then(({ data }) => (Array.isArray(data) ? data : []))
+    .catch(() => [])
+    .finally(() => { if (pending === request) pending = null; });
+  pending = request;
+  return request;
 }
 
 function applicationHref(application) {
@@ -25,14 +29,36 @@ export function ModuleSwitcher({ moduleCode }) {
   const [applications, setApplications] = useState([]);
 
   useEffect(() => {
-    loadApplications().then(setApplications);
-  }, []);
+    let active = true;
+    let generation = 0;
+    let previousToken;
+    const refresh = () => {
+      const token = localStorage.getItem('auth_token');
+      const current = ++generation;
+      if (token !== previousToken) setApplications([]);
+      previousToken = token;
+      loadApplications(token).then((items) => {
+        if (active && current === generation && token === localStorage.getItem('auth_token')) setApplications(items);
+      });
+    };
+    const onStorage = (event) => { if (!event.key || ['auth_token', 'auth_profile'].includes(event.key)) refresh(); };
+    refresh();
+    window.addEventListener('focus', refresh);
+    window.addEventListener('storage', onStorage);
+    const timer = window.setInterval(refresh, 60_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [moduleCode]);
 
   return (
     <nav className="portal-header-navigation module-tabs" aria-label="Navegación de la plataforma">
       <a className="module-tab" href="/dashboard">Dashboard</a>
       {applications.map((application) => {
-        const isCurrent = application.code === moduleCode;
+        const isCurrent = application.code === moduleCode || (moduleCode === 'admin' && application.code === 'control-center');
         return (
           <a
             key={application.code}
