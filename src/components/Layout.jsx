@@ -8,7 +8,7 @@ import { ModuleHeader } from './ModuleHeader.jsx';
 export function Layout({ children }) {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('mrti_activos_sidebar_collapsed') === '1');
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('mrti_sidebar_collapsed') === '1');
 
   useEffect(() => {
     if (!getToken()) goToPortalLogin();
@@ -16,7 +16,7 @@ export function Layout({ children }) {
 
   function toggleCollapse() {
     setCollapsed((prev) => {
-      localStorage.setItem('mrti_activos_sidebar_collapsed', prev ? '0' : '1');
+      localStorage.setItem('mrti_sidebar_collapsed', prev ? '0' : '1');
       return !prev;
     });
   }
