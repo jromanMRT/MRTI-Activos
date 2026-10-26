@@ -15,7 +15,7 @@ function currentProfile() {
   try { return JSON.parse(localStorage.getItem('auth_profile') || '{}'); } catch { return {}; }
 }
 
-const EMPTY_STATS = { total: 0, activos: 0, mantenimiento: 0, inactivos: 0, baja: 0 };
+const EMPTY_STATS = { total: 0, activos: 0, mantenimiento: 0, inactivos: 0, baja: 0, donados: 0 };
 
 export function ListPage() {
   const [items, setItems] = useState([]);
@@ -110,12 +110,13 @@ export function ListPage() {
 
   return (
     <div className="page-fade-in space-y-6">
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Resumen del inventario">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" aria-label="Resumen del inventario">
         <StatCard label="Total activos" value={stats.total} tone="neutral" />
         <StatCard label="Activos" value={stats.activos} tone="good" />
         <StatCard label="Mantenimiento" value={stats.mantenimiento} tone="warning" />
         <StatCard label="Inactivos" value={stats.inactivos} tone="neutral" />
         <StatCard label="Baja" value={stats.baja} tone="bad" />
+        <StatCard label="Donados" value={stats.donados} tone="info" />
       </section>
 
       <section>
@@ -200,7 +201,7 @@ function AssetRow({ item, employeeProfile }) {
 }
 
 function StatCard({ label, value, tone }) {
-  const colors = { good: 'text-mrt-good-light', warning: 'text-mrt-warn-light', bad: 'text-mrt-bad-light', neutral: 'text-stone-100' };
+  const colors = { good: 'text-mrt-good-light', warning: 'text-mrt-warn-light', bad: 'text-mrt-bad-light', neutral: 'text-stone-100', info: 'text-violet-300' };
   return <Card className="border-stone-700 bg-stone-800/60 px-5 py-4"><p className="text-[10px] font-semibold uppercase tracking-widest text-stone-500">{label}</p><p className={`mt-2 text-3xl font-bold ${colors[tone]}`}>{value}</p></Card>;
 }
 
@@ -230,7 +231,7 @@ function FilterSelect({ label, value, onChange, options }) {
   return <SelectNative value={value} onChange={(event) => onChange(event.target.value)}><option value="">{label}</option>{options.map((option) => <option key={option} value={option}>{option}</option>)}</SelectNative>;
 }
 
-const ESTADO_VARIANT = { Activo: 'success', Inactivo: 'default', 'En mantenimiento': 'warning', Baja: 'danger' };
+const ESTADO_VARIANT = { Activo: 'success', Inactivo: 'default', 'En mantenimiento': 'warning', Baja: 'danger', Donado: 'info' };
 function EstadoBadge({ estado }) { return estado ? <Badge variant={ESTADO_VARIANT[estado] || 'default'}>{estado}</Badge> : '—'; }
 function AssignmentBadge({ assigned }) {
   return assigned

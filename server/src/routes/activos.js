@@ -128,7 +128,8 @@ activosRouter.get('/stats', async (_req, res, next) => {
       SUM(estado = 'Activo') AS activos,
       SUM(estado = 'En mantenimiento') AS mantenimiento,
       SUM(estado = 'Inactivo') AS inactivos,
-      SUM(estado = 'Baja') AS baja
+      SUM(estado = 'Baja') AS baja,
+      SUM(estado = 'Donado') AS donados
       FROM activos WHERE deleted_at IS NULL`);
     res.json({ data: Object.fromEntries(Object.entries(row).map(([key, value]) => [key, Number(value || 0)])) });
   } catch (error) {

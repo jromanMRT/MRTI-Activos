@@ -10,7 +10,7 @@ const STATUS = {
   returned: { label: 'Devuelto', tone: 'border-mrt-good/30 bg-mrt-good/10 text-mrt-good-light' },
 };
 const CONDITIONS = { good: 'Buen estado', fair: 'Desgaste normal', damaged: 'Dañado', incomplete: 'Incompleto' };
-const DESTINATIONS = { available: 'Disponible para reasignar', maintenance: 'Enviar a mantenimiento', retired: 'Baja del equipo' };
+const DESTINATIONS = { available: 'Disponible para reasignar', maintenance: 'Enviar a mantenimiento', retired: 'Baja del equipo', donated: 'Donado al empleado' };
 const ACCESSORIES = { charger: 'Cargador', bag: 'Mochila/estuche', monitor: 'Monitor', phone: 'Teléfono', keyboard_mouse: 'Teclado y mouse', other: 'Otro' };
 const ACCESS_TASKS = { core_account: 'Cuenta de Core', corporate_email: 'Correo corporativo', microsoft365: 'Microsoft 365', dropbox: 'Dropbox', antivirus: 'Antivirus', network_access: 'Accesos de red', phone_line: 'Línea telefónica', file_backup: 'Respaldo de archivos' };
 

@@ -1,6 +1,6 @@
 const STATUSES = new Set(['pending', 'not_returned', 'returned']);
 const CONDITIONS = new Set(['good', 'fair', 'damaged', 'incomplete']);
-const DESTINATIONS = new Set(['available', 'maintenance', 'retired']);
+const DESTINATIONS = new Set(['available', 'maintenance', 'retired', 'donated']);
 const ACCESSORIES = new Set(['charger', 'bag', 'monitor', 'phone', 'keyboard_mouse', 'other']);
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const OFFBOARDING_TASK_KEYS = Object.freeze(['core_account', 'corporate_email', 'microsoft365', 'dropbox', 'antivirus', 'network_access', 'phone_line', 'file_backup']);
@@ -43,6 +43,7 @@ export function destinationAssetState(destination) {
     available: { estado: 'Activo', active: 'Libre' },
     maintenance: { estado: 'En mantenimiento', active: 'tYES' },
     retired: { estado: 'Baja', active: 'tNO' },
+    donated: { estado: 'Donado', active: 'tNO' },
   }[destination] || null;
 }
 
