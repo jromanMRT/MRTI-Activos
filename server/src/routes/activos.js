@@ -12,6 +12,7 @@ import { deleteAsset } from '../domain/assetDeletion.js';
 import { captureUnit, saveAssetFields } from '../domain/unitReview.js';
 import { getAssetAssignmentProfile } from '../integrations/rhClient.js';
 import { assetPersonSearch } from '../assetPersonSearch.js';
+import { buildAssetTextSearch } from '../domain/assetSearch.js';
 
 // Empuja el renglón recién creado/editado hacia SAP (ver plan de la
 // integración SAP: copia local + escritura en ambos lados). Si SAP no está
@@ -89,9 +90,11 @@ activosRouter.get('/', async (req, res, next) => {
 
     if (q) {
       const people = await assetPersonSearch(pool, req.headers.authorization, q);
-      where.push(`(descripcion LIKE ? OR usuario_asignado LIKE ? OR numero_serie LIKE ? OR service_tag LIKE ? OR modelo LIKE ? OR marca LIKE ? OR center_code LIKE ?${people.sql ? ` OR ${people.sql}` : ''})`);
-      const term = `%${q}%`;
-      params.push(term, term, term, term, term, term, term, ...people.params);
+      const textSearch = buildAssetTextSearch(q);
+      if (textSearch.sql) {
+        where.push(`((${textSearch.sql})${people.sql ? ` OR (${people.sql})` : ''})`);
+        params.push(...textSearch.params, ...people.params);
+      }
     }
     if (tipo) { where.push('tipo = ?'); params.push(tipo); }
     if (estado) { where.push('estado = ?'); params.push(estado); }
