@@ -12,10 +12,10 @@
     "reconcile:rh": "node scripts/reconcile-rh-employees.js",
     "source:check": "node scripts/external-source-audit.js check",
     "source:catalog": "node scripts/external-source-audit.js catalog",
-    "test": "node --test test/"
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
-    "@azure/identity": "^4.14.1",
+    "@azure/identity": "4.14.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
