@@ -53,7 +53,9 @@ app.use((err, _req, res, _next) => {
       : 'No se pudo procesar el archivo enviado';
     return res.status(400).json({ error: message });
   }
-  res.status(err.status || 500).json({ error: err.message || 'Error interno' });
+  const status = err.status || 500;
+  const message = status >= 500 ? 'Error interno' : (err.message || 'Error interno');
+  res.status(status).json({ error: message });
 });
 
 // Copia local + escritura en ambos lados con SAP (ActivosTI): cada
@@ -76,7 +78,13 @@ if (isSapConfigured()) {
 }
 
 const port = Number(process.env.PORT || 3003);
-app.listen(port, () => {
+const DOCKER_BRIDGES = ['172.17.0.1', '172.22.0.1'];
+app.listen(port, '127.0.0.1', () => {
   // eslint-disable-next-line no-console
-  console.log(`MRTI Activos API escuchando en http://localhost:${port}`);
+  console.log(`MRTI Activos API escuchando en http://127.0.0.1:${port}`);
 });
+for (const ip of DOCKER_BRIDGES) {
+  app.listen(port, ip, () => {
+    console.log(`MRTI Activos API escuchando en http://${ip}:${port}`);
+  });
+}
